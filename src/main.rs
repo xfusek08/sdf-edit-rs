@@ -2,17 +2,22 @@ mod application;
 mod profiler;
 
 use application::{Application, ApplicationConfig};
+use log::info;
 
 fn main() {
+    env_logger::init();
     
-    let mut app = {
-        begin_profiler_session!("app_create-profile");
-        Application::new(ApplicationConfig {
-            // TODO: Global configuration here
-            ..ApplicationConfig::default()
-        })
+    info!("starting...");
+    let config = ApplicationConfig {
+        // TODO: Global configuration here
+        ..ApplicationConfig::default()
     };
     
-    begin_profiler_session!("app_run-profile");
+    let mut app = {
+        profiler_session_begin!("app_create-profile");
+        Application::new(config)
+    };
+    
+    profiler_session_begin!("app_run-profile");
     app.run();
 }

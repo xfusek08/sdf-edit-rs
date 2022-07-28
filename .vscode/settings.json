@@ -1,3 +1,7 @@
 {
-    "rust-analyzer.cargo.features": "all"
+    "rust-analyzer.cargo.features": [ "profiling" ],
+    "cSpell.words": [
+        "instrumentor",
+        "traitobject"
+    ]
 }
