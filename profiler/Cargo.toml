@@ -1,0 +1,14 @@
+[package]
+name = "profiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+instrumentation-code  = { path = "instrumentation-code", optional = true }
+instrumentation-macro = { path = "instrumentation-macro" }
+
+[features]
+enabled = [
+    "instrumentation-macro/enabled", # will bass enabled feature to instrumentation-macro crate
+    "dep:instrumentation-code", # will not build and link instrumentation-code when not enabled
+]

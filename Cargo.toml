@@ -1,25 +1,21 @@
+[workspace]
+members = [
+    ".",
+    "profiler",
+]
+
 [package]
 name = "sdf-edit-rs"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[env]
-RUST_LOG = "debug"
-
 [dependencies]
-# core
-rand = "*"
-parking_lot = "*"
-serde = { version = "*", features = ["derive", "rc"] }
-serde_json = "*"
-log = "*"
-env_logger = "*"
+profiler = { path = "profiler" }
 
-# profiling
-erased-serde = { version = "*", optional = true }
+log = "*"
+simple_logger = "*"
 
 [features]
 profiling = [
-    "dep:erased-serde",
+    "profiler/enabled",
 ]

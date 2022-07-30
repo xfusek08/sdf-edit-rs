@@ -1,23 +1,31 @@
 mod application;
-mod profiler;
+mod log;
 
 use application::{Application, ApplicationConfig};
-use log::info;
+use simple_logger::SimpleLogger;
 
 fn main() {
-    env_logger::init();
+    profiler::session_begin!("sdf-editor-app");
     
-    info!("starting...");
-    let config = ApplicationConfig {
-        // TODO: Global configuration here
-        ..ApplicationConfig::default()
+    {
+        profiler::scope!("Initializing SimpleLogger");
+        SimpleLogger::new().init().unwrap();
+    }
+    
+    info!("Starting...");
+
+    let config = {
+        profiler::scope!("Creating application config");
+        ApplicationConfig {
+            // TODO: Global configuration here
+            ..ApplicationConfig::default()
+        }
     };
     
-    let mut app = {
-        profiler_session_begin!("app_create-profile");
-        Application::new(config)
-    };
     
-    profiler_session_begin!("app_run-profile");
+    let mut app = Application::new(config);
+    
     app.run();
+    
+    info!("Exiting");
 }
