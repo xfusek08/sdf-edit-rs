@@ -5,9 +5,9 @@ mod renderer;
 use application::{Application, ApplicationConfig};
 
 fn main() {
-    profiler::session_begin!("sdf-editor-app");
+    env_logger::init();
     
-    profiler::call!(env_logger::init());
+    profiler::session_begin!("sdf-editor-app");
     
     info!("Starting...");
 

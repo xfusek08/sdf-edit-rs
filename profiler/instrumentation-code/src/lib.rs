@@ -1,8 +1,9 @@
+
 /// This is an implementation of profiling instrumentor
 /// Outputting a Json Trace Event format profile file.
 /// https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.lenwiilchoxp
 
-use log::warn;
+use log::{warn, trace};
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
@@ -167,6 +168,7 @@ impl EventGuard {
     where
         T: erased_serde::Serialize + Send + Sync + 'static,
     {
+        trace!("profiler scope: {}", name);
         let mut current_ref = CURRENT.lock();
         return match current_ref.as_mut() {
             Some(session) => {
