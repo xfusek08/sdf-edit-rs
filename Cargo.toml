@@ -9,11 +9,20 @@ name = "sdf-edit-rs"
 version = "0.1.0"
 edition = "2021"
 
+[env]
+ RUST_LOG="trace"
+
 [dependencies]
 profiler = { path = "profiler" }
 
+# Core
 log = "*"
-simple_logger = "*"
+env_logger = "*"
+pollster = "*" # minimalist async execution engine - required by wgpu
+
+# Rendering
+winit = "0.26" # wgpu 0.13.1 cannot handle 0.27 yet
+wgpu = "0.13.1"
 
 [features]
 profiling = [

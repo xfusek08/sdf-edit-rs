@@ -4,6 +4,11 @@ pub use instrumentation_macro::*;
 #[cfg(feature = "enabled")]
 pub use instrumentation_code::*;
 
+#[macro_export]
+macro_rules! add_file_line {
+    ($a:expr) => { concat!($a, " (", file!(), ":", line!() ,")") }
+}
+
 #[cfg(feature = "enabled")]
 #[macro_export]
 macro_rules! session_begin {
@@ -20,13 +25,13 @@ macro_rules! session_begin {
 }
 
 #[cfg(feature = "enabled")]
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! scope {
     ($a:expr) => {
-        let _guard = profiler::EventGuard::new::<()>($a, profiler::EventCategory::Performance, None);
+        let _guard = profiler::EventGuard::new::<()>(add_file_line!($a), profiler::EventCategory::Performance, None);
     };
     ($a:expr, $b:expr) => {
-        let _guard = profiler::EventGuard::new($a, profiler::EventCategory::Performance, Some($b));
+        let _guard = profiler::EventGuard::new(add_file_line!($a), profiler::EventCategory::Performance, Some($b));
     };
 }
 
@@ -51,4 +56,12 @@ macro_rules! register_thread {
 macro_rules! register_thread {
     () => {};
     ($a:expr) => {};
+}
+
+
+#[macro_export()]
+macro_rules! call {
+    ($($a:tt)*) => {
+        { profiler::scope!(stringify!($($a)*)); $($a)* }
+    };
 }

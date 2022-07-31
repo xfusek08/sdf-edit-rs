@@ -2,6 +2,20 @@
     "rust-analyzer.cargo.features": [ "profiling" ],
     "cSpell.words": [
         "instrumentor",
-        "traitobject"
-    ]
+        "Multisample",
+        "multiview",
+        "swapchain",
+        "traitobject",
+        "wgpu",
+        "winit"
+    ],
+    "workbench.colorCustomizations": {
+        "sash.hoverBorder": "#027b34",
+        "statusBar.background": "#01491f",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#027b34",
+        "statusBarItem.remoteBackground": "#01491f",
+        "statusBarItem.remoteForeground": "#e7e7e7"
+    },
+    "peacock.color": "#01491f"
 }

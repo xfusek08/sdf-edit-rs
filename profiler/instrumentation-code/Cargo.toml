@@ -8,3 +8,5 @@ parking_lot  = "*"
 serde        = { version = "*", features = ["derive", "rc"] }
 serde_json   = "*"
 erased-serde = "*"
+log = "*"
+env_logger = "*"

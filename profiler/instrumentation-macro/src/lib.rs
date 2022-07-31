@@ -10,7 +10,7 @@ pub fn function(
 ) -> TokenStream {
     let mut function = parse_macro_input!(item as ItemFn);
     let instrumented_function_name = function.sig.ident.to_string();
-
+    
     let body = &function.block;
     let new_body: syn::Block = impl_block(body, &instrumented_function_name);
 
@@ -29,7 +29,7 @@ fn impl_block(
 ) -> syn::Block {
     parse_quote! {
         {
-            profiler::scope!(#instrumented_function_name);
+            profiler::scope!(concat!(module_path!(), "::", #instrumented_function_name));
             #body
         }
     }

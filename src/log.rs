@@ -2,28 +2,28 @@
 
 #[macro_export]
 macro_rules! profiled_log {
-    ($a:ident, $b:expr) => {
+    ($a:ident, $($b:tt)*) => {
         {
-            profiler::scope!(concat!("Log::", stringify!($a), "()"));
-            ::log::$a!($b);
+            profiler::scope!(concat!(stringify!($a), "!(", stringify!($($b)*), ")"));
+            ::log::$a!($($b)*);
         }
     };
 }
 
 #[macro_export(local_inner_macros)]
 macro_rules! debug {
-    ($a:expr) => { profiled_log!(debug, $a); };
+    ($($a:tt)*) => { profiled_log!(debug, $($a)*); };
 }
 
 #[macro_export(local_inner_macros)]
 macro_rules! info {
-    ($a:expr) => { profiled_log!(info, $a); };
+    ($($a:tt)*) => { profiled_log!(info, $($a)*); };
 }
 #[macro_export(local_inner_macros)]
 macro_rules! warn {
-    ($a:expr) => { profiled_log!(warn, $a); };
+    ($($a:tt)*) => { profiled_log!(warn, $($a)*); };
 }
 #[macro_export(local_inner_macros)]
 macro_rules! error {
-    ($a:expr) => { profiled_log!(error, $a); };
+    ($($a:tt)*) => { profiled_log!(error, $($a)*); };
 }

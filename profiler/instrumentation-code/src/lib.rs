@@ -2,6 +2,7 @@
 /// Outputting a Json Trace Event format profile file.
 /// https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.lenwiilchoxp
 
+use log::warn;
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
@@ -88,7 +89,7 @@ impl Session {
         let tid = std::thread::current().id();
         return match self.thread_id_map.get(&tid) {
             Some((id, old_name)) => {
-                eprintln!("Profiler: Cannot register new thread under name \"{}\" because this thread is already registered as \"{}\"", name, old_name);
+                warn!("Profiler: Cannot register new thread under name \"{}\" because this thread is already registered as \"{}\"", name, old_name);
                 (tid, *id)
             },
             None => {
@@ -103,7 +104,7 @@ impl Session {
         return match self.thread_id_map.get(&tid) {
             Some((id, _)) => (tid, *id),
             None => {
-                eprintln!("Profiler: Event in unregistered thread. This will be displayed as \"Unnamed Thread\" from now on.\nPlease make sure to register reach new thread before logging any profiling events.");
+                warn!("Profiler: Event in unregistered thread. This will be displayed as \"Unnamed Thread\" from now on.\nPlease make sure to register reach new thread before logging any profiling events.");
                 self.register_thread("Unknown thread")
             }
         };
@@ -121,7 +122,7 @@ impl SessionGuard {
         let mut current_guard = CURRENT.lock();
         return match current_guard.as_ref() {
             Some(session) => {
-                eprintln!(
+                warn!(
                     "Profiler: Cannot start session \"{}\" because session \"{}\" is still running",
                     name, session.name
                 );
@@ -186,7 +187,7 @@ impl EventGuard {
                 Some(EventGuard { event })
             }
             None => {
-                eprintln!(
+                warn!(
                     "Profiler: cannot log event \"{}\" because no profiling session is running",
                     name
                 );
@@ -208,7 +209,7 @@ impl Drop for EventGuard {
                 });
             }
             None => {
-                eprintln!(
+                warn!(
                     "Profiler: cannot end event \"{}\" because session no longer exists",
                     self.event.name
                 );
@@ -240,7 +241,7 @@ impl ThreadGuard {
                 Some(ThreadGuard { thread_id })
             }
             None => {
-                eprintln!("Profiler: cannot register thread \"{}\" because no profiling session is running", name);
+                warn!("Profiler: cannot register thread \"{}\" because no profiling session is running", name);
                 None
             }
         };
