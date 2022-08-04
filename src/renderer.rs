@@ -1,7 +1,11 @@
 
-use std::borrow::Cow;
+use std::{borrow::Cow, mem::size_of};
 
+use glam::Vec3;
+use wgpu::util::DeviceExt;
 use winit::window::Window;
+
+use crate::data::{VERTICES, Vertex};
 
 pub struct Renderer {
     surface: wgpu::Surface,
@@ -9,6 +13,7 @@ pub struct Renderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
 }
 
 impl Renderer {
@@ -67,7 +72,7 @@ impl Renderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[], // <- Vertex buffer to be passed into the VS
+                buffers: &[Vertex::desc()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
             },
             // ⬇ Fragment shader -> define an entry point in our shader
             fragment: Some(wgpu::FragmentState {
@@ -100,12 +105,22 @@ impl Renderer {
             multiview: None, // <- this allows us to set drawing into array of textures (maximum render attachments count)
         });
         
+        // ⬇ Prepare vertex buffer
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES), // <-
+                usage: wgpu::BufferUsages::VERTEX,       // <- mark this buffer to be used as vertex buffer
+            }
+        );
+        
         Self {
             surface_config,
             surface,
             device,
             queue,
             render_pipeline,
+            vertex_buffer,
         }
     }
     
@@ -157,8 +172,9 @@ impl Renderer {
                 depth_stencil_attachment: None
             });
             
-            render_pass.set_pipeline(&self.render_pipeline); // <- set pipeline for render pass (OpenGL use program)
-            render_pass.draw(0..3, 0..1); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
+            profiler::call!(render_pass.set_pipeline(&self.render_pipeline)); // <- set pipeline for render pass (OpenGL use program)
+            profiler::call!(render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..))); // <- set a part of vertex buffers to be used in this render pass.
+            profiler::call!(render_pass.draw(0..VERTICES.len() as u32, 0..1)); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
         profiler::call!(self.queue.submit(Some(encoder.finish())));

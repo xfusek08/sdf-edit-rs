@@ -15,7 +15,9 @@ profiler = { path = "profiler" }
 # Core
 log = "*"
 env_logger = "*"
-pollster = "*" # minimalist async execution engine - required by wgpu
+pollster = "*" # Minimalist async execution engine - required by wgpu
+glam = { version = "*", features = [ "bytemuck" ] }     # Math! supporing SIMD optimizations !!!
+bytemuck = { version = "*", features = [ "derive" ] } # Static casting between basic types
 
 # Rendering
 winit = "0.26" # wgpu 0.13.1 cannot handle 0.27 yet

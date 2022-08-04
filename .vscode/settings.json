@@ -1,17 +1,20 @@
 {
     "rust-analyzer.cargo.features": [ "profiling" ],
     "cSpell.words": [
+        "bytemuck",
         "instrumentor",
         "Multisample",
         "multisampling",
         "multiview",
         "rasterization",
+        "repr",
         "swapchain",
         "traitobject",
         "unclipped",
         "VULKAN",
         "wgpu",
-        "winit"
+        "winit",
+        "Zeroable"
     ],
     "workbench.colorCustomizations": {
         "sash.hoverBorder": "#027b34",
