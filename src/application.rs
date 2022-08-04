@@ -1,66 +1,52 @@
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::Window, platform::run_return::EventLoopExtRunReturn,
-};
+use winit::{window::Window, event::{WindowEvent, ElementState, KeyboardInput}};
 
-use crate::renderer::{Renderer, self};
-use crate::info;
+use crate::{renderer::Renderer, error};
 
 #[derive(Default)]
 pub struct ApplicationConfig;
 
-pub struct Application;
+pub struct Application {
+    renderer: Renderer,
+}
 
 // static
 impl Application {
     
     #[profiler::function]
-    pub fn new(_config: ApplicationConfig) -> Self {
-        dbg!("Creating application");
-        return Self;
+    pub async fn new(window: &Window, _config: ApplicationConfig) -> Self {
+        return Self {
+            renderer: Renderer::new(window).await,
+        };
     }
+
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.renderer.resize(new_size);
+    }
+
+    pub fn input(&mut self, event: &WindowEvent) -> UpdateResult {
+        if let WindowEvent::KeyboardInput {
+                input: KeyboardInput {
+                    state: ElementState::Pressed,
+                    virtual_keycode: Some(code),
+                    ..
+                },
+                ..
+            } = event {
+                return UpdateResult::Exit;
+        }
+        UpdateResult::Wait
+    }
+
+    pub fn update(&mut self) -> UpdateResult {
+        UpdateResult::Wait
+    }
+
+    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        self.renderer.render()
+    }
+
 }
 
-// public
-impl Application {
-    
-    #[profiler::function]
-    pub async fn run(&mut self) {
-        
-        let mut event_loop = profiler::call!(EventLoop::new());
-        let window = profiler::call!(winit::window::Window::new(&event_loop).unwrap());
-        let mut renderer = profiler::call!(Renderer::new(&window).await);
-        
-        { profiler::scope!("event_loop");
-            event_loop.run_return(move |event, _, control_flow| {
-                *control_flow = ControlFlow::Wait;
-                match event {
-                    
-                    // Window resize event
-                    Event::WindowEvent {
-                        event: WindowEvent::Resized(size),
-                        ..
-                    } => {
-                        profiler::scope!("WindowEvent::Resized");
-                        renderer.resize(size);
-                        profiler::call!(window.request_redraw());
-                    }
-                    
-                    // draw frame with renderer when window requests a redraw
-                    Event::RedrawRequested(_) => {
-                        renderer.draw();
-                    }
-                    
-                    // exit update loop on close window event
-                    Event::WindowEvent {
-                        event: WindowEvent::CloseRequested,
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
-                    
-                    _ => {}
-                }
-            });
-        }
-    }
+pub enum UpdateResult {
+    Wait, Redraw, Exit
 }

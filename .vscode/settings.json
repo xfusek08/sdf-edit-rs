@@ -3,9 +3,13 @@
     "cSpell.words": [
         "instrumentor",
         "Multisample",
+        "multisampling",
         "multiview",
+        "rasterization",
         "swapchain",
         "traitobject",
+        "unclipped",
+        "VULKAN",
         "wgpu",
         "winit"
     ],

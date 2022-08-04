@@ -59,9 +59,16 @@ macro_rules! register_thread {
 }
 
 
-#[macro_export()]
+#[cfg(feature = "enabled")]
+#[macro_export]
 macro_rules! call {
     ($($a:tt)*) => {
         { profiler::scope!(stringify!($($a)*)); $($a)* }
     };
+}
+
+#[cfg(not(feature = "enabled"))]
+#[macro_export]
+macro_rules! call {
+    ($($a:tt)*) => { $($a)* };
 }
