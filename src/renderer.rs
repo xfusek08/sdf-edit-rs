@@ -1,11 +1,10 @@
 
-use std::{borrow::Cow, mem::size_of};
+use std::{borrow::Cow};
 
-use glam::Vec3;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::data::{VERTICES, Vertex};
+use crate::data::{Vertex, PENTAGON_VERTICES, PENTAGON_INDICES};
 
 pub struct Renderer {
     surface: wgpu::Surface,
@@ -14,6 +13,7 @@ pub struct Renderer {
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
 }
 
 impl Renderer {
@@ -109,8 +109,17 @@ impl Renderer {
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES), // <-
+                contents: bytemuck::cast_slice(PENTAGON_VERTICES), // <- vertex buffer casted as array of bytes
                 usage: wgpu::BufferUsages::VERTEX,       // <- mark this buffer to be used as vertex buffer
+            }
+        );
+        
+        
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(PENTAGON_INDICES), // <- index buffer casted as array of bytes
+                usage: wgpu::BufferUsages::INDEX,       // <- mark this buffer to be used as vertex buffer
             }
         );
         
@@ -121,6 +130,7 @@ impl Renderer {
             queue,
             render_pipeline,
             vertex_buffer,
+            index_buffer,
         }
     }
     
@@ -174,7 +184,8 @@ impl Renderer {
             
             profiler::call!(render_pass.set_pipeline(&self.render_pipeline)); // <- set pipeline for render pass (OpenGL use program)
             profiler::call!(render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..))); // <- set a part of vertex buffers to be used in this render pass.
-            profiler::call!(render_pass.draw(0..VERTICES.len() as u32, 0..1)); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
+            profiler::call!(render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16)); // <- set a part of index buffers to be used in this render pass.
+            profiler::call!(render_pass.draw_indexed(0..PENTAGON_INDICES.len() as u32, 0, 0..1)); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
         profiler::call!(self.queue.submit(Some(encoder.finish())));

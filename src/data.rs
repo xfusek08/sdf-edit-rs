@@ -42,3 +42,17 @@ impl Vertex {
         }
     }
 }
+
+pub const PENTAGON_VERTICES: &[Vertex] = &[
+    Vertex { position: Vec3::new(-0.0868241, 0.49240386, 0.0), color: Vec3::new(0.5, 0.0, 0.5) },
+    Vertex { position: Vec3::new(-0.49513406, 0.06958647, 0.0), color: Vec3::new(0.5, 0.0, 0.5) },
+    Vertex { position: Vec3::new(-0.21918549, -0.44939706, 0.0), color: Vec3::new(0.5, 0.0, 0.5) },
+    Vertex { position: Vec3::new(0.35966998, -0.3473291, 0.0), color: Vec3::new(0.5, 0.0, 0.5) },
+    Vertex { position: Vec3::new(0.44147372, 0.2347359, 0.0), color: Vec3::new(0.5, 0.0, 0.5) },
+];
+
+pub const PENTAGON_INDICES: &[u16] = &[
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
+];
