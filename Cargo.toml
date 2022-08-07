@@ -16,12 +16,14 @@ profiler = { path = "profiler" }
 log = "*"
 env_logger = "*"
 pollster = "*" # Minimalist async execution engine - required by wgpu
-glam = { version = "*", features = [ "bytemuck" ] }     # Math! supporing SIMD optimizations !!!
+glam = { version = "*", features = [ "bytemuck" ] }   # Math! supporing SIMD optimizations !!!
 bytemuck = { version = "*", features = [ "derive" ] } # Static casting between basic types
+image = { version = "*", features = ["jpeg", "png"] } # Handeling images - texture loading
+anyhow = "*" # create providing simpler error resulting
 
 # Rendering
 winit = "0.26" # wgpu 0.13.1 cannot handle 0.27 yet
-wgpu = "0.13.1"
+wgpu = "0.13.1" # A great GPU API
 
 [features]
 profiling = [

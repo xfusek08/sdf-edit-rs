@@ -4,7 +4,7 @@ use std::{borrow::Cow};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::data::{Vertex, PENTAGON_VERTICES, PENTAGON_INDICES};
+use crate::{data::{Vertex, PENTAGON_VERTICES, PENTAGON_INDICES}, texture::Texture};
 
 pub struct Renderer {
     surface: wgpu::Surface,
@@ -14,6 +14,8 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    texture: Texture,
+    texture_bind_group: wgpu::BindGroup,
 }
 
 impl Renderer {
@@ -25,22 +27,20 @@ impl Renderer {
         
         let surface = unsafe { instance.create_surface(window) };
         
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
-            }).await.expect("Failed to find an appropriate adapter");
+        }).await.expect("Failed to find an appropriate adapter");
         
-        let (device, queue) = adapter
-            .request_device(
+        let (device, queue) = adapter.request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
                     features: wgpu::Features::empty(),
                     limits: wgpu::Limits::default(),
                 },
                 None
-            ).await.expect("Failed to create device");
+        ).await.expect("Failed to create device");
         
         let surface_config = wgpu::SurfaceConfiguration {
             usage:        wgpu::TextureUsages::RENDER_ATTACHMENT,     // texture will be used to draw on screen
@@ -51,6 +51,54 @@ impl Renderer {
         };
         surface.configure(&device, &surface_config);
         
+        let texture = Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("../resources/textures/happy-tree.png"),
+            Some("Texture")
+        ).unwrap();
+        
+        let texture_bind_group_layout = device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("texture_bind_group_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None
+                    },
+                ]
+            }
+        );
+        
+        let texture_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("texture_bind_group"),
+                layout: &texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&texture.view)
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&texture.sampler)
+                    },
+                ]
+            }
+        );
+        
         // ⬇ load and compile wgsl shader code
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -60,7 +108,7 @@ impl Renderer {
         // ⬇ define layout of buffers for out render pipeline
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&texture_bind_group_layout], // pipeline will be using this textures binding
             push_constant_ranges: &[],
         });
         
@@ -114,7 +162,6 @@ impl Renderer {
             }
         );
         
-        
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
@@ -131,6 +178,8 @@ impl Renderer {
             render_pipeline,
             vertex_buffer,
             index_buffer,
+            texture,
+            texture_bind_group,
         }
     }
     
@@ -182,10 +231,11 @@ impl Renderer {
                 depth_stencil_attachment: None
             });
             
-            profiler::call!(render_pass.set_pipeline(&self.render_pipeline)); // <- set pipeline for render pass (OpenGL use program)
-            profiler::call!(render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..))); // <- set a part of vertex buffers to be used in this render pass.
-            profiler::call!(render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16)); // <- set a part of index buffers to be used in this render pass.
-            profiler::call!(render_pass.draw_indexed(0..PENTAGON_INDICES.len() as u32, 0, 0..1)); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
+            render_pass.set_pipeline(&self.render_pipeline); // <- set pipeline for render pass (OpenGL use program)
+            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..)); // <- set a part of vertex buffers to be used in this render pass.
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // <- set a part of index buffers to be used in this render pass.
+            render_pass.draw_indexed(0..PENTAGON_INDICES.len() as u32, 0, 0..1); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
         profiler::call!(self.queue.submit(Some(encoder.finish())));

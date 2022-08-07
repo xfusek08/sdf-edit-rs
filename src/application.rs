@@ -1,6 +1,6 @@
 use winit::{window::Window, event::{WindowEvent, ElementState, KeyboardInput}};
 
-use crate::{renderer::Renderer, error};
+use crate::{renderer::Renderer};
 
 #[derive(Default)]
 pub struct ApplicationConfig;

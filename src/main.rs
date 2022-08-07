@@ -1,6 +1,7 @@
 mod renderer;
 mod data;
 mod application;
+mod texture;
 mod log;
 
 use winit::{
@@ -13,7 +14,7 @@ use application::{Application, ApplicationConfig, UpdateResult};
 
 fn main() {
     env_logger::init();
-    profiler::session_begin!("sdf-editor-app");
+    profiler::session_begin! ("sdf-editor-app");
     info!("Starting...");
     pollster::block_on(run());
     info!("Exiting");
