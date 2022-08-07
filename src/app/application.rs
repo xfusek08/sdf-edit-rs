@@ -1,11 +1,14 @@
 use winit::{window::Window, event::{WindowEvent, ElementState, KeyboardInput}};
 
-use crate::{renderer::Renderer};
+use crate::info;
+
+use super::{scene::Scene, renderer::Renderer, model::{Model, PENTAGON_VERTICES, PENTAGON_INDICES}};
 
 #[derive(Default)]
 pub struct ApplicationConfig;
 
 pub struct Application {
+    scene: Scene,
     renderer: Renderer,
 }
 
@@ -16,6 +19,12 @@ impl Application {
     pub async fn new(window: &Window, _config: ApplicationConfig) -> Self {
         return Self {
             renderer: Renderer::new(window).await,
+            scene: Scene { models: vec![
+                Model {
+                    vertices: PENTAGON_VERTICES,
+                    indices: PENTAGON_INDICES,
+                    texture: image::load_from_memory(include_bytes!("../../resources/textures/happy-tree.png")).expect("Failed fo load texture image.") }
+            ] }
         };
     }
 
@@ -42,6 +51,7 @@ impl Application {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        self.renderer.prepare(&self.scene);
         self.renderer.render()
     }
 

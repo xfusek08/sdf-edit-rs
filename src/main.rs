@@ -1,8 +1,5 @@
-mod renderer;
-mod data;
-mod application;
-mod texture;
-mod log;
+
+mod app;
 
 use winit::{
     event::{Event, WindowEvent},
@@ -10,7 +7,7 @@ use winit::{
     platform::run_return::EventLoopExtRunReturn,
 };
 
-use application::{Application, ApplicationConfig, UpdateResult};
+use app::application::{Application, ApplicationConfig, UpdateResult};
 
 fn main() {
     env_logger::init();

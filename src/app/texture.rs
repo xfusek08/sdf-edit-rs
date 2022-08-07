@@ -10,10 +10,7 @@ pub struct Texture {
 impl Texture {
     #[profiler::function]
     pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8], label: Option<&str>) -> Result<Self> {
-        let img = profiler::call!(
-            image::load_from_memory(include_bytes!("../resources/textures/happy-tree.png"))
-                .expect("Failed fo load texture image.")
-        );
+        let img = profiler::call!(image::load_from_memory(bytes).expect("Failed fo load texture image."));
         return Self::from_image(device, queue, &img, label);
     }
     

@@ -11,6 +11,7 @@
         "rasterization",
         "repr",
         "Rgba8UnormSrgb",
+        "slotmap",
         "swapchain",
         "traitobject",
         "unclipped",

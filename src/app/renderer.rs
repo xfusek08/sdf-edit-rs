@@ -4,7 +4,24 @@ use std::{borrow::Cow};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::{data::{Vertex, PENTAGON_VERTICES, PENTAGON_INDICES}, texture::Texture};
+use super::model::Model;
+use super::scene::Scene;
+use super::texture::Texture;
+use super::vertex::Vertex;
+
+struct RenderModel {
+    vertex_count: usize,
+    index_count: usize,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    texture: Texture,
+    texture_bind_group: wgpu::BindGroup,
+}
+
+#[derive(Default)]
+struct RenderScene {
+    models: Vec<RenderModel>,
+}
 
 pub struct Renderer {
     surface: wgpu::Surface,
@@ -12,10 +29,8 @@ pub struct Renderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    texture: Texture,
-    texture_bind_group: wgpu::BindGroup,
+    prepared_scene: Option<RenderScene>,
+    texture_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -51,13 +66,6 @@ impl Renderer {
         };
         surface.configure(&device, &surface_config);
         
-        let texture = Texture::from_bytes(
-            &device,
-            &queue,
-            include_bytes!("../resources/textures/happy-tree.png"),
-            Some("Texture")
-        ).unwrap();
-        
         let texture_bind_group_layout = device.create_bind_group_layout(
             &wgpu::BindGroupLayoutDescriptor {
                 label: Some("texture_bind_group_layout"),
@@ -82,27 +90,10 @@ impl Renderer {
             }
         );
         
-        let texture_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("texture_bind_group"),
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture.view)
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&texture.sampler)
-                    },
-                ]
-            }
-        );
-        
         // ⬇ load and compile wgsl shader code
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../resources/shaders/shader.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../resources/shaders/shader.wgsl"))),
         });
         
         // ⬇ define layout of buffers for out render pipeline
@@ -153,29 +144,75 @@ impl Renderer {
             multiview: None, // <- this allows us to set drawing into array of textures (maximum render attachments count)
         });
         
-        // ⬇ Prepare vertex buffer
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(PENTAGON_VERTICES), // <- vertex buffer casted as array of bytes
-                usage: wgpu::BufferUsages::VERTEX,       // <- mark this buffer to be used as vertex buffer
-            }
-        );
-        
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(PENTAGON_INDICES), // <- index buffer casted as array of bytes
-                usage: wgpu::BufferUsages::INDEX,       // <- mark this buffer to be used as vertex buffer
-            }
-        );
-        
         Self {
             surface_config,
             surface,
             device,
             queue,
             render_pipeline,
+            texture_bind_group_layout,
+            prepared_scene: None,
+        }
+    }
+    
+    #[profiler::function]
+    pub fn prepare(&mut self, scene: &Scene) -> bool {
+        let mut render_scene = self.prepared_scene.take().unwrap_or(RenderScene { models: vec![] });
+        render_scene.models = scene
+            .models
+            .iter()
+            .map(|m| self.prepare_model(m))
+            .collect();
+        self.prepared_scene = Some(render_scene);
+        true
+    }
+    
+    #[profiler::function]
+    pub fn prepare_model(&mut self, model: &Model) -> RenderModel {
+        
+        let vertex_buffer = self.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(model.vertices), // <- vertex buffer casted as array of bytes
+                usage: wgpu::BufferUsages::VERTEX,              // <- mark this buffer to be used as vertex buffer
+            }
+        );
+        
+        let index_buffer = self.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(model.indices), // <- index buffer casted as array of bytes
+                usage: wgpu::BufferUsages::INDEX,              // <- mark this buffer to be used as vertex buffer
+            }
+        );
+        
+        let texture = Texture::from_image(
+            &self.device,
+            &self.queue,
+            &model.texture,
+            Some("Texture")
+        ).unwrap();
+        
+        let texture_bind_group = self.device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("texture_bind_group"),
+                layout: &self.texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&texture.view)
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&texture.sampler)
+                    },
+                ]
+            }
+        );
+        
+        RenderModel {
+            vertex_count: model.vertices.len(),
+            index_count: model.indices.len(),
             vertex_buffer,
             index_buffer,
             texture,
@@ -232,10 +269,16 @@ impl Renderer {
             });
             
             render_pass.set_pipeline(&self.render_pipeline); // <- set pipeline for render pass (OpenGL use program)
-            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..)); // <- set a part of vertex buffers to be used in this render pass.
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // <- set a part of index buffers to be used in this render pass.
-            render_pass.draw_indexed(0..PENTAGON_INDICES.len() as u32, 0, 0..1); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
+            if let Some(scene) = self.prepared_scene.as_ref() {
+                for model in &scene.models {
+                    profiler::scope!("Render Pipeline - model draw");
+                    render_pass.set_bind_group(0, &model.texture_bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..)); // <- set a part of vertex buffers to be used in this render pass.
+                    render_pass.set_index_buffer(model.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // <- set a part of index buffers to be used in this render pass.
+                    render_pass.draw_indexed(0..model.index_count as u32, 0, 0..1); // <- Tell the pipeline how we want int to start what and haw many thing to draw. In this case we want to draw 3 vertices and one instance.
+                }
+            }
+            
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
         profiler::call!(self.queue.submit(Some(encoder.finish())));
