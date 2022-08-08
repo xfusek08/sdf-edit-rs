@@ -1,11 +1,16 @@
 
+use std::collections::HashMap;
 use std::{borrow::Cow};
 
+use bevy_ecs::prelude::Entity;
+use bevy_ecs::query::{With, Changed, Added};
+use bevy_ecs::system::{Query, ResMut};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use super::model::Model;
-use super::scene::Scene;
+use super::components::Mesh;
+use super::components::Texture as TextureComponent;
+use super::camera::Camera;
 use super::texture::Texture;
 use super::vertex::Vertex;
 
@@ -18,9 +23,10 @@ struct RenderModel {
     texture_bind_group: wgpu::BindGroup,
 }
 
-#[derive(Default)]
 struct RenderScene {
-    models: Vec<RenderModel>,
+    models: HashMap<Entity, RenderModel>,
+    camera_bind_group: wgpu::BindGroup,
+    camera_uniform_buffer: wgpu::Buffer,
 }
 
 pub struct Renderer {
@@ -31,6 +37,7 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     prepared_scene: Option<RenderScene>,
     texture_bind_group_layout: wgpu::BindGroupLayout,
+    camera_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -90,6 +97,24 @@ impl Renderer {
             }
         );
         
+        let camera_bind_group_layout = device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("camera_bind_group_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }
+                ],
+            }
+        );
+        
         // ⬇ load and compile wgsl shader code
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -99,7 +124,10 @@ impl Renderer {
         // ⬇ define layout of buffers for out render pipeline
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&texture_bind_group_layout], // pipeline will be using this textures binding
+            bind_group_layouts: &[
+                &texture_bind_group_layout,
+                &camera_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
         
@@ -151,81 +179,165 @@ impl Renderer {
             queue,
             render_pipeline,
             texture_bind_group_layout,
+            camera_bind_group_layout,
             prepared_scene: None,
         }
     }
     
     #[profiler::function]
-    pub fn prepare(&mut self, scene: &Scene) -> bool {
-        let mut render_scene = self.prepared_scene.take().unwrap_or(RenderScene { models: vec![] });
-        render_scene.models = scene
-            .models
-            .iter()
-            .map(|m| self.prepare_model(m))
-            .collect();
-        self.prepared_scene = Some(render_scene);
-        true
-    }
-    
-    #[profiler::function]
-    pub fn prepare_model(&mut self, model: &Model) -> RenderModel {
+    pub fn prepare_system(
+        mut renderer: ResMut<Renderer>,
+        camera_query: Query<&Camera>,
+        changed_camera_query: Query<&Camera, Changed<Camera>>,
+        models_query: Query<Entity, (With<Mesh>, With<TextureComponent>)>,
+        models_changed_meshes_query: Query<(Entity, &Mesh, &TextureComponent), (With<Mesh>, With<TextureComponent>, Changed<Mesh>)>,
+        models_changed_textures_query: Query<(Entity, &TextureComponent), (With<Mesh>, With<TextureComponent>, Changed<TextureComponent>)>,
+    ) {
         
-        let vertex_buffer = self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(model.vertices), // <- vertex buffer casted as array of bytes
-                usage: wgpu::BufferUsages::VERTEX,              // <- mark this buffer to be used as vertex buffer
-            }
-        );
-        
-        let index_buffer = self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(model.indices), // <- index buffer casted as array of bytes
-                usage: wgpu::BufferUsages::INDEX,              // <- mark this buffer to be used as vertex buffer
-            }
-        );
-        
-        let texture = Texture::from_image(
-            &self.device,
-            &self.queue,
-            &model.texture,
-            Some("Texture")
-        ).unwrap();
-        
-        let texture_bind_group = self.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("texture_bind_group"),
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture.view)
+        let mut render_scene = match renderer.prepared_scene.take() {
+            Some(scene) => scene,
+            None => {
+                // create new render scene when not exists
+                let camera = camera_query.get_single().unwrap();
+                let transform = camera.view_projection_matrix();
+                let camera_uniform_buffer = renderer.device.create_buffer_init(
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("camera_uniform_buffer"),
+                        contents: bytemuck::cast_slice(&[transform]),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    }
+                );
+                let camera_bind_group = renderer.device.create_bind_group(
+                    &wgpu::BindGroupDescriptor {
+                        label: Some("camera_bind_group"),
+                        layout: &renderer.camera_bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: camera_uniform_buffer.as_entire_binding()
+                            }
+                        ]
                     },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&texture.sampler)
-                    },
-                ]
+                );
+                RenderScene {
+                    models: HashMap::new(),
+                    camera_uniform_buffer,
+                    camera_bind_group,
+                }
             }
-        );
+        };
         
-        RenderModel {
-            vertex_count: model.vertices.len(),
-            index_count: model.indices.len(),
-            vertex_buffer,
-            index_buffer,
-            texture,
-            texture_bind_group,
+        
+        // delete non existing models
+        // TODO: maybe guard this with `was deleted` flag on scene
+        render_scene.models.retain(|entity, _| { models_query.contains(*entity) });
+        
+        // update or insert changed model meshes
+        for (entity, mesh, texture_component) in models_changed_meshes_query.iter() {
+            match render_scene.models.get_mut(&entity) {
+                Some(model) => {
+                    // update existing models buffers
+                },
+                None => {
+                    // create new model with new buffers
+                    let vertex_buffer = renderer.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Vertex Buffer"),
+                            contents: bytemuck::cast_slice(mesh.vertices), // <- vertex buffer casted as array of bytes
+                            usage: wgpu::BufferUsages::VERTEX,              // <- mark this buffer to be used as vertex buffer
+                        }
+                    );
+                    let index_buffer = renderer.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Index Buffer"),
+                            contents: bytemuck::cast_slice(mesh.indices), // <- index buffer casted as array of bytes
+                            usage: wgpu::BufferUsages::INDEX,              // <- mark this buffer to be used as vertex buffer
+                        }
+                    );
+                    
+                    let texture = Texture::from_image(
+                        &renderer.device,
+                        &renderer.queue,
+                        &texture_component.texture,
+                        Some("Texture")
+                    ).unwrap();
+                    
+                    let texture_bind_group = renderer.device.create_bind_group(
+                        &wgpu::BindGroupDescriptor {
+                            label: Some("texture_bind_group"),
+                            layout: &renderer.texture_bind_group_layout,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: wgpu::BindingResource::TextureView(&texture.view)
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: wgpu::BindingResource::Sampler(&texture.sampler)
+                                },
+                            ]
+                        }
+                    );
+                    
+                    render_scene.models.insert(entity, RenderModel {
+                        vertex_count: mesh.vertices.len(),
+                        index_count: mesh.indices.len(),
+                        vertex_buffer,
+                        index_buffer,
+                        texture,
+                        texture_bind_group,
+                    });
+                }
+            }
         }
+        
+        for (entity, texture_component) in models_changed_textures_query.iter() {
+            let model = render_scene.models.get_mut(&entity).unwrap(); // previous loop inserted new items
+            
+            model.texture = Texture::from_image(
+                &renderer.device,
+                &renderer.queue,
+                &texture_component.texture,
+                Some("Texture")
+            ).unwrap();
+            
+            model.texture_bind_group = renderer.device.create_bind_group(
+                &wgpu::BindGroupDescriptor {
+                    label: Some("texture_bind_group"),
+                    layout: &renderer.texture_bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(&model.texture.view)
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&model.texture.sampler)
+                        },
+                    ]
+                }
+            );
+        }
+        
+        // update camera uniform
+        if let Ok(camera) = changed_camera_query.get_single() {
+            renderer.queue.write_buffer(
+                &render_scene.camera_uniform_buffer,
+                0,
+                bytemuck::cast_slice(&[camera.view_projection_matrix()])
+            );
+        }
+        
+        renderer.prepared_scene = Some(render_scene);
     }
+
     
     #[profiler::function]
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render_system(renderer: ResMut<Renderer>) {
         
         // ask surface to provide us a texture we will draw into
         let output = profiler::call!(
-            self
+            renderer
                 .surface
                 .get_current_texture()
                 .expect("Failed to acquire next swap chain texture")
@@ -238,7 +350,7 @@ impl Renderer {
         
         // Create an encoder for building a GPU commands for this frame
         let mut encoder = profiler::call!(
-            self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            renderer.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder")
             })
         );
@@ -268,9 +380,10 @@ impl Renderer {
                 depth_stencil_attachment: None
             });
             
-            render_pass.set_pipeline(&self.render_pipeline); // <- set pipeline for render pass (OpenGL use program)
-            if let Some(scene) = self.prepared_scene.as_ref() {
-                for model in &scene.models {
+            render_pass.set_pipeline(&renderer.render_pipeline); // <- set pipeline for render pass (OpenGL use program)
+            if let Some(scene) = renderer.prepared_scene.as_ref() {
+                render_pass.set_bind_group(1, &scene.camera_bind_group, &[]);
+                for (_, model) in &scene.models {
                     profiler::scope!("Render Pipeline - model draw");
                     render_pass.set_bind_group(0, &model.texture_bind_group, &[]);
                     render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..)); // <- set a part of vertex buffers to be used in this render pass.
@@ -281,9 +394,8 @@ impl Renderer {
             
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
-        profiler::call!(self.queue.submit(Some(encoder.finish())));
+        profiler::call!(renderer.queue.submit(Some(encoder.finish())));
         profiler::call!(output.present());
-        Ok(())
     }
     
     #[profiler::function]

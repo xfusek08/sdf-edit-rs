@@ -8,6 +8,7 @@ use winit::{
 };
 
 use app::application::{Application, ApplicationConfig, UpdateResult};
+use app::clock::Clock;
 
 fn main() {
     env_logger::init();
@@ -26,23 +27,22 @@ pub async fn run() {
     
     let mut app = Application::new(&window, ApplicationConfig::default()).await;
     
+    
     { profiler::scope!("event_loop");
+        let mut wall_clock = Clock::now(30);
         event_loop.run_return(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            if wall_clock.tick() {
+                app.update(wall_clock.current_tick());
+            }
+            *control_flow = ControlFlow::WaitUntil(wall_clock.next_scheduled_tick().clone());
+            
             match event {
-                
-                Event::WindowEvent { event: WindowEvent::Resized(size), ..} => {
-                    app.resize(size);
-                },
-                
-                Event::WindowEvent { event: WindowEvent::ScaleFactorChanged { new_inner_size, .. }, .. } => {
-                    app.resize(*new_inner_size);
-                },
-                
-                // exit update loop on close window event
+                Event::WindowEvent { event: WindowEvent::Resized(size), ..} =>
+                    app.resize(size),
+                Event::WindowEvent { event: WindowEvent::ScaleFactorChanged { new_inner_size, .. }, .. } =>
+                    app.resize(*new_inner_size),
                 Event::WindowEvent { event: WindowEvent::CloseRequested, ..} =>
                     *control_flow = ControlFlow::Exit,
-                
                 Event::WindowEvent { event, .. } => {
                     match app.input(&event) {
                         UpdateResult::Exit => *control_flow = ControlFlow::Exit,
@@ -50,20 +50,10 @@ pub async fn run() {
                         _ => {},
                     }
                 }
-                
                 // draw frame with renderer when window requests a redraw
                 Event::RedrawRequested(_) => {
-                    match app.render() {
-                        Ok(_) => {}
-                        // Reconfigure the surface if lost
-                        Err(wgpu::SurfaceError::Lost) => app.resize(window.inner_size()),
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        // All other errors (Outdated, Timeout) should be resolved by the next frame
-                        Err(e) => error!("{:?}", e),
-                    }
+                    app.render();
                 },
-                
                 _ => {}
             }
         });

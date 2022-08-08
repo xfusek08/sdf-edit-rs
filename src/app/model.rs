@@ -19,5 +19,4 @@ pub struct Model {
     pub vertices: &'static [Vertex],
     pub indices: &'static [u16],
     pub texture: image::DynamicImage,
-    
 }

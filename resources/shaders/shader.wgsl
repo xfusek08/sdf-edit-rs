@@ -8,10 +8,13 @@ struct VertexOutput {
     @location(2) tex_coords: vec2<f32>,
 }
 
+@group(1) @binding(0)
+var<uniform> view_projection: mat4x4<f32>;
+
 @vertex
 fn vs_main(vertex: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = vec4<f32>(vertex.position, 1.0);
+    out.clip_position = view_projection * vec4<f32>(vertex.position, 1.0);
     out.tex_coords = vertex.tex_coords;
     return out;
 }

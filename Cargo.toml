@@ -25,6 +25,10 @@ anyhow = "*" # create providing simpler error resulting
 winit = "0.26" # wgpu 0.13.1 cannot handle 0.27 yet
 wgpu = "0.13.1" # A great GPU API
 
+# logic and data
+dolly = "*" # A camera rig library with animations and all
+bevy_ecs = "0.8.0" # Entity component system for managing state and data
+
 [features]
 profiling = [
     "profiler/enabled",
