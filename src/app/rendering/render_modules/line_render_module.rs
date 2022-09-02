@@ -127,6 +127,8 @@ impl RenderModule for LinesRenderModule {
             &LineMesh,
             &Deleted
         )>().iter() {
+            profiler::scope!("Preparing line entity");
+            
             if *deleted {
                 self.render_resources.remove(&entity);
                 continue;

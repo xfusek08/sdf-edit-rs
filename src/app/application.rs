@@ -56,17 +56,13 @@ impl Application {
     #[profiler::function]
     pub fn render(&mut self) {
         self.renderer.prepare(self.scene.as_ref().unwrap());
-        
         self.renderer.render();
-        
-        // // TODO: remove deleted entities from ecs
-        // //  - prepare stage deleted allocated rendering resources for them
-        // //  - Delete deleted entities in another parallel with rendering
-        // -> delete it here <-
+        // TODO: this is meant to run in a separate thread alongside the render thread
         self.finalize();
     }
     
     /// Remove deleted entities from scene
+    #[profiler::function]
     pub fn finalize(&mut self) {
         let scene = self.scene.as_mut().unwrap();
         let mut entities_to_delete = Vec::with_capacity(scene.world.len() as usize);

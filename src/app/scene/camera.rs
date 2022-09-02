@@ -1,5 +1,8 @@
-use dolly::{rig::CameraRig, prelude::{Arm, YawPitch, Smooth, LookAt, Position}};
 use glam::{Vec3, Mat4};
+use dolly::{
+    rig::CameraRig,
+    prelude::{Arm, YawPitch, Smooth, LookAt}
+};
 
 pub struct Camera {
     pub rig: dolly::rig::CameraRig,

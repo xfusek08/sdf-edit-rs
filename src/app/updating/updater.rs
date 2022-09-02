@@ -15,6 +15,7 @@ impl Updater {
     }
     
     /// Invoked when input has changed
+    #[profiler::function]
     pub fn input(&mut self, mut scene: Scene, input: &WinitInputHelper, tick: &Tick) -> (UpdateResult, Scene) {
         let mut result = UpdateResult::Wait;
         let (dx, dy) = input.mouse_diff();
@@ -36,8 +37,8 @@ impl Updater {
         (result, scene)
     }
     
-    
     /// Invoked on tick
+    #[profiler::function]
     pub fn update(&mut self, mut scene: Scene, input: &WinitInputHelper, tick: &Tick) -> (UpdateResult, Scene) {
         let orig = scene.camera.rig.final_transform;
         let new = scene.camera.rig.update(tick.delta.as_secs_f32());
