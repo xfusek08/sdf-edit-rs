@@ -1,7 +1,9 @@
 {
     "rust-analyzer.cargo.features": [ "profiling" ],
     "cSpell.words": [
+        "bindgroup",
         "bytemuck",
+        "hecs",
         "instrumentor",
         "milis",
         "mipmap",
@@ -10,6 +12,7 @@
         "multisampling",
         "multiview",
         "rasterization",
+        "Renderable",
         "repr",
         "Rgba8UnormSrgb",
         "slotmap",

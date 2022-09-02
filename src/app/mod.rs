@@ -1,11 +1,8 @@
-pub mod renderer;
-pub mod vertex;
+
 pub mod application;
-pub mod texture;
 pub mod log;
-pub mod model;
-pub mod scene;
-pub mod camera;
 pub mod clock;
-pub mod components;
-// pub mod adt;
+pub mod updating;
+pub mod rendering;
+pub mod scene;
+pub mod model;

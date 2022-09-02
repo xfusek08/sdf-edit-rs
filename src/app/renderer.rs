@@ -229,7 +229,6 @@ impl Renderer {
         
         
         // delete non existing models
-        // TODO: maybe guard this with `was deleted` flag on scene
         render_scene.models.retain(|entity, _| { models_query.contains(*entity) });
         
         // update or insert changed model meshes
