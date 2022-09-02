@@ -3,10 +3,10 @@ use hecs::World;
 
 use crate::app::{
     model::AXIS_VERTICES,
-    rendering::render_modules::line_render_module::{LineMesh, LineMeshChangedFlag}
+    rendering::render_modules::line_render_module::LineMesh,
 };
 
-use super::Camera;
+use super::{Camera, components::Deleted};
 
 pub struct Scene {
     pub camera: Camera,
@@ -17,7 +17,10 @@ impl Scene {
     pub fn new() -> Scene {
         
         // Create camera, which is sort of unique object outside of ECS world
-        let camera = Camera::new();
+        let camera = Camera::new().orbit(
+            Vec3::new(0.0, 0.0, 0.0),
+            1.0
+        );
         
         // Create ECS world
         // ----------------
@@ -26,8 +29,8 @@ impl Scene {
     
         // World coordinate axis
         world.spawn((
-            LineMesh { vertices: AXIS_VERTICES },
-            LineMeshChangedFlag(false),
+            LineMesh { is_dirty: true, vertices: AXIS_VERTICES },
+            Deleted(false),
         ));
         
         Self { camera, world }

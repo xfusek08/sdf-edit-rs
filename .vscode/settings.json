@@ -3,6 +3,7 @@
     "cSpell.words": [
         "bindgroup",
         "bytemuck",
+        "despawn",
         "hecs",
         "instrumentor",
         "milis",
@@ -19,6 +20,7 @@
         "swapchain",
         "traitobject",
         "unclipped",
+        "unflag",
         "VULKAN",
         "wgpu",
         "winit",

@@ -113,4 +113,11 @@ impl Renderer {
         profiler::call!(self.context.queue.submit(Some(encoder.finish())));
         profiler::call!(output.present());
     }
+    
+    /// Finalize rendering and update scene state - unflag dirty components as clean (prepared)
+    pub fn finalize(&mut self, scene: &mut Scene) {
+        for module in &mut self.modules {
+            module.finalize(scene);
+        }
+    }
 }

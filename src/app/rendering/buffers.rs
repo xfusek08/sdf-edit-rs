@@ -10,7 +10,7 @@ fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], co
         &wgpu::util::BufferInitDescriptor {
             label,
             contents: bytemuck::cast_slice(vertices), // <- vertex buffer casted as array of bytes
-            usage: wgpu::BufferUsages::VERTEX, // <- mark this buffer to be used as vertex buffer
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST, // <- mark this buffer to be used as vertex buffer and make it updatable
         }
     )
 }
@@ -42,10 +42,13 @@ impl VertexBuffer {
     ///  - After update old buffer reference does not make sense, hence self is moved into this method.
     #[profiler::function]
     pub fn update<V: Vertex>(&mut self, context: &RenderContext, vertices: &[V]) {
+        dbg!("update vertex buffer");
         if vertices.len() > self.capacity {
+            dbg!("update vertex buffer: resize");
             self.buffer = init_vertex_buffer(self.label, vertices, context);
             self.capacity = vertices.len();
         } else {
+            dbg!("Updating vertex buffer");
             context.queue.write_buffer(
                 &self.buffer,
                 0,

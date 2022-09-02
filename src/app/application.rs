@@ -1,8 +1,10 @@
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
+use crate::error;
+
 use super::{
-    scene::Scene,
+    scene::{Scene, components::Deleted},
     rendering::{Renderer, render_modules::line_render_module::LinesRenderModule},
     updating::{Updater, UpdateResult},
     clock::Tick
@@ -55,11 +57,30 @@ impl Application {
     pub fn render(&mut self) {
         self.renderer.prepare(self.scene.as_ref().unwrap());
         
+        self.renderer.render();
+        
         // // TODO: remove deleted entities from ecs
         // //  - prepare stage deleted allocated rendering resources for them
         // //  - Delete deleted entities in another parallel with rendering
         // -> delete it here <-
+        self.finalize();
+    }
+    
+    /// Remove deleted entities from scene
+    pub fn finalize(&mut self) {
+        let scene = self.scene.as_mut().unwrap();
+        let mut entities_to_delete = Vec::with_capacity(scene.world.len() as usize);
+        for (entity, (Deleted(deleted),)) in scene.world.query::<(&Deleted,)>().iter() {
+            if *deleted {
+                entities_to_delete.push(entity);
+            }
+        }
+        for entity in entities_to_delete {
+            if let Err(_) = scene.world.despawn(entity) {
+                error!("Failed to despawn entity {:?}", entity);
+            }
+        }
         
-        self.renderer.render();
+        self.renderer.finalize(self.scene.as_mut().unwrap());
     }
 }

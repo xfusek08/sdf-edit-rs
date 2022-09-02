@@ -9,4 +9,7 @@ pub trait RenderModule {
     /// Render this (prepared) module
     ///  - `'a: 'pass` (`'a` outlives `'pass`) meaning that this render module lives longer than the render pass
     fn render<'pass, 'a: 'pass>(&'a mut self, context: &'a RenderContext, render_pass: &mut RenderPass<'pass>);
+    
+    // Finalization step (after rendering) which can alter scene state meant to unflag dirty components as clean (prepared)
+    fn finalize(&mut self, scene: &mut Scene);
 }

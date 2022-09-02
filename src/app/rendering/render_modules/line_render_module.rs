@@ -14,11 +14,9 @@ use super::super::{
 // --------------
 
 pub struct LineMesh {
-    pub vertices: &'static [ColorVertex]
+    pub is_dirty: bool,
+    pub vertices: &'static [ColorVertex],
 }
-
-pub struct LineMeshChangedFlag(pub bool);
-
 
 // Line Render Resource
 // -----------------
@@ -118,18 +116,15 @@ impl RenderModule for LinesRenderModule {
     
     #[profiler::function]
     fn prepare(&mut self, context: &RenderContext, scene: &crate::app::scene::Scene) {
-        
         // For each proper line entity is scene world, update render resources
         for (
             entity,
             (
                 mesh,
-                LineMeshChangedFlag(changed),
                 Deleted(deleted)
             )
         ) in scene.world.query::<(
             &LineMesh,
-            &LineMeshChangedFlag,
             &Deleted
         )>().iter() {
             if *deleted {
@@ -137,7 +132,7 @@ impl RenderModule for LinesRenderModule {
                 continue;
             }
             
-            if !*changed {
+            if !mesh.is_dirty {
                 continue;
             }
             
@@ -162,6 +157,14 @@ impl RenderModule for LinesRenderModule {
             profiler::scope!("Draw Line entity");
             render_pass.set_vertex_buffer(0, vertex_buffer.buffer.slice(..));
             render_pass.draw(0..vertex_buffer.size as u32, 0..1);
+        }
+    }
+
+    #[profiler::function]
+    fn finalize(&mut self, scene: &mut crate::app::scene::Scene) {
+        // for each entity in scene world with line mesh
+        for (entity, mesh) in scene.world.query_mut::<&mut LineMesh>() {
+            mesh.is_dirty = false;
         }
     }
     
