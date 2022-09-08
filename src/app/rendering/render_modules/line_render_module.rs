@@ -9,36 +9,6 @@ use super::super::{
     vertices::ColorVertex, buffers::VertexBuffer, RenderModule,
 };
 
-
-// ECS Components to define line (renderable) entity
-// --------------
-
-pub struct LineMesh {
-    pub is_dirty: bool,
-    pub vertices: &'static [ColorVertex],
-}
-
-// Line Render Resource
-// -----------------
-
-struct LineRenderResource {
-    vertex_buffer: VertexBuffer,
-}
-impl LineRenderResource {
-    fn new(mesh: &LineMesh, context: &RenderContext) -> Self {
-        Self {
-            vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
-        }
-    }
-    fn update(&mut self, mesh: &LineMesh, context: &RenderContext) {
-        self.vertex_buffer.update(context, mesh.vertices);
-    }
-}
-
-
-/// LinesRenderModule
-/// -----------------
-
 pub struct LinesRenderModule {
     pipeline: wgpu::RenderPipeline,
     render_resources: HashMap<Entity, LineRenderResource>,
@@ -161,7 +131,7 @@ impl RenderModule for LinesRenderModule {
             render_pass.draw(0..vertex_buffer.size as u32, 0..1);
         }
     }
-
+    
     #[profiler::function]
     fn finalize(&mut self, scene: &mut crate::app::scene::Scene) {
         // for each entity in scene world with line mesh
@@ -170,4 +140,29 @@ impl RenderModule for LinesRenderModule {
         }
     }
     
+}
+
+// ECS Components to define line (renderable) entity
+// --------------
+
+pub struct LineMesh {
+    pub is_dirty: bool,
+    pub vertices: &'static [ColorVertex],
+}
+
+// Line Render Resource
+// -----------------
+
+struct LineRenderResource {
+    vertex_buffer: VertexBuffer,
+}
+impl LineRenderResource {
+    fn new(mesh: &LineMesh, context: &RenderContext) -> Self {
+        Self {
+            vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
+        }
+    }
+    fn update(&mut self, mesh: &LineMesh, context: &RenderContext) {
+        self.vertex_buffer.update(context, mesh.vertices);
+    }
 }

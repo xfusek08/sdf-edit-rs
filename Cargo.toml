@@ -19,12 +19,17 @@ pollster = "*"   # Minimalist async execution engine - required by wgpu because 
 glam = { version = "*", features = [ "bytemuck" ] }   # Math! Withsupporing SIMD optimizations
 bytemuck = { version = "*", features = [ "derive" ] } # Static casting between basic types
 image = { version = "*", features = ["jpeg", "png"] } # Handeling images for texture loading
-anyhow = "*"                  # create providing simpler error resulting
-winit = "0.26.1"              # wgpu 0.13.1 cannot handle 0.27 yet
-winit_input_helper = "0.12.0" # 0.13.0 cannot handle winit 0.26.1 yet
-wgpu = "0.13.1"               # A great GPU API
-dolly = "*"                   # A camera rig library with animations and all
-hecs = "*"                    # A simple minimal ECS
+anyhow = "*"                # create providing simpler error resulting
+winit = "0.27"              # Windowing library (event loop namaing, window creation, etc.)
+winit_input_helper = "0.13" # Helper for winit input handling, storing imput state based on processed events ...
+wgpu = "0.13"               # A cross platform GPU API, in this applicationVulcan backend is used.
+dolly = "*"                 # A camera rig library with smooting and inertia.
+hecs = "*"                  # A simple minimal ECS for scene object management
+
+# GUI
+egui = "0.19"                # Immidiate mode gui library
+egui_wgpu_backend = "0.19"   # Rendering egui state with wgpu
+egui_winit_platform = "0.16" # Integrating egui with winit
 
 [features]
 profiling = [

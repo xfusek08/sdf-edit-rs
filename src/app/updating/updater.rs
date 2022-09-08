@@ -1,11 +1,7 @@
 use dolly::prelude::{YawPitch, Arm};
 use winit_input_helper::WinitInputHelper;
 
-use crate::app::{scene::Scene, clock::Tick};
-
-pub enum UpdateResult {
-    Wait, Redraw, Exit
-}
+use crate::app::{scene::Scene, clock::Tick, application::UpdateResult};
 
 pub struct Updater;
 
@@ -16,7 +12,7 @@ impl Updater {
     
     /// Invoked when input has changed
     #[profiler::function]
-    pub fn input(&mut self, mut scene: Scene, input: &WinitInputHelper, tick: &Tick) -> (UpdateResult, Scene) {
+    pub fn input(&mut self, scene: &mut Scene, input: &WinitInputHelper, tick: &Tick) -> UpdateResult {
         let mut result = UpdateResult::Wait;
         let (dx, dy) = input.mouse_diff();
         if (dx != 0.0 || dy != 0.0) && input.mouse_held(0) {
@@ -34,17 +30,17 @@ impl Updater {
                 .offset *= 1.0 + scroll * -0.3;
             result = UpdateResult::Redraw;
         }
-        (result, scene)
+        result
     }
     
     /// Invoked on tick
     #[profiler::function]
-    pub fn update(&mut self, mut scene: Scene, input: &WinitInputHelper, tick: &Tick) -> (UpdateResult, Scene) {
+    pub fn update(&mut self, scene: &mut Scene, input: &WinitInputHelper, tick: &Tick) -> UpdateResult {
         let orig = scene.camera.rig.final_transform;
         let new = scene.camera.rig.update(tick.delta.as_secs_f32());
         if orig.position != new.position || orig.rotation != new.rotation {
-            return (UpdateResult::Redraw, scene);
+            return UpdateResult::Redraw;
         }
-        (UpdateResult::Wait, scene)
+        UpdateResult::Wait
     }
 }

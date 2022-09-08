@@ -4,6 +4,7 @@
         "bindgroup",
         "bytemuck",
         "despawn",
+        "egui",
         "hecs",
         "instrumentor",
         "milis",

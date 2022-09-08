@@ -7,8 +7,7 @@ use winit::{
     platform::run_return::EventLoopExtRunReturn, window::WindowBuilder,
 };
 
-use app::application::{Application, ApplicationConfig};
-use app::updating::UpdateResult;
+use app::application::{Application, ApplicationConfig, UpdateResult};
 use app::clock::Clock;
 use winit_input_helper::WinitInputHelper;
 

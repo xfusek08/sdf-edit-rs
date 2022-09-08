@@ -6,17 +6,23 @@ use crate::error;
 use super::{
     scene::{Scene, components::Deleted},
     rendering::{Renderer, render_modules::line_render_module::LinesRenderModule},
-    updating::{Updater, UpdateResult},
-    clock::Tick
+    updating::Updater,
+    clock::Tick,
+    // gui::Gui
 };
+
+pub enum UpdateResult {
+    Wait, Redraw, Exit
+}
 
 #[derive(Default)]
 pub struct ApplicationConfig;
 
 pub struct Application {
-    scene: Option<Scene>,
+    scene: Scene,
     updater: Updater,
     renderer: Renderer,
+    // gui: Gui,
 }
 
 // static
@@ -24,11 +30,17 @@ impl Application {
     
     #[profiler::function]
     pub async fn new(window: &Window, _config: ApplicationConfig) -> Self {
+        
+        let renderer = Renderer::new(window).await
+            .with_module::<LinesRenderModule>();
+            
+        // let gui = Gui::new(window, &renderer.context);
+        
         return Self {
-            renderer: Renderer::new(window).await
-                .with_module::<LinesRenderModule>(),
+            renderer,
+            // gui,
             updater: Updater::new(),
-            scene: Some(Scene::new()),
+            scene: Scene::new(),
         };
     }
     
@@ -39,44 +51,52 @@ impl Application {
     
     #[profiler::function]
     pub fn input(&mut self, input: &WinitInputHelper, tick: &Tick) -> UpdateResult {
-        let scene = self.scene.take().unwrap();
-        let (result, scene) = self.updater.input(scene, input, tick);
-        self.scene = Some(scene);
-        result
+        self.updater.input(
+            &mut self.scene,
+            input,
+            tick
+        )
     }
     
     #[profiler::function]
     pub fn update(&mut self, input: &WinitInputHelper, tick: &Tick) -> UpdateResult {
-        let scene = self.scene.take().unwrap();
-        let (result, scene) = self.updater.update(scene, input, tick);
-        self.scene = Some(scene);
-        result
+        self.updater.update(
+            &mut self.scene,
+            input,
+            tick
+        )
     }
     
     #[profiler::function]
     pub fn render(&mut self) {
-        self.renderer.prepare(self.scene.as_ref().unwrap());
+        self.renderer.prepare(&self.scene);
+        
         self.renderer.render();
+        
         // TODO: this is meant to run in a separate thread alongside the render thread
         self.finalize();
     }
     
-    /// Remove deleted entities from scene
     #[profiler::function]
     pub fn finalize(&mut self) {
-        let scene = self.scene.as_mut().unwrap();
+        
+        // fill buffer with entities to delete
+        let scene = &self.scene;
         let mut entities_to_delete = Vec::with_capacity(scene.world.len() as usize);
         for (entity, (Deleted(deleted),)) in scene.world.query::<(&Deleted,)>().iter() {
             if *deleted {
                 entities_to_delete.push(entity);
             }
         }
+        
+        // delete entities
         for entity in entities_to_delete {
-            if let Err(_) = scene.world.despawn(entity) {
+            if let Err(_) = self.scene.world.despawn(entity) {
                 error!("Failed to despawn entity {:?}", entity);
             }
         }
         
-        self.renderer.finalize(self.scene.as_mut().unwrap());
+        // let renderer update state of components it is concerned with
+        self.renderer.finalize(&mut self.scene);
     }
 }
