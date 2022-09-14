@@ -10,6 +10,7 @@ pub struct RenderContext {
     
     // shared render resources
     pub camera: CameraRenderResource,
+    pub scale_factor: f64,
 }
 
 impl RenderContext {
@@ -54,6 +55,7 @@ impl RenderContext {
             device,
             queue,
             camera,
+            scale_factor: window.scale_factor(),
         }
     }
     

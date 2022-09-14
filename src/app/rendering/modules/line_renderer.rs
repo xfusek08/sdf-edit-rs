@@ -1,7 +1,15 @@
+/// TODO: Better line renderer: Components will carry only begin and end points, and the renderer will draw all lines in single draw call using vertex buffer.
+///    - Instancing is not necessary here because it would not bring any advantage over using single vertex buffer.
+///    - In the future versions it is possible to implement:
+///      - Anti-aliasing
+///      - Line width
+///      - Curved lines
+
+
 use std::{collections::{HashMap, hash_map::Entry}, borrow::Cow};
 use hecs::Entity;
 
-use crate::app::scene::components::Deleted;
+use crate::app::{scene::{components::Deleted, Scene}, gui::Gui};
 
 use super::super::{
     RenderContext,
@@ -9,16 +17,16 @@ use super::super::{
     vertices::ColorVertex, buffers::VertexBuffer, RenderModule,
 };
 
-pub struct LinesRenderModule {
+pub struct LineRenderer {
     pipeline: wgpu::RenderPipeline,
     render_resources: HashMap<Entity, LineRenderResource>,
 }
 
 // Construct this render module (a pipeline) from render context
-impl<'a> From<&RenderContext> for LinesRenderModule {
+impl<'a> From<&RenderContext> for LineRenderer {
     
     #[profiler::function]
-    fn from(context: &RenderContext) -> LinesRenderModule {
+    fn from(context: &RenderContext) -> LineRenderer {
         
         // ⬇ load and compile wgsl shader code
         let shader = context.device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -82,10 +90,10 @@ impl<'a> From<&RenderContext> for LinesRenderModule {
     
 }
 
-impl RenderModule for LinesRenderModule {
+impl RenderModule for LineRenderer {
     
     #[profiler::function]
-    fn prepare(&mut self, context: &RenderContext, scene: &crate::app::scene::Scene) {
+    fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         // For each proper line entity is scene world, update render resources
         for (
             entity,
@@ -130,12 +138,13 @@ impl RenderModule for LinesRenderModule {
             render_pass.set_vertex_buffer(0, vertex_buffer.buffer.slice(..));
             render_pass.draw(0..vertex_buffer.size as u32, 0..1);
         }
+        
     }
     
     #[profiler::function]
-    fn finalize(&mut self, scene: &mut crate::app::scene::Scene) {
+    fn finalize(&mut self, _gui: &mut Gui, scene: &mut crate::app::scene::Scene) {
         // for each entity in scene world with line mesh
-        for (entity, mesh) in scene.world.query_mut::<&mut LineMesh>() {
+        for (_, mesh) in scene.world.query_mut::<&mut LineMesh>() {
             mesh.is_dirty = false;
         }
     }

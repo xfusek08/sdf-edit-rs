@@ -5,6 +5,7 @@
         "bytemuck",
         "despawn",
         "egui",
+        "epaint",
         "hecs",
         "instrumentor",
         "milis",
@@ -35,5 +36,8 @@
         "statusBarItem.remoteBackground": "#01491f",
         "statusBarItem.remoteForeground": "#e7e7e7"
     },
-    "peacock.color": "#01491f"
+    "peacock.color": "#01491f",
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    }
 }

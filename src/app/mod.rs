@@ -6,4 +6,4 @@ mod updating;
 mod rendering;
 mod scene;
 mod model;
-// mod gui;
+mod gui;

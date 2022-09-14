@@ -14,6 +14,8 @@ pub struct Tick {
 ///  - it can measure time between ticks
 ///  - it can measure time since last tick
 ///  - it can measure Ticks(updates) per second (Not nesscesery the same as Frames per second)
+
+#[derive(Debug)]
 pub struct Clock {
     update_time_window: Duration,
     next_tick_scheduled: Instant,
@@ -49,13 +51,13 @@ impl Clock {
             let time_difference = time - self.next_tick_scheduled;
             
             // Update current tick
-            self.current_tick.order  = self.current_tick.order + 1;
-            self.current_tick.delta  = time - self.current_tick.time;
-            self.current_tick.time   = time;
+            self.current_tick.order = self.current_tick.order + 1;
+            self.current_tick.delta = time - self.current_tick.time;
+            self.current_tick.time  = time;
             
             // Schedule next tick
             self.next_tick_scheduled = time + self.update_time_window - time_difference;
-            
+                        
             // FPS measurement
             self.elapsed_seconds += self.current_tick.delta.as_secs_f32();
             self.tick_counter += 1;
@@ -68,6 +70,7 @@ impl Clock {
             // Clock ticked
             return true;
         }
+        
         false
     }
     

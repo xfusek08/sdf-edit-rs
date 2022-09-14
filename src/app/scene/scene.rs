@@ -3,7 +3,7 @@ use hecs::World;
 
 use crate::app::{
     model::AXIS_VERTICES,
-    rendering::render_modules::line_render_module::LineMesh,
+    rendering::modules::line_renderer::LineMesh,
 };
 
 use super::{Camera, components::Deleted};
@@ -33,6 +33,9 @@ impl Scene {
             Deleted(false),
         ));
         
-        Self { camera, world }
+        Self {
+            camera,
+            world,
+        }
     }
 }

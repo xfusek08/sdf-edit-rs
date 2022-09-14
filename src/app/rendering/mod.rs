@@ -11,4 +11,4 @@ pub mod vertices;
 pub mod buffers;
 pub mod camera;
 
-pub mod render_modules;
+pub mod modules;

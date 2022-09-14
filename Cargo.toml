@@ -9,27 +9,30 @@ name = "sdf-edit-rs"
 version = "0.0.1"
 edition = "2021"
 
+[env]
+RUST_BACKTRACE = 1
+
 [dependencies]
 profiler = { path = "profiler" }
 
 # Core
-log = "*"        # Generic logging API without backend (env_logger)
-env_logger = "*" # Logging into console based on environment variable.
-pollster = "*"   # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
+log = "*"                                             # Generic logging API without backend (env_logger)
+env_logger = "*"                                      # Logging into console based on environment variable.
+pollster = "*"                                        # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
+anyhow = "*"                                          # create providing simpler error resulting
+winit = "0.27"                                        # Windowing library (event loop namaing, window creation, etc.)
+winit_input_helper = "0.13"                           # Helper for winit input handling, storing imput state based on processed events ...
+wgpu = "0.13"                                         # A cross platform GPU API, in this applicationVulcan backend is used.
+dolly = "*"                                           # A camera rig library with smooting and inertia.
+hecs = "*"                                            # A simple minimal ECS for scene object management
 glam = { version = "*", features = [ "bytemuck" ] }   # Math! Withsupporing SIMD optimizations
 bytemuck = { version = "*", features = [ "derive" ] } # Static casting between basic types
 image = { version = "*", features = ["jpeg", "png"] } # Handeling images for texture loading
-anyhow = "*"                # create providing simpler error resulting
-winit = "0.27"              # Windowing library (event loop namaing, window creation, etc.)
-winit_input_helper = "0.13" # Helper for winit input handling, storing imput state based on processed events ...
-wgpu = "0.13"               # A cross platform GPU API, in this applicationVulcan backend is used.
-dolly = "*"                 # A camera rig library with smooting and inertia.
-hecs = "*"                  # A simple minimal ECS for scene object management
 
 # GUI
-egui = "0.19"                # Immidiate mode gui library
-egui_wgpu_backend = "0.19"   # Rendering egui state with wgpu
-egui_winit_platform = "0.16" # Integrating egui with winit
+egui = "0.19"       # Immidiate mode gui library
+egui-wgpu = "0.19"  # GPU backend for egui
+egui-winit = "0.19" # GPU backend for egui
 
 [features]
 profiling = [
