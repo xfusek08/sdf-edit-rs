@@ -1,12 +1,13 @@
 use glam::Vec3;
 use hecs::World;
+use winit::window::Window;
 
 use crate::app::{
     model::AXIS_VERTICES,
     rendering::modules::line_renderer::LineMesh,
 };
 
-use super::{Camera, components::Deleted};
+use super::{Camera, components::Deleted, camera::CameraProperties};
 
 pub struct Scene {
     pub camera: Camera,
@@ -14,10 +15,13 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new() -> Scene {
+    pub fn new(window: &Window) -> Scene {
         
         // Create camera, which is sort of unique object outside of ECS world
-        let camera = Camera::new().orbit(
+        let camera = Camera::new(CameraProperties {
+            aspect_ratio: window.inner_size().width as f32 / window.inner_size().height as f32,
+            ..Default::default()
+        }).orbit(
             Vec3::new(0.0, 0.0, 0.0),
             1.0
         );

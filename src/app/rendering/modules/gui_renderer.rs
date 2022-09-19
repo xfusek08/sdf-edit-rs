@@ -42,7 +42,7 @@ impl RenderModule for GuiRenderer {
         
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: [context.surface_config.width, context.surface_config.height],
-            pixels_per_point: 1.0, // TODO: What is Scale Factor really?
+            pixels_per_point: context.scale_factor as f32,
         };
         
         { profiler::scope!("Update Textures");

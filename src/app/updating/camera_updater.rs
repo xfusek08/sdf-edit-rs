@@ -11,6 +11,7 @@ use crate::app::{
 pub struct CameraUpdater;
 
 impl UpdaterModule for CameraUpdater {
+    
     #[profiler::function]
     fn input(&mut self, scene: &mut Scene, context: &UpdateContext) -> InputUpdateResult {
         let mut result = InputUpdateResult::default();
@@ -42,4 +43,16 @@ impl UpdaterModule for CameraUpdater {
         }
         ControlFlowResultAction::None
     }
+    
+    #[profiler::function]
+    fn resize(&mut self, scene: &mut Scene, size: winit::dpi::PhysicalSize<u32>, _: f64) -> ControlFlowResultAction {
+        let orig_aspect = scene.camera.aspect_ratio;
+        scene.camera.aspect_ratio = size.width as f32 / size.height as f32;
+        if orig_aspect != scene.camera.aspect_ratio {
+            ControlFlowResultAction::Redraw
+        } else {
+            ControlFlowResultAction::None
+        }
+    }
+    
 }

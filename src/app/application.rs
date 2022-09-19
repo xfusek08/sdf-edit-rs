@@ -5,15 +5,15 @@ use winit::{
     event_loop::{EventLoop, ControlFlow},
     error::OsError,
     platform::run_return::EventLoopExtRunReturn,
-    event::Event,
+    event::Event, dpi::PhysicalSize,
 };
 
-use crate::{error, app::updating::UpdateContext, info, warn};
+use crate::{error, app::updating::UpdateContext};
 
 use super::{
     scene::{Scene, components::Deleted},
     rendering::{Renderer, modules::{line_renderer::LineRenderer, gui_renderer::GuiRenderer}},
-    updating::{Updater, modules::camera_updater::CameraUpdater},
+    updating::{Updater, CameraUpdater},
     clock::Clock, gui::Gui
 };
 
@@ -53,7 +53,7 @@ pub async fn run(config: ApplicationConfig) {
     // Application state
     let mut input: WinitInputHelper = WinitInputHelper::new(); // Helps with translating window events to remembered input state
     let mut clock: Clock            = Clock::now(30);          // 30 ticks per second
-    let mut scene: Scene            = Scene::new();            // contains all that is to be rendered and can be updated
+    let mut scene: Scene            = Scene::new(&window);     // contains all that is to be rendered and can be updated
     let mut gui:   Gui              = Gui::new(&event_loop);   // Application gui, capable of rendering and altering scene
     
     // this is hack around input helper to only call input update on window events
@@ -65,44 +65,56 @@ pub async fn run(config: ApplicationConfig) {
             
             // Proces window events
             let mut flow_result_action = ControlFlowResultAction::None;
+            
+            // Resize subroutine
+            let resize = &mut |size: PhysicalSize<u32>, scale_factor: f64| {
+                renderer.resize(size, scale_factor);
+                updater.resize(&mut scene, size, scale_factor)
+            };
+            
             match event {
                 Event::NewEvents(_) |
                 Event::MainEventsCleared |
                 Event::WindowEvent { .. } => {
                     profiler::scope!("Processing event");
                     
-                    // let gui process window event and when it does not handle it, update scene
+                    // Let gui process window event and when it does not handle it, update scene
                     if let Event::WindowEvent { event, .. } = &event {
                         update_scene = !gui.on_event(&event);
                     }
                     
                     // Let input helper process event to somewhat coherent input state and work with that.
+                    //   (input.update(..) returns true only on Event::MainEventsCleared hence `update_scene` variable)
                     if input.update(&event) {
-                        if let Some(size) = input.window_resized() {
-                            renderer.resize(size, input.scale_factor().unwrap_or(1.0));
-                        } else if let Some(scale_factor) = input.scale_factor_changed() {
-                            renderer.resize(window.inner_size(), scale_factor);
-                        } else if input.quit() {
-                            dbg!("Quit");
-                            flow_result_action = ControlFlowResultAction::Exit;
-                        } else if update_scene {
-                            flow_result_action = updater.input(
-                                &mut gui,
-                                &mut scene,
-                                &UpdateContext {
-                                    input: &input,
-                                    tick: clock.current_tick(),
-                                    window: &window,
-                                }
-                            );
-                            update_scene = false;
-                            // dbg!(&flow_result_action);
-                        }
+                        flow_result_action = flow_result_action.combine(
+                            if let Some(size) = input.window_resized() {
+                                resize(size, input.scale_factor().unwrap_or(1.0))
+                            } else if let Some(scale_factor) = input.scale_factor_changed() {
+                                resize(window.inner_size(), scale_factor)
+                            } else if input.quit() {
+                                ControlFlowResultAction::Exit
+                            } else if update_scene {
+                                update_scene = false;
+                                updater.input(
+                                    &mut gui,
+                                    &mut scene,
+                                    &UpdateContext {
+                                        input: &input,
+                                        tick: clock.current_tick(),
+                                        window: &window,
+                                    }
+                                )
+                            } else {
+                                ControlFlowResultAction::None
+                            }
+                        );
                     }
+                    
                 },
+                
+                // Render frame when windows requests a redraw not on every update
+                // This is because application could only redraw when there are changes saving CPU time and power.
                 Event::RedrawRequested(_) => {
-                    // Render frame when windows requests a redraw not on every update
-                    // This is because application could only redraw when there are changes saving CPU time and power.
                     profiler::scope!("Redraw requested");
                     
                     // scene is not changed in prepare (to allow renderer to prepare in parallel)

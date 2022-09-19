@@ -4,9 +4,25 @@ use dolly::{
     prelude::{Arm, YawPitch, Smooth, LookAt}
 };
 
+pub struct CameraProperties {
+    pub aspect_ratio: f32,
+    pub fov: f32,
+    pub near: f32,
+    pub far: f32,
+}
+impl Default for CameraProperties {
+    fn default() -> Self {
+        Self {
+            aspect_ratio: 1.0,
+            fov: 90.0,
+            near: 0.1,
+            far: 100.0,
+        }
+    }
+}
+
 pub struct Camera {
     pub rig: dolly::rig::CameraRig,
-    
     pub aspect_ratio: f32,
     pub fov: f32,
     pub near: f32,
@@ -15,14 +31,14 @@ pub struct Camera {
 
 // builder
 impl Camera {
-    pub fn new() -> Self {
+    
+    pub fn new(properties: CameraProperties) -> Self {
         Self {
             rig: CameraRig::builder().build(),
-                    
-            aspect_ratio: 1.0,
-            fov: 90.0,
-            near: 0.1,
-            far: 100.0
+            aspect_ratio: properties.aspect_ratio,
+            fov: properties.fov,
+            near: properties.near,
+            far: properties.far,
         }
     }
     
@@ -36,6 +52,7 @@ impl Camera {
             .build();
         self
     }
+    
 }
 
 impl Camera {
@@ -47,7 +64,12 @@ impl Camera {
     }
     
     pub fn projection_matrix(&self) -> Mat4 {
-        glam::Mat4::perspective_rh(self.fov * 0.5, self.aspect_ratio, self.near, self.far)
+        glam::Mat4::perspective_rh(
+            self.fov.to_radians(),
+            self.aspect_ratio,
+            self.near,
+            self.far
+        )
     }
     
     pub fn view_projection_matrix(&self) -> Mat4 {

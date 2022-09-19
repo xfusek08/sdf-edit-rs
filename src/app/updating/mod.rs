@@ -1,5 +1,6 @@
 
-pub mod modules;
+mod camera_updater;
+pub use camera_updater::CameraUpdater;
 
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
@@ -63,6 +64,16 @@ impl Updater {
         self.update_cnt += 1;
         result
     }
+    
+    /// React to resize event
+    #[profiler::function]
+    pub fn resize(&mut self, scene: &mut Scene, size: winit::dpi::PhysicalSize<u32>, scale_factor: f64) -> ControlFlowResultAction {
+        let mut result = ControlFlowResultAction::None;
+        for module in self.modules.iter_mut() {
+            result = result.combine(module.resize(scene, size, scale_factor));
+        }
+        result
+    }
 }
 
 // UpdaterModule
@@ -71,6 +82,7 @@ impl Updater {
 pub trait UpdaterModule {
     fn input(&mut self, scene: &mut Scene, context: &UpdateContext) -> InputUpdateResult;
     fn update(&mut self, scene: &mut Scene, context: &UpdateContext) -> ControlFlowResultAction;
+    fn resize(&mut self, scene: &mut Scene, size: winit::dpi::PhysicalSize<u32>, scale_factor: f64) -> ControlFlowResultAction;
 }
 
 pub struct UpdateContext<'a> {
