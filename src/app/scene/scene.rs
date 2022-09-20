@@ -7,11 +7,12 @@ use crate::app::{
     rendering::modules::line_renderer::LineMesh,
 };
 
-use super::{Camera, components::Deleted, camera::CameraProperties};
+use super::{Camera, components::Deleted, camera::CameraProperties, counters::Counters};
 
 pub struct Scene {
     pub camera: Camera,
     pub world: World,
+    pub counters: Counters,
 }
 
 impl Scene {
@@ -37,9 +38,11 @@ impl Scene {
             Deleted(false),
         ));
         
+        
         Self {
             camera,
             world,
+            counters: Default::default(),
         }
     }
 }

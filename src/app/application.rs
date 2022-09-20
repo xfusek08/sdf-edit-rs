@@ -125,6 +125,8 @@ pub async fn run(config: ApplicationConfig) {
                     // TODO: This is possible meant to run in a separate thread alongside the render
                     remove_deleted_entities(&mut scene);
                     renderer.finalize(&mut gui, &mut scene);
+                    
+                    scene.counters.renders += 1;
                 },
                 _ => {} // Ignore other events
             }
@@ -132,18 +134,19 @@ pub async fn run(config: ApplicationConfig) {
             // Tick clock and update on tick if app is still running
             if clock.tick() {
                 // It is time to tick the application
-                flow_result_action = flow_result_action.combine(
-                    updater.update(
-                        &mut gui,
-                        &mut scene,
-                        &UpdateContext {
-                            input: &input,
-                            tick: clock.current_tick(),
-                            window: &window,
-                        }
-                    )
+                updater.update(
+                    &mut gui,
+                    &mut scene,
+                    &UpdateContext {
+                        input: &input,
+                        tick: clock.current_tick(),
+                        window: &window,
+                    }
                 );
-                // print!("update | input | render: {} | {} | {}\n", updater.update_cnt, updater.input_cnt, renderer.render_cnt);
+                
+                // Render updated state
+                // TODO: Do not redraw when window is not visible
+                flow_result_action = ControlFlowResultAction::Redraw;
             } else {
                 // Schedule next tick as a time to wake up in case of idling
                 *control_flow = ControlFlow::WaitUntil(clock.next_scheduled_tick().clone())

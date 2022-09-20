@@ -14,14 +14,12 @@ impl UpdaterModule for CameraUpdater {
     
     #[profiler::function]
     fn input(&mut self, scene: &mut Scene, context: &UpdateContext) -> InputUpdateResult {
-        let mut result = InputUpdateResult::default();
         let (dx, dy) = context.input.mouse_diff();
         if (dx != 0.0 || dy != 0.0) && context.input.mouse_held(0) {
             scene.camera
                 .rig
                 .driver_mut::<YawPitch>()
                 .rotate_yaw_pitch(-dx * 0.7, -dy * 0.7);
-            result.result = ControlFlowResultAction::Redraw;
         }
         let scroll = context.input.scroll_diff();
         if scroll != 0.0 {
@@ -29,9 +27,9 @@ impl UpdaterModule for CameraUpdater {
                 .rig
                 .driver_mut::<Arm>()
                 .offset *= 1.0 + scroll * -0.3;
-            result.result = ControlFlowResultAction::Redraw;
         }
-        result
+        
+        InputUpdateResult::default() // do not prevent event propagation
     }
     
     #[profiler::function]
@@ -46,13 +44,8 @@ impl UpdaterModule for CameraUpdater {
     
     #[profiler::function]
     fn resize(&mut self, scene: &mut Scene, size: winit::dpi::PhysicalSize<u32>, _: f64) -> ControlFlowResultAction {
-        let orig_aspect = scene.camera.aspect_ratio;
         scene.camera.aspect_ratio = size.width as f32 / size.height as f32;
-        if orig_aspect != scene.camera.aspect_ratio {
-            ControlFlowResultAction::Redraw
-        } else {
-            ControlFlowResultAction::None
-        }
+        ControlFlowResultAction::None
     }
     
 }

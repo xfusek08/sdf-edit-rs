@@ -8,7 +8,7 @@ use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
 use crate::app::{
     rendering::{RenderContext, RenderModule},
     gui::Gui,
-    scene::Scene
+    scene::Scene,
 };
 
 pub struct GuiRenderer {
@@ -18,7 +18,6 @@ pub struct GuiRenderer {
 
 struct RenderData {
     paint_jobs: Arc<Vec<ClippedPrimitive>>,
-    textures_delta: egui::TexturesDelta,
     screen_descriptor: ScreenDescriptor,
 }
 
@@ -45,15 +44,15 @@ impl RenderModule for GuiRenderer {
             pixels_per_point: context.scale_factor as f32,
         };
         
-        { profiler::scope!("Update Textures");
-            for (id, image_delta) in &gui.textures_delta.set {
-                profiler::call!(
-                    self.egui_renderer.update_texture(
-                        &context.device,
-                        &context.queue,
-                        *id,
-                        image_delta,
-                    )
+         if let Some(textures_delta) = gui.textures_delta.as_ref() {
+            profiler::scope!("Update Textures");
+            for (id, image_delta) in &textures_delta.set {
+                profiler::scope!("Update Texture");
+                self.egui_renderer.update_texture(
+                    &context.device,
+                    &context.queue,
+                    *id,
+                    image_delta,
                 );
             }
         }
@@ -65,10 +64,10 @@ impl RenderModule for GuiRenderer {
         { profiler::scope!("store render data");
             self.render_data = Some(RenderData {
                 paint_jobs: gui.paint_jobs.clone(),
-                textures_delta: gui.textures_delta.clone(),
                 screen_descriptor,
             });
         }
+        
     }
     
     #[profiler::function]
@@ -85,12 +84,11 @@ impl RenderModule for GuiRenderer {
     }
     
     #[profiler::function]
-    fn finalize(&mut self, _: &mut Gui, _: &mut crate::app::scene::Scene) {
-        if let Some(data) = self.render_data.as_ref() {
-            for id in &data.textures_delta.free {
+    fn finalize(&mut self, gui: &mut Gui, _: &mut crate::app::scene::Scene) {
+        if let Some(textures_delta) = gui.textures_delta.take() {
+            for id in &textures_delta.free {
                 self.egui_renderer.free_texture(id);
             }
-            
         }
     }
     
