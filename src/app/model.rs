@@ -2,7 +2,7 @@
 
 use glam::Vec3;
 
-use super::rendering::vertices::ColorVertex;
+use super::gpu::vertices::ColorVertex;
 
 // pub const PENTAGON_VERTICES: &[Vertex] = &[
 //     Vertex { position: Vec3::new(-0.0868241, 0.49240386, 0.0), tex_coords: Vec2::new(0.4131759, 0.00759614) },

@@ -6,16 +6,52 @@
 ///      - Curved lines
 
 
-use std::{collections::{HashMap, hash_map::Entry}, borrow::Cow};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    borrow::Cow
+};
+
 use hecs::Entity;
 
-use crate::app::{scene::{components::Deleted, Scene}, gui::Gui};
-
-use super::super::{
-    RenderContext,
-    vertices::Vertex,
-    vertices::ColorVertex, buffers::VertexBuffer, RenderModule,
+use crate::app::{
+    gpu::{
+        GPUContext,
+        buffers::VertexBuffer,
+        vertices::{ ColorVertex, Vertex}
+    },
+    rendering::{RenderModule, RenderContext},
+    gui::Gui,
+    scene::Scene,
+    components::Deleted
 };
+
+// ECS Components to define line (renderable) entity
+// -------------------------------------------------
+
+pub struct LineMesh {
+    pub is_dirty: bool,
+    pub vertices: &'static [ColorVertex],
+}
+
+// Line Render Resource
+// --------------------
+
+struct LineRenderResource {
+    vertex_buffer: VertexBuffer,
+}
+impl LineRenderResource {
+    fn new(mesh: &LineMesh, context: &GPUContext) -> Self {
+        Self {
+            vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
+        }
+    }
+    fn update(&mut self, mesh: &LineMesh, context: &GPUContext) {
+        self.vertex_buffer.update(context, mesh.vertices);
+    }
+}
+
+// Line Renderer
+// -------------
 
 pub struct LineRenderer {
     pipeline: wgpu::RenderPipeline,
@@ -29,20 +65,20 @@ impl<'a> From<&RenderContext> for LineRenderer {
     fn from(context: &RenderContext) -> LineRenderer {
         
         // ⬇ load and compile wgsl shader code
-        let shader = context.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Line Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../../resources/shaders/line.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../resources/shaders/line.wgsl"))),
         });
         
         // ⬇ define layout of buffers for out render pipeline
-        let pipeline_layout = context.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let pipeline_layout = context.gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Line Render Pipeline Layout"),
             bind_group_layouts: &[&context.camera.bind_group_layout],
             push_constant_ranges: &[],
         });
         
         // ⬇ Create render pipeline (think more flexible OpenGL program)
-        let pipeline = context.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let pipeline = context.gpu.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Line Render Pipeline"),
             layout: Some(&pipeline_layout),
             // ⬇ Vertex shader -> define an entry point in our shader
@@ -57,7 +93,7 @@ impl<'a> From<&RenderContext> for LineRenderer {
                 entry_point: "fs_main",
                 // ⬇ configure expected outputs from fragment shader
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: context.surface_config.format,         // <- format out target texture (surface texture we will render into)
+                    format: context.gpu.surface_config.format,     // <- format out target texture (surface texture we will render into)
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING), // <- how to bled colors (with alpha) previous frame
                     write_mask: wgpu::ColorWrites::ALL,            // <- which color component will be overridden by FS?
                 })],
@@ -118,10 +154,10 @@ impl RenderModule for LineRenderer {
             
             match self.render_resources.entry(entity) {
                 Entry::Occupied(mut oe) => {
-                    oe.get_mut().update(mesh, context);
+                    oe.get_mut().update(mesh, &context.gpu);
                 },
                 Entry::Vacant(ve) => {
-                    ve.insert(LineRenderResource::new(mesh, context));
+                    ve.insert(LineRenderResource::new(mesh, &context.gpu));
                 },
             }
         }
@@ -149,29 +185,4 @@ impl RenderModule for LineRenderer {
         }
     }
     
-}
-
-// ECS Components to define line (renderable) entity
-// --------------
-
-pub struct LineMesh {
-    pub is_dirty: bool,
-    pub vertices: &'static [ColorVertex],
-}
-
-// Line Render Resource
-// -----------------
-
-struct LineRenderResource {
-    vertex_buffer: VertexBuffer,
-}
-impl LineRenderResource {
-    fn new(mesh: &LineMesh, context: &RenderContext) -> Self {
-        Self {
-            vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
-        }
-    }
-    fn update(&mut self, mesh: &LineMesh, context: &RenderContext) {
-        self.vertex_buffer.update(context, mesh.vertices);
-    }
 }

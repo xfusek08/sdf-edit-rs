@@ -1,9 +1,18 @@
 
+// submodules
+pub mod gpu;
+// pub mod sdf;
+pub mod render_modules;
+pub mod update_modules;
+
 pub mod application;
-pub mod log;
+pub mod camera;
 pub mod clock;
-mod updating;
-mod rendering;
-mod scene;
-mod model;
-mod gui;
+pub mod components;
+pub mod gui;
+pub mod log;
+pub mod model;
+pub mod scene;
+pub mod transform;
+pub mod updating;
+pub mod rendering;

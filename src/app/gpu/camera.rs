@@ -1,14 +1,14 @@
 use wgpu::util::DeviceExt;
 
-use crate::app::scene::Camera;
+use crate::app::camera::Camera;
 
-pub struct CameraRenderResource {
+pub struct GPUCamera {
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     pub uniform_buffer: wgpu::Buffer,
 }
 
-impl CameraRenderResource {
+impl GPUCamera {
     
     #[profiler::function]
     pub fn new(device: &wgpu::Device) -> Self {

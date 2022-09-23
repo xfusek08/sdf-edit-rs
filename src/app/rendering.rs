@@ -1,9 +1,26 @@
+use wgpu::RenderPass;
 use winit::window::Window;
 use crate::app::{scene::Scene, gui::Gui};
-use super::{
-    RenderContext,
-    RenderModule,
-};
+
+use super::gpu::{GPUContext, GPUCamera};
+
+/// A struct shared with all render modules
+pub struct RenderContext {
+    pub gpu: GPUContext,
+    pub camera: GPUCamera,
+    pub scale_factor: f64,
+}
+
+pub trait RenderModule {
+    fn prepare(&mut self, gui: &Gui, scene: &Scene, context: &RenderContext);
+    
+    /// Render this (prepared) module
+    ///  - `'a: 'pass` (`'a` outlives `'pass`) meaning that this render module lives longer than the render pass
+    fn render<'pass, 'a: 'pass>(&'a mut self, context: &'a RenderContext, render_pass: &mut RenderPass<'pass>);
+    
+    // Finalization step (after rendering) which can alter scene state meant to unflag dirty components as clean (prepared)
+    fn finalize(&mut self, gui: &mut Gui, scene: &mut Scene);
+}
 
 pub struct Renderer {
     context: RenderContext,
@@ -16,8 +33,11 @@ impl Renderer {
     /// Creates a new renderer instance for window (initialize rendering context)
     #[profiler::function]
     pub async fn new(window: &Window) -> Self {
+        let gpu = GPUContext::new(window).await;
+        let camera = GPUCamera::new(&gpu.device);
+        let scale_factor = window.scale_factor();
         Renderer {
-            context: RenderContext::new(window).await,
+            context: RenderContext { gpu, camera, scale_factor },
             modules: vec![],
             render_cnt: 0,
         }
@@ -35,11 +55,11 @@ impl Renderer {
     
     /// Resize Rendering context
     #[profiler::function]
-    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>, scale_factor: f64) {
+    pub fn resize(&mut self, size: &winit::dpi::PhysicalSize<u32>, scale_factor: f64) {
         if size.width > 0 && size.height > 0 {
-            self.context.surface_config.width = size.width;
-            self.context.surface_config.height = size.height;
-            self.context.surface.configure(&self.context.device, &self.context.surface_config);
+            self.context.gpu.surface_config.width = size.width;
+            self.context.gpu.surface_config.height = size.height;
+            self.context.gpu.surface.configure(&self.context.gpu.device, &self.context.gpu.surface_config);
         }
         self.context.scale_factor = scale_factor;
     }
@@ -49,7 +69,7 @@ impl Renderer {
     pub fn prepare(&mut self, gui: &Gui, scene: &Scene) {
         // update camera
         //  - TODO: Only if camera is dirty?
-        self.context.camera.update(&self.context.queue, &scene.camera);
+        self.context.camera.update(&self.context.gpu.queue, &scene.camera);
         
         // Update each module
         //  - TODO: could be parallelized
@@ -64,7 +84,7 @@ impl Renderer {
         
         // ask surface to provide us a texture we will draw into
         let output = profiler::call!(
-            self.context
+            self.context.gpu
                 .surface
                 .get_current_texture()
                 .expect("Failed to acquire next swap chain texture")
@@ -77,7 +97,7 @@ impl Renderer {
         
         // Create an encoder for building a GPU commands for this frame
         let mut encoder = profiler::call!(
-            self.context.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            self.context.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder")
             })
         );
@@ -112,7 +132,7 @@ impl Renderer {
             }
         } // drop render_pass here - because commands must not be borrowed before calling `finish()` on encoder
         
-        profiler::call!(self.context.queue.submit(Some(encoder.finish())));
+        profiler::call!(self.context.gpu.queue.submit(Some(encoder.finish())));
         profiler::call!(output.present());
         
         self.render_cnt += 1;

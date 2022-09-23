@@ -2,18 +2,25 @@ use glam::Vec3;
 use hecs::World;
 use winit::window::Window;
 
-use crate::app::{
-    model::AXIS_VERTICES,
-    rendering::modules::line_renderer::LineMesh,
+use super::{
+    camera::{Camera, CameraProperties},
+    render_modules::lines::LineMesh,
+    components::Deleted, model::AXIS_VERTICES
 };
-
-use super::{Camera, components::Deleted, camera::CameraProperties, counters::Counters};
 
 pub struct Scene {
     pub camera: Camera,
     pub world: World,
-    pub counters: Counters,
+    pub counters: SceneCounters,
 }
+
+
+#[derive(Default)]
+pub struct SceneCounters {
+    pub gui_updates: u64,
+    pub renders: u64,
+}
+
 
 impl Scene {
     pub fn new(window: &Window) -> Scene {

@@ -1,19 +1,13 @@
 use winit::window::Window;
 
-use super::camera::CameraRenderResource;
-
-pub struct RenderContext {
+pub struct GPUContext {
     pub surface: wgpu::Surface,
     pub surface_config: wgpu::SurfaceConfiguration,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    
-    // shared render resources
-    pub camera: CameraRenderResource,
-    pub scale_factor: f64,
 }
 
-impl RenderContext {
+impl GPUContext {
     
     #[profiler::function]
     pub async fn new(window: &Window) -> Self {
@@ -47,15 +41,11 @@ impl RenderContext {
         };
         surface.configure(&device, &surface_config);
         
-        let camera = CameraRenderResource::new(&device);
-        
-        RenderContext {
+        GPUContext {
             surface,
             surface_config,
             device,
             queue,
-            camera,
-            scale_factor: window.scale_factor(),
         }
     }
     

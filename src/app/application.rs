@@ -8,13 +8,16 @@ use winit::{
     event::Event, dpi::PhysicalSize,
 };
 
-use crate::{error, app::updating::UpdateContext};
+use crate::{error, app::updating::{UpdateContext, ResizeContext}};
 
 use super::{
-    scene::{Scene, components::Deleted},
-    rendering::{Renderer, modules::{line_renderer::LineRenderer, gui_renderer::GuiRenderer}},
-    updating::{Updater, CameraUpdater},
-    clock::Clock, gui::Gui
+    updating::Updater,
+    rendering::Renderer,
+    clock::Clock,
+    scene::Scene, gui::Gui,
+    components::Deleted,
+    update_modules::{camera::CameraUpdater, gui::GuiUpdater},
+    render_modules::{lines::LineRenderer, gui::GuiRenderer},
 };
 
 #[derive(Debug, Clone)]
@@ -43,6 +46,7 @@ pub async fn run(config: ApplicationConfig) {
     
     // Updating system
     let mut updater = Updater::new()
+        .with_module::<GuiUpdater>()
         .with_module::<CameraUpdater>();
     
     // Rendering system
@@ -67,9 +71,13 @@ pub async fn run(config: ApplicationConfig) {
             let mut flow_result_action = ControlFlowResultAction::None;
             
             // Resize subroutine
-            let resize = &mut |size: PhysicalSize<u32>, scale_factor: f64| {
+            let resize = &mut |size: &PhysicalSize<u32>, scale_factor: f64| {
                 renderer.resize(size, scale_factor);
-                updater.resize(&mut scene, size, scale_factor)
+                updater.resize(ResizeContext {
+                    scene: &mut scene,
+                    size,
+                    scale_factor
+                })
             };
             
             match event {
@@ -88,22 +96,20 @@ pub async fn run(config: ApplicationConfig) {
                     if input.update(&event) {
                         flow_result_action = flow_result_action.combine(
                             if let Some(size) = input.window_resized() {
-                                resize(size, input.scale_factor().unwrap_or(1.0))
+                                resize(&size, input.scale_factor().unwrap_or(1.0))
                             } else if let Some(scale_factor) = input.scale_factor_changed() {
-                                resize(window.inner_size(), scale_factor)
+                                resize(&window.inner_size(), scale_factor)
                             } else if input.quit() {
                                 ControlFlowResultAction::Exit
                             } else if update_scene {
                                 update_scene = false;
-                                updater.input(
-                                    &mut gui,
-                                    &mut scene,
-                                    &UpdateContext {
-                                        input: &input,
-                                        tick: clock.current_tick(),
-                                        window: &window,
-                                    }
-                                )
+                                updater.input(UpdateContext {
+                                    gui:    &mut gui,
+                                    scene:  &mut scene,
+                                    input:  &input,
+                                    tick:   clock.current_tick(),
+                                    window: &window,
+                                })
                             } else {
                                 ControlFlowResultAction::None
                             }
@@ -134,15 +140,13 @@ pub async fn run(config: ApplicationConfig) {
             // Tick clock and update on tick if app is still running
             if clock.tick() {
                 // It is time to tick the application
-                updater.update(
-                    &mut gui,
-                    &mut scene,
-                    &UpdateContext {
-                        input: &input,
-                        tick: clock.current_tick(),
-                        window: &window,
-                    }
-                );
+                updater.update(UpdateContext {
+                    gui:    &mut gui,
+                    scene:  &mut scene,
+                    input:  &input,
+                    tick:   clock.current_tick(),
+                    window: &window,
+                });
                 
                 // Render updated state
                 // TODO: Do not redraw when window is not visible

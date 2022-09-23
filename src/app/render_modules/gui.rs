@@ -6,9 +6,9 @@ use egui::ClippedPrimitive;
 use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
 
 use crate::app::{
-    rendering::{RenderContext, RenderModule},
     gui::Gui,
     scene::Scene,
+    rendering::{RenderModule, RenderContext},
 };
 
 pub struct GuiRenderer {
@@ -27,7 +27,7 @@ impl<'a> From<&RenderContext> for GuiRenderer {
     #[profiler::function]
     fn from(context: &RenderContext) -> GuiRenderer {
         Self {
-            egui_renderer: RenderPass::new(&context.device, context.surface_config.format, 1),
+            egui_renderer: RenderPass::new(&context.gpu.device, context.gpu.surface_config.format, 1),
             render_data: None,
         }
     }
@@ -40,7 +40,7 @@ impl RenderModule for GuiRenderer {
     fn prepare(&mut self, gui: &Gui, _: &Scene, context: &RenderContext) {
         
         let screen_descriptor = ScreenDescriptor {
-            size_in_pixels: [context.surface_config.width, context.surface_config.height],
+            size_in_pixels: [context.gpu.surface_config.width, context.gpu.surface_config.height],
             pixels_per_point: context.scale_factor as f32,
         };
         
@@ -49,8 +49,8 @@ impl RenderModule for GuiRenderer {
             for (id, image_delta) in &textures_delta.set {
                 profiler::scope!("Update Texture");
                 self.egui_renderer.update_texture(
-                    &context.device,
-                    &context.queue,
+                    &context.gpu.device,
+                    &context.gpu.queue,
                     *id,
                     image_delta,
                 );
@@ -58,7 +58,12 @@ impl RenderModule for GuiRenderer {
         }
         
         profiler::call!(
-            self.egui_renderer.update_buffers(&context.device, &context.queue, &**gui.paint_jobs, &screen_descriptor)
+            self.egui_renderer.update_buffers(
+                &context.gpu.device,
+                &context.gpu.queue,
+                &**gui.paint_jobs,
+                &screen_descriptor
+            )
         );
         
         { profiler::scope!("store render data");

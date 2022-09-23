@@ -1,11 +1,11 @@
 use wgpu::util::DeviceExt;
 
-use super::{RenderContext, vertices::Vertex};
+use super::{GPUContext, vertices::Vertex};
 
 // TODO Generalize Buffer for different usage types
 
 /// Creates new vertex buffer on GPU from vertex data.
-fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &RenderContext) -> wgpu::Buffer {
+fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &GPUContext) -> wgpu::Buffer {
     context.device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {
             label,
@@ -29,7 +29,7 @@ pub struct VertexBuffer {
 impl VertexBuffer {
     /// Create a new vertex buffer.
     #[profiler::function]
-    pub fn new<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &RenderContext) -> Self {
+    pub fn new<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &GPUContext) -> Self {
         Self {
             label,
             buffer: init_vertex_buffer(label, vertices, context),
@@ -41,7 +41,7 @@ impl VertexBuffer {
     /// Update the buffer with new data.
     ///  - After update old buffer reference does not make sense, hence self is moved into this method.
     #[profiler::function]
-    pub fn update<V: Vertex>(&mut self, context: &RenderContext, vertices: &[V]) {
+    pub fn update<V: Vertex>(&mut self, context: &GPUContext, vertices: &[V]) {
         dbg!("update vertex buffer");
         if vertices.len() > self.capacity {
             dbg!("update vertex buffer: resize");
