@@ -1,5 +1,4 @@
 
-use winit_input_helper::WinitInputHelper;
 use winit::{
     window::{Window, WindowBuilder},
     event_loop::{EventLoop, ControlFlow},
@@ -7,15 +6,17 @@ use winit::{
     platform::run_return::EventLoopExtRunReturn,
     event::Event, dpi::PhysicalSize,
 };
+use winit_input_helper::WinitInputHelper;
 
-use crate::{error, app::updating::{UpdateContext, ResizeContext}};
+use crate::error;
 
 use super::{
-    updating::Updater,
     rendering::Renderer,
     clock::Clock,
-    scene::Scene, gui::Gui,
+    scene::Scene,
+    gui::Gui,
     components::Deleted,
+    updating::{Updater, UpdateContext, ResizeContext},
     update_modules::{camera::CameraUpdater, gui::GuiUpdater},
     render_modules::{lines::LineRenderer, gui::GuiRenderer},
 };

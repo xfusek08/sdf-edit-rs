@@ -1,20 +1,19 @@
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use crate::app::{
-    updating::{UpdateContext, UpdaterModule, InputUpdateResult, ResizeContext},
-    application::ControlFlowResultAction,
     gui,
+    application::ControlFlowResultAction,
+    updating::{UpdateContext, UpdaterModule, InputUpdateResult, ResizeContext},
 };
-
 
 #[derive(Default)]
 pub struct GuiUpdater;
 
-impl UpdaterModule for GuiUpdater {
+impl GuiUpdater {
     
     #[profiler::function]
-    fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
+    fn update_internal(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
         let raw_input = context.gui.egui_winit.take_egui_input(context.window);
         
         // Run gui
@@ -50,12 +49,19 @@ impl UpdaterModule for GuiUpdater {
         }
     }
     
-    #[profiler::function]
-    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        ControlFlowResultAction::None
+}
+
+impl UpdaterModule for GuiUpdater {
+    
+    fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
+        self.update_internal(context)
     }
     
-    fn resize(&mut self, context: &mut ResizeContext) -> ControlFlowResultAction {
+    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
+        self.update_internal(context).result
+    }
+    
+    fn resize(&mut self, _: &mut ResizeContext) -> ControlFlowResultAction {
         ControlFlowResultAction::None
     }
     
