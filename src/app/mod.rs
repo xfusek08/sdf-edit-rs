@@ -1,7 +1,7 @@
 
 // submodules
 pub mod gpu;
-// pub mod sdf;
+pub mod sdf;
 pub mod render_modules;
 pub mod update_modules;
 

@@ -1,6 +1,6 @@
 
 mod context;
-pub use context::GPUContext;
+pub use context::*;
 
 mod camera;
 pub use camera::GPUCamera;

@@ -2,9 +2,9 @@ use winit::window::Window;
 
 pub struct GPUContext {
     pub surface: wgpu::Surface,
-    pub surface_config: wgpu::SurfaceConfiguration,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
+    pub adapter: wgpu::Adapter,
+    pub device:  wgpu::Device,
+    pub queue:   wgpu::Queue,
 }
 
 impl GPUContext {
@@ -32,18 +32,9 @@ impl GPUContext {
             None
         ).await.expect("Failed to create device");
         
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage:        wgpu::TextureUsages::RENDER_ATTACHMENT,     // texture will be used to draw on screen
-            format:       surface.get_supported_formats(&adapter)[0], // texture format - select first supported one
-            width:        window.inner_size().width,
-            height:       window.inner_size().height,
-            present_mode: wgpu::PresentMode::Fifo,                    // VSynch essentially - capping renders on display frame rate
-        };
-        surface.configure(&device, &surface_config);
-        
         GPUContext {
+            adapter,
             surface,
-            surface_config,
             device,
             queue,
         }

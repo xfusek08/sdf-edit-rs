@@ -78,11 +78,11 @@ impl Updater {
         }
     }
     
-    pub fn with_module<M>(mut self) -> Self
+    pub fn with_module<M>(mut self, module: M) -> Self
     where
-        M: UpdaterModule + Default + 'static
+        M: UpdaterModule + 'static
     {
-        self.modules.push(Box::new(M::default()));
+        self.modules.push(Box::new(module));
         self
     }
     

@@ -22,12 +22,12 @@ struct RenderData {
 }
 
 // Construct this render module (a pipeline) from render context
-impl<'a> From<&RenderContext> for GuiRenderer {
+impl GuiRenderer {
     
     #[profiler::function]
-    fn from(context: &RenderContext) -> GuiRenderer {
+    pub fn new(context: &RenderContext) -> GuiRenderer {
         Self {
-            egui_renderer: RenderPass::new(&context.gpu.device, context.gpu.surface_config.format, 1),
+            egui_renderer: RenderPass::new(&context.gpu.device, context.surface_config.format, 1),
             render_data: None,
         }
     }
@@ -40,7 +40,7 @@ impl RenderModule for GuiRenderer {
     fn prepare(&mut self, gui: &Gui, _: &Scene, context: &RenderContext) {
         
         let screen_descriptor = ScreenDescriptor {
-            size_in_pixels: [context.gpu.surface_config.width, context.gpu.surface_config.height],
+            size_in_pixels: [context.surface_config.width, context.surface_config.height],
             pixels_per_point: context.scale_factor as f32,
         };
         

@@ -1,4 +1,5 @@
 
+#[derive(Clone)]
 pub enum Primitive {
     Sphere {
         center: glam::Vec3,

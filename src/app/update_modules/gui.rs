@@ -7,8 +7,23 @@ use crate::app::{
     updating::{UpdateContext, UpdaterModule, InputUpdateResult, ResizeContext},
 };
 
-#[derive(Default)]
 pub struct GuiUpdater;
+
+impl UpdaterModule for GuiUpdater {
+    
+    fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
+        self.update_internal(context)
+    }
+    
+    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
+        self.update_internal(context).result
+    }
+    
+    fn resize(&mut self, _: &mut ResizeContext) -> ControlFlowResultAction {
+        ControlFlowResultAction::None
+    }
+    
+}
 
 impl GuiUpdater {
     
@@ -47,22 +62,6 @@ impl GuiUpdater {
             handled,
             result: ControlFlowResultAction::None,
         }
-    }
-    
-}
-
-impl UpdaterModule for GuiUpdater {
-    
-    fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
-        self.update_internal(context)
-    }
-    
-    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        self.update_internal(context).result
-    }
-    
-    fn resize(&mut self, _: &mut ResizeContext) -> ControlFlowResultAction {
-        ControlFlowResultAction::None
     }
     
 }

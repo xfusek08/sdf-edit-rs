@@ -1,4 +1,6 @@
 
+use std::sync::Arc;
+
 use winit::{
     window::{Window, WindowBuilder},
     event_loop::{EventLoop, ControlFlow},
@@ -16,8 +18,9 @@ use super::{
     scene::Scene,
     gui::Gui,
     components::Deleted,
+    gpu::GPUContext,
     updating::{Updater, UpdateContext, ResizeContext},
-    update_modules::{camera::CameraUpdater, gui::GuiUpdater},
+    update_modules::{camera::CameraUpdater, gui::GuiUpdater, svo::SVOUpdater},
     render_modules::{lines::LineRenderer, gui::GuiRenderer},
 };
 
@@ -42,18 +45,20 @@ pub struct ApplicationConfig;
 
 pub async fn run(config: ApplicationConfig) {
     
-    let mut event_loop: EventLoop<()> = EventLoop::new();
-    let window:         Window        = create_window(&event_loop, config).unwrap();
+    let mut event_loop = EventLoop::new();
+    let window = create_window(&event_loop, config).unwrap();
+    let gpu = Arc::new(GPUContext::new(&window).await);
     
     // Updating system
     let mut updater = Updater::new()
-        .with_module::<GuiUpdater>()
-        .with_module::<CameraUpdater>();
+        .with_module(GuiUpdater)
+        .with_module(CameraUpdater)
+        .with_module(SVOUpdater::new(gpu.clone())); // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context
     
     // Rendering system
-    let mut renderer = Renderer::new(&window).await
-        .with_module::<LineRenderer>()
-        .with_module::<GuiRenderer>();
+    let mut renderer = Renderer::new(gpu.as_ref(), &window) // for now renderer needs only usual reference to GPU context
+        .with_module(|c| LineRenderer::new(c))
+        .with_module(|c| GuiRenderer::new(c));
     
     // Application state
     let mut input: WinitInputHelper = WinitInputHelper::new(); // Helps with translating window events to remembered input state

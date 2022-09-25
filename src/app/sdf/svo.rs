@@ -2,6 +2,42 @@ use glam::Vec4;
 
 use crate::app::gpu::GPUContext;
 
+// SVO Capacity
+// ------------
+
+
+/// A helper struct to express desired octree capacity
+pub enum SVOctreeCapacity {
+    /// Reserve capacity for the exact number of nodes in the octree.
+    Nodes(u32),
+    
+    /// Reserve capacity for fully subdivided octree up to the given depth.
+    Depth(u32),
+}
+
+impl SVOctreeCapacity {
+    
+    /// Returns the number of nodes that should be reserved for the octree.
+    pub fn nodes(&self) -> u32 {
+        match self {
+            Self::Nodes(n) => *n,
+            
+            // Calculate the number of nodes in a fully subdivided octree of the given depth.
+            // The intuitive formula:
+            //     1 + 8 + 8^2 + ... + 8^depth
+            // Can be expressed as:
+            //     (8^(depth + 1) - 1) / 7
+            //     see: https://www.wolframalpha.com/input?i2d=true&i=f%5C%2840%29d%5C%2841%29%3DSum%5BPower%5B8%2C%5C%2840%29d-n%5C%2841%29%5D%2C%7Bn%2C0%2Cd%7D%5D
+            // Also power of 8 can be expressed by bit shifting:
+            //     8^n = 1 << (3 * n)
+            Self::Depth(d) => (1 << (3 * (d + 1))) / 7,
+        }
+    }
+    
+}
+
+// Sparse Voxel Octree
+// -------------------
 
 /// sparse voxel octree on GPU
 pub struct SVOctree {
@@ -129,11 +165,6 @@ impl SVOctree {
         }
     }
     
-    /// This function set this octree to contain exactly one root node. with a sphere SDF written into it.
-    pub fn init_root_sphere(&mut self, context: &GPUContext) {
-        
-    }
-    
 }
 
 
@@ -236,41 +267,6 @@ impl BrickPoolTexture {
             dimension += 1;
         }
         dimension
-    }
-    
-}
-
-
-// SVOctreeCapacity
-// ----------------
-
-
-/// A helper struct to express desired octree capacity
-pub enum SVOctreeCapacity {
-    /// Reserve capacity for the exact number of nodes in the octree.
-    Nodes(u32),
-    
-    /// Reserve capacity for fully subdivided octree up to the given depth.
-    Depth(u32),
-}
-
-impl SVOctreeCapacity {
-    
-    /// Returns the number of nodes that should be reserved for the octree.
-    pub fn nodes(&self) -> u32 {
-        match self {
-            Self::Nodes(n) => *n,
-            
-            // Calculate the number of nodes in a fully subdivided octree of the given depth.
-            // The intuitive formula:
-            //     1 + 8 + 8^2 + ... + 8^depth
-            // Can be expressed as:
-            //     (8^(depth + 1) - 1) / 7
-            //     see: https://www.wolframalpha.com/input?i2d=true&i=f%5C%2840%29d%5C%2841%29%3DSum%5BPower%5B8%2C%5C%2840%29d-n%5C%2841%29%5D%2C%7Bn%2C0%2Cd%7D%5D
-            // Also power of 8 can be expressed by bit shifting:
-            //     8^n = 1 << (3 * n)
-            Self::Depth(d) => (1 << (3 * (d + 1))) / 7,
-        }
     }
     
 }

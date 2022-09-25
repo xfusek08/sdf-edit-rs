@@ -59,10 +59,10 @@ pub struct LineRenderer {
 }
 
 // Construct this render module (a pipeline) from render context
-impl<'a> From<&RenderContext> for LineRenderer {
+impl LineRenderer {
     
     #[profiler::function]
-    fn from(context: &RenderContext) -> LineRenderer {
+    pub fn new(context: &RenderContext) -> Self {
         
         // ⬇ load and compile wgsl shader code
         let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -93,7 +93,7 @@ impl<'a> From<&RenderContext> for LineRenderer {
                 entry_point: "fs_main",
                 // ⬇ configure expected outputs from fragment shader
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: context.gpu.surface_config.format,     // <- format out target texture (surface texture we will render into)
+                    format: context.surface_config.format,     // <- format out target texture (surface texture we will render into)
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING), // <- how to bled colors (with alpha) previous frame
                     write_mask: wgpu::ColorWrites::ALL,            // <- which color component will be overridden by FS?
                 })],

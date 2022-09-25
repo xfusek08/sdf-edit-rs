@@ -1,13 +1,43 @@
-use std::sync::Arc;
-
+use slotmap::new_key_type;
 use crate::app::transform::Transform;
-
-use super::geometry::Geometry;
+use super::geometry::GeometryID;
 
 // TODO: Create an enum from model to allow making a grouped model composites, where each node has transform and material but
 // only leafs has geometry in addition.
 
+new_key_type! {
+    /// An index of geometry instance which can be shared between multiple models
+    pub struct ModelID;
+}
+
+pub enum ModelPayload {
+    Geometry { geometry: GeometryID },
+    Group    { children: Vec<ModelID> },
+}
+
 pub struct Model {
-    geometry: Arc<Geometry>,
-    transform: Transform,
+    pub payload: ModelPayload,
+    pub transform: Transform,
+    // TODO: Add (Optional?) material to model
+}
+
+impl Model {
+    pub fn new(geometry: GeometryID) -> Self {
+        Self {
+            payload: ModelPayload::Geometry { geometry },
+            transform: Transform::default(),
+        }
+    }
+    
+    pub fn new_group(children: Vec<ModelID>) -> Self {
+        Self {
+            payload: ModelPayload::Group { children },
+            transform: Transform::default(),
+        }
+    }
+    
+    pub fn with_transform(mut self, transform: Transform) -> Self {
+        self.transform = transform;
+        self
+    }
 }

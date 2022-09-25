@@ -1,7 +1,10 @@
+use slotmap::{new_key_type, SlotMap};
+
 use crate::app::transform::Transform;
 
 use super::{svo::SVOctree, primitives::Primitive};
 
+#[derive(Clone)]
 pub enum GeometryOperation {
     Add,
     Subtract,
@@ -9,6 +12,7 @@ pub enum GeometryOperation {
     // TODO: Paint
 }
 
+#[derive(Clone)]
 pub struct GeometryEdit {
     pub primitive: Primitive,
     pub operation: GeometryOperation,
@@ -16,9 +20,7 @@ pub struct GeometryEdit {
     pub blending:  f32,
 }
 
-pub struct GeometryEditList {
-    pub edits: Vec<GeometryEdit>,
-}
+pub type GeometryEditList = Vec<GeometryEdit>;
 
 pub enum GeometryEvaluationStatus {
     NeedsEvaluation,
@@ -43,3 +45,26 @@ pub struct Geometry {
     pub evaluation_status: GeometryEvaluationStatus,
     
 }
+
+impl Geometry {
+    pub fn new() -> Self {
+        Self {
+            svo:               None,
+            edits:             vec![],
+            evaluation_status: GeometryEvaluationStatus::NeedsEvaluation,
+        }
+    }
+    
+    pub fn with_edits(mut self, edits: GeometryEditList) -> Self {
+        self.edits = edits;
+        self
+    }
+    
+}
+
+new_key_type! {
+    /// An index of geometry instance which can be shared between multiple models
+    pub struct GeometryID;
+}
+
+pub type GeometryPool = SlotMap<GeometryID, Geometry>;

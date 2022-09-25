@@ -2,13 +2,24 @@ use wgpu::RenderPass;
 use winit::window::Window;
 use crate::app::{scene::Scene, gui::Gui};
 
-use super::gpu::{GPUContext, GPUCamera};
+use super::gpu::{GPUCamera, GPUContext};
 
-/// A struct shared with all render modules
-pub struct RenderContext {
-    pub gpu: GPUContext,
-    pub camera: GPUCamera,
+/// A GPU context for rendering purposes
+pub struct RenderContext<'a> {
+    
+    /// A GPU context which is shared with whole application
+    pub gpu: &'a GPUContext,
+    
+    /// Configuration of surface is renderers responsibility
+    pub surface_config: wgpu::SurfaceConfiguration,
+    
+    /// A part of surface configuration
     pub scale_factor: f64,
+    
+    /// A camera is common shared render resource
+    ///     TODO: Maybe move if into shared render resources strut
+    pub camera: GPUCamera,
+    
 }
 
 pub trait RenderModule {
@@ -22,33 +33,50 @@ pub trait RenderModule {
     fn finalize(&mut self, gui: &mut Gui, scene: &mut Scene);
 }
 
-pub struct Renderer {
-    context: RenderContext,
-    modules: Vec<Box<dyn RenderModule>>, // this means that renderer is owner of all instances in this vector and those cannot outlive the renderer.
+pub struct Renderer<'a> {
+    context:        RenderContext<'a>,
+    modules:        Vec<Box<dyn RenderModule>>, // this means that renderer is owner of all instances in this vector and those cannot outlive the renderer.
     pub render_cnt: u64,
 }
 
-impl Renderer {
+impl<'a> Renderer<'a> {
     
     /// Creates a new renderer instance for window (initialize rendering context)
     #[profiler::function]
-    pub async fn new(window: &Window) -> Self {
-        let gpu = GPUContext::new(window).await;
+    pub fn new(gpu: &'a GPUContext, window: &Window) -> Renderer<'a> {
+        
+        // setup surface for rendering
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage:        wgpu::TextureUsages::RENDER_ATTACHMENT,     // texture will be used to draw on screen
+            format:       gpu.surface.get_supported_formats(&gpu.adapter)[0], // texture format - select first supported one
+            width:        window.inner_size().width,
+            height:       window.inner_size().height,
+            present_mode: wgpu::PresentMode::Fifo,                    // VSynch essentially - capping renders on display frame rate
+        };
+        gpu.surface.configure(&gpu.device, &surface_config);
+        
         let camera = GPUCamera::new(&gpu.device);
         let scale_factor = window.scale_factor();
+        
         Renderer {
-            context: RenderContext { gpu, camera, scale_factor },
+            context: RenderContext {
+                gpu,
+                surface_config,
+                scale_factor,
+                camera,
+            },
             modules: vec![],
             render_cnt: 0,
         }
     }
     
     /// Adds a new render module to the renderer
-    pub fn with_module<R>(mut self) -> Self
+    pub fn with_module<M, F>(mut self, get_module: F) -> Self
         where
-            R: RenderModule + for<'a> From<&'a RenderContext> + 'static
+            M: RenderModule + 'static,
+            F: FnOnce(&RenderContext) -> M,
     {
-        let module: R = R::from(&self.context);
+        let module = get_module(&self.context);
         self.modules.push(Box::new(module));
         self
     }
@@ -57,9 +85,9 @@ impl Renderer {
     #[profiler::function]
     pub fn resize(&mut self, size: &winit::dpi::PhysicalSize<u32>, scale_factor: f64) {
         if size.width > 0 && size.height > 0 {
-            self.context.gpu.surface_config.width = size.width;
-            self.context.gpu.surface_config.height = size.height;
-            self.context.gpu.surface.configure(&self.context.gpu.device, &self.context.gpu.surface_config);
+            self.context.surface_config.width = size.width;
+            self.context.surface_config.height = size.height;
+            self.context.gpu.surface.configure(&self.context.gpu.device, &self.context.surface_config);
         }
         self.context.scale_factor = scale_factor;
     }
@@ -139,6 +167,7 @@ impl Renderer {
     }
     
     /// Finalize rendering and update scene state - unflag dirty components as clean (prepared)
+    #[profiler::function]
     pub fn finalize(&mut self, gui: &mut Gui, scene: &mut Scene) {
         for module in &mut self.modules {
             module.finalize(gui, scene);
