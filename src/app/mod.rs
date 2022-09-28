@@ -11,7 +11,6 @@ pub mod clock;
 pub mod components;
 pub mod gui;
 pub mod log;
-pub mod model;
 pub mod scene;
 pub mod transform;
 pub mod updating;

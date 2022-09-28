@@ -1,8 +1,8 @@
-use dolly::prelude::{YawPitch, Arm};
+use dolly::prelude::{YawPitch, Arm, RightHanded};
 
 use crate::app::{
     application::ControlFlowResultAction,
-    updating::{UpdaterModule, UpdateContext, InputUpdateResult, ResizeContext},
+    updating::{UpdaterModule, UpdateContext, InputUpdateResult, ResizeContext}, camera::SmoothZoomArm,
 };
 
 
@@ -24,8 +24,8 @@ impl UpdaterModule for CameraUpdater {
         if scroll != 0.0 {
             context.scene.camera
                 .rig
-                .driver_mut::<Arm>()
-                .offset *= 1.0 + scroll * -0.3;
+                .driver_mut::<SmoothZoomArm<RightHanded>>()
+                .scale_distance(1.0 + scroll * -0.3);
         }
         
         InputUpdateResult::default() // do not prevent event propagation

@@ -8,11 +8,11 @@ use super::{
     camera::{Camera, CameraProperties},
     render_modules::lines::LineMesh,
     components::Deleted,
-    model::AXIS_VERTICES,
     transform::Transform,
+    gpu::vertices::ColorVertex,
     sdf::{
         model::{Model, ModelID},
-        geometry::{Geometry, GeometryEdit, GeometryID, GeometryPool},
+        geometry::{Geometry, GeometryEdit, GeometryPool},
         primitives::Primitive
     },
 };
@@ -41,20 +41,22 @@ impl Scene {
         // Create camera, which is sort of unique object outside of ECS world
         let camera = Camera::new(CameraProperties {
             aspect_ratio: window.inner_size().width as f32 / window.inner_size().height as f32,
+            fov: 50.0,
             ..Default::default()
-        }).orbit(
-            Vec3::new(0.0, 0.0, 0.0),
-            1.0
-        );
+        }).orbit(Vec3::ZERO, 10.0);
         
         // Create ECS world
         // ----------------
         //   - TODO: Add transform component to each entity in the world
         let mut world = World::new();
     
-        // World coordinate axis
+        // Simple Drawing of coordinate axes
+        // NOTE: This is a temporary line rendering system which will be changed, see file `src/app/render_modules/lines.rs` for more info.
         world.spawn((
-            LineMesh { is_dirty: true, vertices: AXIS_VERTICES },
+            LineMesh {
+                is_dirty: true,
+                vertices: LINE_VERTICES,
+            },
             Deleted(false),
         ));
         
@@ -87,3 +89,13 @@ impl Scene {
         }
     }
 }
+
+
+const LINE_VERTICES: &[ColorVertex] = &[
+    ColorVertex { position: Vec3::new(-2.0, 0.0, 0.0), color: Vec3::new(2.0, 0.0, 0.0) },
+    ColorVertex { position: Vec3::new(2.0, 0.0, 0.0),  color: Vec3::new(2.0, 0.0, 0.0) },
+    ColorVertex { position: Vec3::new(0.0, -2.0, 0.0), color: Vec3::new(0.0, 2.0, 0.0) },
+    ColorVertex { position: Vec3::new(0.0, 2.0, 0.0),  color: Vec3::new(0.0, 2.0, 0.0) },
+    ColorVertex { position: Vec3::new(0.0, 0.0, -2.0), color: Vec3::new(0.0, 0.0, 2.0) },
+    ColorVertex { position: Vec3::new(0.0, 0.0, 2.0),  color: Vec3::new(0.0, 0.0, 2.0) },
+];

@@ -1,7 +1,10 @@
+use std::marker::PhantomData;
+
 use glam::{Vec3, Mat4};
 use dolly::{
-    rig::CameraRig,
-    prelude::{Arm, YawPitch, Smooth, LookAt}
+    prelude::{YawPitch, Smooth, Handedness, Position},
+    rig::{CameraRig, RigUpdateParams},
+    driver::RigDriver, transform::Transform,
 };
 
 pub struct CameraProperties {
@@ -45,10 +48,9 @@ impl Camera {
     pub fn orbit(mut self, center: Vec3, distance: f32) -> Self {
         self.rig = CameraRig::builder()
             .with(YawPitch::new())
-            .with(Arm::new((Vec3::Z * distance) - center))
-            .with(Smooth::new_rotation(1.1))
-            .with(Smooth::new_position(1.1))
-            .with(LookAt::new(center))
+            .with(Smooth::new_rotation(0.8))
+            // .with(Smooth::new_rotation(0.3).predictive(true))
+            .with(SmoothZoomArm::new((Vec3::Z * distance) - center, 0.8))
             .build();
         self
     }
@@ -56,6 +58,8 @@ impl Camera {
 }
 
 impl Camera {
+    
+    #[profiler::function]
     pub fn view_matrix(&self) -> Mat4 {
         glam::Mat4::from_rotation_translation(
             self.rig.final_transform.rotation,
@@ -63,6 +67,7 @@ impl Camera {
         ).inverse()
     }
     
+    #[profiler::function]
     pub fn projection_matrix(&self) -> Mat4 {
         glam::Mat4::perspective_rh(
             self.fov.to_radians(),
@@ -72,7 +77,46 @@ impl Camera {
         )
     }
     
+    #[profiler::function]
     pub fn view_projection_matrix(&self) -> Mat4 {
         self.projection_matrix() * self.view_matrix()
+    }
+}
+
+/// This is a custom dolly rig driver that behaves just like Arm but smooths a offset vale
+/// Implementation based on example: https://github.com/h3r2tic/dolly/blob/main/examples/nested_driver.rs
+/// Offsets the camera along a vector, in the coordinate space of the parent.
+#[derive(Debug)]
+pub struct SmoothZoomArm<H: Handedness> {
+    direction: Vec3,
+    smooth_rig: CameraRig<H>,
+}
+
+impl<H: Handedness> SmoothZoomArm<H> {
+    pub fn new(offset: Vec3, smoothness: f32) -> Self {
+        let magnitude = offset.length();
+        Self {
+            direction: offset.normalize(),
+            smooth_rig: CameraRig::builder()
+                .with(Position::new(Vec3::new(magnitude, 0.0, 0.0)))
+                .with(Smooth::new_position(smoothness))
+                .build(),
+        }
+    }
+    
+    pub fn scale_distance(&mut self, scale: f32) {
+        let p = self.smooth_rig.driver_mut::<Position>();
+        p.position.x = p.position.x * scale;
+    }
+}
+
+impl<H: Handedness> RigDriver<H> for SmoothZoomArm<H> {
+    fn update(&mut self, params: RigUpdateParams<H>) -> Transform<H> {
+        let t = self.smooth_rig.update(params.delta_time_seconds);
+        Transform {
+            rotation: params.parent.rotation,
+            position: params.parent.position + params.parent.rotation * (t.position.x * self.direction),
+            phantom: PhantomData,
+        }
     }
 }

@@ -1,4 +1,4 @@
-///! this is a wrapper implementation for logging to any log command will have time measured by profiler
+// This is a wrapper implementation for logging to any log command will have time measured by profiler
 
 #[macro_export]
 macro_rules! profiled_log {

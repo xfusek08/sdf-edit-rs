@@ -5,10 +5,9 @@
 ///      - Line width
 ///      - Curved lines
 
-
 use std::{
     collections::{HashMap, hash_map::Entry},
-    borrow::Cow
+    borrow::Cow, task::Context
 };
 
 use hecs::Entity;
@@ -85,7 +84,7 @@ impl LineRenderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[ColorVertex::layout()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
+                buffers: &[ColorVertex::vertex_layout()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
             },
             // ⬇ Fragment shader -> define an entry point in our shader
             fragment: Some(wgpu::FragmentState {
@@ -93,7 +92,7 @@ impl LineRenderer {
                 entry_point: "fs_main",
                 // ⬇ configure expected outputs from fragment shader
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: context.surface_config.format,     // <- format out target texture (surface texture we will render into)
+                    format: context.surface_config.format,         // <- format out target texture (surface texture we will render into)
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING), // <- how to bled colors (with alpha) previous frame
                     write_mask: wgpu::ColorWrites::ALL,            // <- which color component will be overridden by FS?
                 })],
@@ -108,7 +107,13 @@ impl LineRenderer {
                 polygon_mode: wgpu::PolygonMode::Fill,       // <- Fill polygons with solid interpolated data
                 conservative: false,                         // <- Enables conservative rasterization (Requires Features::CONSERVATIVE_RASTERIZATION)
             },
-            depth_stencil: None, // <- do not use stencils
+            
+            // use depth buffer for depth testing (if any in context)
+            depth_stencil: match &context.depth_texture {
+                Some(depth_texture) => Some(depth_texture.stencil()),
+                None => None,
+            },
+            
             // ⬇ configure multisampling
             multisample: wgpu::MultisampleState {
                 count: 1, // <- number of samples

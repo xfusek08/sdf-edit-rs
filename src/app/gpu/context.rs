@@ -1,5 +1,6 @@
 use winit::window::Window;
 
+#[derive(Debug)]
 pub struct GPUContext {
     pub surface: wgpu::Surface,
     pub adapter: wgpu::Adapter,
@@ -26,8 +27,11 @@ impl GPUContext {
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::empty(),
-                limits: wgpu::Limits::default(),
+                features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE,
+                limits: wgpu::Limits {
+                    max_push_constant_size: 128,
+                    ..Default::default()
+                },
             },
             None
         ).await.expect("Failed to create device");

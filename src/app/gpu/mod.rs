@@ -7,3 +7,4 @@ pub use camera::GPUCamera;
 
 pub mod vertices;
 pub mod buffers;
+pub mod texture;

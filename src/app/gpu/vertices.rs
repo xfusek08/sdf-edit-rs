@@ -5,13 +5,27 @@ use glam::Vec3;
 
 /// A trait which each vertex type must implement.
 pub trait Vertex: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable {
-    fn layout<'a>() -> wgpu::VertexBufferLayout<'a>;
+    fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a>;
+}
+
+/// Simple Vertex
+/// A vertex holding just a position.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SimpleVertex(pub Vec3);
+
+impl Vertex for SimpleVertex {
+    fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: size_of::<SimpleVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &wgpu::vertex_attr_array![0 => Float32x3],
+        }
+    }
 }
 
 /// Color Vertex
-/// ------------------------------------------------
 /// A vertex type which contains position and color.
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ColorVertex {
@@ -36,7 +50,7 @@ impl ColorVertex {
     ];
 }
 impl Vertex for ColorVertex {
-    fn layout<'a>() -> wgpu::VertexBufferLayout<'a> {
+    fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
             array_stride: size_of::<ColorVertex>() as wgpu::BufferAddress, // <- width of one vertex in the buffer (each vertex is contained of N bytes)
             step_mode: wgpu::VertexStepMode::Vertex, // <- If set to Instance - each vertex will be pulled once per instance

@@ -19,7 +19,6 @@ profiler = { path = "profiler" }
 log = "0.4"                                              # Generic logging API without backend (env_logger)
 env_logger = "0.9"                                       # Logging into console based on environment variable.
 pollster = "0.2"                                         # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-anyhow = "1.0"                                           # create providing simpler error resulting
 winit = "0.27"                                           # Windowing library (event loop namaing, window creation, etc.)
 winit_input_helper = "0.13"                              # Helper for winit input handling, storing imput state based on processed events ...
 wgpu = "0.13"                                            # A cross platform GPU API, in this applicationVulcan backend is used.

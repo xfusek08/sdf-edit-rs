@@ -21,7 +21,7 @@ use super::{
     gpu::GPUContext,
     updating::{Updater, UpdateContext, ResizeContext},
     update_modules::{camera::CameraUpdater, gui::GuiUpdater, svo::SVOUpdater},
-    render_modules::{lines::LineRenderer, gui::GuiRenderer},
+    render_modules::{lines::LineRenderer, gui::GuiRenderer, svo::SVORenderer},
 };
 
 #[derive(Debug, Clone)]
@@ -58,6 +58,7 @@ pub async fn run(config: ApplicationConfig) {
     // Rendering system
     let mut renderer = Renderer::new(gpu.as_ref(), &window) // for now renderer needs only usual reference to GPU context
         .with_module(|c| LineRenderer::new(c))
+        .with_module(|c| SVORenderer::new(c))
         .with_module(|c| GuiRenderer::new(c));
     
     // Application state
