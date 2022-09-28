@@ -90,7 +90,6 @@ impl Texture {
 /// A construction of depth buffer texture according to: https://sotrh.github.io/learn-wgpu/beginner/tutorial8-depth/#a-pixels-depth
 #[derive(Debug)]
 pub struct DepthStencilTexture {
-    format: wgpu::TextureFormat,
     texture: Texture,
 }
 
@@ -99,11 +98,9 @@ impl DepthStencilTexture {
     
     #[profiler::function]
     pub fn new(label: &str, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
-        let format = Self::DEPTH_FORMAT;
-        
         let texture = profiler::call!(
             device.create_texture(&wgpu::TextureDescriptor {
-                format,
+                format: Self::DEPTH_FORMAT,
                 label: Some(label),
                 size: wgpu::Extent3d {
                     width: config.width,
@@ -135,7 +132,6 @@ impl DepthStencilTexture {
         );
         
         Self {
-            format,
             texture: Texture { texture, view, sampler },
         }
     }
@@ -144,9 +140,9 @@ impl DepthStencilTexture {
         &self.texture
     }
     
-    pub fn stencil(&self) -> wgpu::DepthStencilState {
+    pub fn stencil() -> wgpu::DepthStencilState {
         wgpu::DepthStencilState {
-            format: self.format,
+            format: Self::DEPTH_FORMAT,
             depth_write_enabled: true,
             depth_compare: wgpu::CompareFunction::Less,
             stencil: wgpu::StencilState::default(),

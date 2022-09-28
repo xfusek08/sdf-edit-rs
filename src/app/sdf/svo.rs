@@ -44,13 +44,9 @@ impl Default for SVOctree {
     
     /// A solid color 1x1x1 filled cube
     fn default() -> Self {
-        
-        // static cast from color RGBA8 to u32 type
-        let color_u32 = bytemuck::from_bytes::<u32>(&SVOctree::DEFAULT_COLOR.0).clone();
-        
         Self {
             root_header: 0, // no subdivision, no brick
-            root_payload: color_u32,
+            root_payload: bytemuck::from_bytes::<u32>(&SVOctree::DEFAULT_COLOR.0).clone(), // array of 4xu8 to u32 value
             node_pool: None,
             brick_pool: None,
         }

@@ -1,4 +1,4 @@
-use dolly::prelude::{YawPitch, Arm, RightHanded};
+use dolly::prelude::{YawPitch, RightHanded};
 
 use crate::app::{
     application::ControlFlowResultAction,
@@ -13,16 +13,18 @@ impl UpdaterModule for CameraUpdater {
     
     #[profiler::function]
     fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult {
+        let camera = &mut context.state.scene.camera;
+        
         let (dx, dy) = context.input.mouse_diff();
         if (dx != 0.0 || dy != 0.0) && context.input.mouse_held(0) {
-            context.scene.camera
+            camera
                 .rig
                 .driver_mut::<YawPitch>()
                 .rotate_yaw_pitch(-dx * 0.7, -dy * 0.7);
         }
         let scroll = context.input.scroll_diff();
         if scroll != 0.0 {
-            context.scene.camera
+            camera
                 .rig
                 .driver_mut::<SmoothZoomArm<RightHanded>>()
                 .scale_distance(1.0 + scroll * -0.3);
@@ -33,8 +35,10 @@ impl UpdaterModule for CameraUpdater {
     
     #[profiler::function]
     fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        let orig = context.scene.camera.rig.final_transform;
-        let new = context.scene.camera.rig.update(context.tick.delta.as_secs_f32());
+        let camera = &mut context.state.scene.camera;
+        
+        let orig = camera.rig.final_transform;
+        let new = camera.rig.update(context.tick.delta.as_secs_f32());
         if orig.position != new.position || orig.rotation != new.rotation {
             return ControlFlowResultAction::Redraw;
         }
@@ -43,7 +47,7 @@ impl UpdaterModule for CameraUpdater {
     
     #[profiler::function]
     fn resize(&mut self, context: &mut ResizeContext) -> ControlFlowResultAction {
-        context.scene.camera.aspect_ratio = context.size.width as f32 / context.size.height as f32;
+        context.state.scene.camera.aspect_ratio = context.size.width as f32 / context.size.height as f32;
         ControlFlowResultAction::None
     }
     

@@ -1,7 +1,7 @@
-use std::sync::Arc;
-
 ///! This is updater module which checks if there is a geometry requesting an SVO evaluation
 ///! And sends the svo of the geometry for evaluation
+
+use std::sync::Arc;
 
 use crate::app::{
     application::ControlFlowResultAction,
@@ -25,8 +25,10 @@ impl SVOUpdater {
 impl<'a> UpdaterModule for SVOUpdater {
     #[profiler::function]
     fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        self.evaluator.evaluate_geometries(&mut context.scene.geometry_pool);
-        self.evaluator.update_evaluated_geometries(&mut context.scene.geometry_pool);
+        let geometry_pool = &mut context.state.scene.geometry_pool;
+        
+        self.evaluator.evaluate_geometries(geometry_pool);
+        self.evaluator.update_evaluated_geometries(geometry_pool);
         ControlFlowResultAction::None
     }
 

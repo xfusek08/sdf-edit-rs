@@ -6,16 +6,25 @@ use std::borrow::Cow;
 use wgpu::{PushConstantRange, util::DeviceExt};
 
 use crate::app::{
-    gpu::vertices::{SimpleVertex, Vertex},
-    rendering::{RenderContext, RenderModule}, gui::Gui, scene::Scene
+    state::State,
+    gpu::{
+        vertices::{SimpleVertex, Vertex},
+        texture::DepthStencilTexture
+    },
+    renderer::{
+        RenderContext,
+        render_module::RenderModule,
+        render_pass::{RenderPassAttachment, RenderPassContext}
+    },
 };
 
-pub struct SVORenderer {
+#[derive(Debug)]
+pub struct SVORenderModule {
     pipeline: wgpu::RenderPipeline,
     cube: CubeModel,
 }
 
-impl SVORenderer {
+impl SVORenderModule {
     pub fn new(context: &RenderContext) -> Self {
         // ⬇ load and compile wgsl shader code
         let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -74,43 +83,51 @@ impl SVORenderer {
             },
             
             // use depth buffer for depth testing (if any in context)
-            depth_stencil: match &context.depth_texture {
-                Some(depth_texture) => Some(depth_texture.stencil()),
-                None => None,
-            },
+            depth_stencil: Some(DepthStencilTexture::stencil()),
             
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
         });
         
-        SVORenderer {
+        SVORenderModule {
             pipeline,
             cube: CubeModel::new(&context.gpu.device),
         }
     }
 }
 
-impl RenderModule for SVORenderer {
+impl RenderModule for SVORenderModule {
     
     #[profiler::function]
-    fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
-        
+    fn prepare(&mut self, state: &State, context: &RenderContext) {
+        // TODO: obtain culled list of visible nodes from all instancies of all geometries into a GPU buffers which will be rendered.
     }
     
     #[profiler::function]
-    fn render<'pass, 'a: 'pass>(&'a mut self, context: &'a RenderContext, render_pass: &mut wgpu::RenderPass<'pass>) {
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&[context.camera.view]));
-        render_pass.set_vertex_buffer(0, self.cube.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.cube.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..CUBE_INDICES.len() as u32, 0, 0..1);
+    fn render<'pass, 'a: 'pass>(
+        &'a self,
+        context: &'a RenderContext,
+        render_pass_context: &mut RenderPassContext<'pass>,
+    ) {
+        match render_pass_context {
+            RenderPassContext {
+                attachment: RenderPassAttachment::Base { .. },
+                render_pass
+            } => {
+                render_pass.set_pipeline(&self.pipeline);
+                render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&[context.camera.view]));
+                render_pass.set_vertex_buffer(0, self.cube.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(self.cube.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..CUBE_INDICES.len() as u32, 0, 0..1);
+            },
+            _ => {}
+        }
     }
     
-    #[profiler::function]
-    fn finalize(&mut self, _gui: &mut Gui, scene: &mut crate::app::scene::Scene) {
-    }
+    fn finalize(&mut self) {}
 }
 
+#[derive(Debug)]
 pub struct CubeModel {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,

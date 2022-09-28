@@ -1,9 +1,9 @@
 
 // evaluator is meant to run asynchronously, and is responsible for computing a geometry octree from its edit list
 
-use std::{thread, sync::Arc, mem::size_of};
+use std::{thread, sync::Arc};
 
-use crate::{app::gpu::GPUContext, info};
+use crate::{app::gpu::GPUContext, info, error};
 
 use super::{
     geometry::{Geometry, GeometryID, GeometryEditList, GeometryEvaluationStatus, GeometryPool},
@@ -68,11 +68,17 @@ impl Evaluator {
         for finished_index in finished_indices {
             profiler::scope!("Swap old SVO for new finished SVO");
             let job = self.evaluation_jobs.remove(finished_index);
-            if let Ok(svo) = job.join_handle.join() {
-                if let Some(geometry) = geometry_pool.get_mut(job.geometry_id) {
-                    info!("Finished evaluating geometry {:?}:", job.geometry_id);
-                    geometry.svo = Some(svo);
-                    geometry.evaluation_status = GeometryEvaluationStatus::Evaluated;
+            match job.join_handle.join() {
+                Ok(svo) => {
+                    if let Some(geometry) = geometry_pool.get_mut(job.geometry_id) {
+                        info!("Finished evaluating geometry {:?}:", job.geometry_id);
+                        geometry.svo = Some(svo);
+                        geometry.evaluation_status = GeometryEvaluationStatus::Evaluated;
+                    }
+                },
+                Err(error) => {
+                    error!("Error while evaluating geometry {:?}: {:?}", job.geometry_id, error);
+                    panic!("Error above was fatal, exiting...");
                 }
             }
         }
@@ -85,17 +91,21 @@ impl Evaluator {
         let edits = geometry.edits.clone();
         let gpu = self.gpu.clone();
         
+        dbg!(&geometry_id);
+        
         info!("Submitting geometry for evaluation job: {:?}", geometry_id);
         
         // Spawn a native evaluation thread and store its handle
-        let join_handle = std::thread::spawn(move || {
-            info!("Evaluating geometry: {:?}", geometry_id);
-            Self::evaluate(
-                gpu.as_ref(),
-                SVOctree::default(), // TODO: use some clever resource management to reuse allocated not used octree.
-                edits
-            )
-        });
+        let join_handle = profiler::call!(
+            std::thread::spawn(move || {
+                info!("Evaluating geometry: {:?}", geometry_id);
+                Self::evaluate(
+                    gpu.as_ref(),
+                    SVOctree::default(), // TODO: use some clever resource management to reuse allocated not used octree.
+                    edits
+                )
+            })
+        );
         
         EvaluationJob {
             join_handle,
@@ -108,7 +118,9 @@ impl Evaluator {
     #[profiler::function]
     fn evaluate(gpu: &GPUContext, svo: SVOctree, edits: GeometryEditList) -> SVOctree {
         // As a tmp solution, we just return a default SVO after 1 second
-        thread::sleep(std::time::Duration::from_secs(1));
+        info!("evaluate");
+        thread::sleep(std::time::Duration::from_millis(500));
+        info!("evaluate 2");
         svo
     }
     

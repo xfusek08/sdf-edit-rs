@@ -3,23 +3,26 @@
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::app::{gui::Gui, application::ControlFlowResultAction, scene::Scene};
-
 use super::clock::Tick;
+
+use crate::app::{
+    application::ControlFlowResultAction,
+    state::State
+};
+
 
 // UpdateContext
 // -------------
 
 pub struct UpdateContext<'a> {
-    pub gui:    &'a mut Gui,
-    pub scene:  &'a mut Scene,
+    pub state:  &'a mut State,
     pub input:  &'a WinitInputHelper,
     pub tick:   &'a Tick,
     pub window: &'a Window
 }
 
 pub struct ResizeContext<'a> {
-    pub scene:        &'a mut Scene,
+    pub state:        &'a mut State,
     pub size:         &'a winit::dpi::PhysicalSize<u32>,
     pub scale_factor: f64,
 }

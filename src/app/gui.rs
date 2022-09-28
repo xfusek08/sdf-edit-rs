@@ -1,10 +1,9 @@
 /// This file is inspired by: https://github.com/hasenbanck/egui_example/blob/master/src/main.rs
 
-use std::sync::Arc;
-use egui::Style;
+use egui::{Style, epaint::ClippedShape};
 use winit::event_loop::EventLoopWindowTarget;
 
-use super::scene::Scene;
+use super::state::Scene;
 
 #[profiler::function]
 pub fn style_gui(mut style: Style) -> Style {
@@ -19,6 +18,7 @@ pub fn style_gui(mut style: Style) -> Style {
 #[profiler::function]
 pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
     scene.counters.gui_updates += 1;
+    
     egui::Window::new("Apps")
         .default_pos((10.0, 10.0))
         .show(ctx, |ui| {
@@ -53,8 +53,12 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
 pub struct Gui {
     pub egui_ctx: egui::Context,
     pub egui_winit: egui_winit::State,
-    pub textures_delta: Option<egui::TexturesDelta>,
-    pub paint_jobs: Arc<Vec<egui::epaint::ClippedPrimitive>>, // this is shared with the renderer
+    pub data_to_render: Option<GuiDataToRender>,
+}
+
+pub struct GuiDataToRender {
+    pub textures_delta: egui::TexturesDelta,
+    pub shapes: Vec<ClippedShape>,
 }
 
 impl Gui {
@@ -69,8 +73,7 @@ impl Gui {
         Self {
             egui_ctx,
             egui_winit: egui_winit::State::new(event_loop),
-            paint_jobs: Default::default(),
-            textures_delta: Some(Default::default()),
+            data_to_render: None,
         }
     }
     

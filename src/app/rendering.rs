@@ -17,7 +17,7 @@ pub struct RenderContext<'a> {
     /// A part of surface configuration
     pub scale_factor: f64,
     
-    /// Shared GOU resources provided for all render modules
+    /// Shared GPU resources provided for all render modules
     
     /// A camera GPU resource
     pub camera: GPUCamera,

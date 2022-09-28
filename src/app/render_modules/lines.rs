@@ -6,27 +6,34 @@
 ///      - Curved lines
 
 use std::{
+    borrow::Cow,
     collections::{HashMap, hash_map::Entry},
-    borrow::Cow, task::Context
 };
 
 use hecs::Entity;
 
-use crate::app::{
-    gpu::{
-        GPUContext,
-        buffers::VertexBuffer,
-        vertices::{ ColorVertex, Vertex}
-    },
-    rendering::{RenderModule, RenderContext},
-    gui::Gui,
-    scene::Scene,
-    components::Deleted
+use crate::{
+    app::{
+        state::State,
+        components::Deleted,
+        gpu::{
+            GPUContext,
+            buffers::VertexBuffer,
+            vertices::{ ColorVertex, Vertex},
+            texture::DepthStencilTexture,
+        },
+        renderer::{
+            RenderContext,
+            render_module::RenderModule,
+            render_pass::{RenderPassAttachment, RenderPassContext}
+    }
+    }
 };
 
 // ECS Components to define line (renderable) entity
 // -------------------------------------------------
 
+#[derive(Debug)]
 pub struct LineMesh {
     pub is_dirty: bool,
     pub vertices: &'static [ColorVertex],
@@ -35,15 +42,20 @@ pub struct LineMesh {
 // Line Render Resource
 // --------------------
 
+#[derive(Debug)]
 struct LineRenderResource {
     vertex_buffer: VertexBuffer,
 }
 impl LineRenderResource {
+    
+    #[profiler::function]
     fn new(mesh: &LineMesh, context: &GPUContext) -> Self {
         Self {
             vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
         }
     }
+    
+    #[profiler::function]
     fn update(&mut self, mesh: &LineMesh, context: &GPUContext) {
         self.vertex_buffer.update(context, mesh.vertices);
     }
@@ -52,13 +64,14 @@ impl LineRenderResource {
 // Line Renderer
 // -------------
 
-pub struct LineRenderer {
+#[derive(Debug)]
+pub struct LineRenderModule {
     pipeline: wgpu::RenderPipeline,
     render_resources: HashMap<Entity, LineRenderResource>,
 }
 
 // Construct this render module (a pipeline) from render context
-impl LineRenderer {
+impl LineRenderModule {
     
     #[profiler::function]
     pub fn new(context: &RenderContext) -> Self {
@@ -109,10 +122,7 @@ impl LineRenderer {
             },
             
             // use depth buffer for depth testing (if any in context)
-            depth_stencil: match &context.depth_texture {
-                Some(depth_texture) => Some(depth_texture.stencil()),
-                None => None,
-            },
+            depth_stencil: Some(DepthStencilTexture::stencil()),
             
             // ⬇ configure multisampling
             multisample: wgpu::MultisampleState {
@@ -131,10 +141,12 @@ impl LineRenderer {
     
 }
 
-impl RenderModule for LineRenderer {
+impl RenderModule for LineRenderModule {
     
     #[profiler::function]
-    fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
+    fn prepare(&mut self, state: &State, context: &RenderContext) {
+        let scene = &state.scene;
+        
         // For each proper line entity is scene world, update render resources
         for (
             entity,
@@ -169,25 +181,25 @@ impl RenderModule for LineRenderer {
     }
     
     #[profiler::function]
-    fn render<'pass, 'a: 'pass>(&'a mut self, context: &'a RenderContext, render_pass: &mut wgpu::RenderPass<'pass>) {
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &context.camera.bind_group, &[]);
-        
-        // TODO: for now there is one draw call per line entity, but we can optimize this by drawing all line entities in one draw call using instanced rendering
-        for (_, LineRenderResource { vertex_buffer }) in &self.render_resources {
-            profiler::scope!("Draw Line entity");
-            render_pass.set_vertex_buffer(0, vertex_buffer.buffer.slice(..));
-            render_pass.draw(0..vertex_buffer.size as u32, 0..1);
+    fn render<'pass, 'a: 'pass>(
+        &'a self,
+        context: &'a RenderContext,
+        render_pass_context: &mut RenderPassContext<'pass>,
+    ) {
+        // dbg!(&render_pass_context);
+        if let RenderPassAttachment::Base { .. } = render_pass_context.attachment {
+            render_pass_context.render_pass.set_pipeline(&self.pipeline);
+            render_pass_context.render_pass.set_bind_group(0, &context.camera.bind_group, &[]);
+            
+            // TODO: for now there is one draw call per line entity, but we can optimize this by drawing all line entities in one draw call using instanced rendering
+            for (_, LineRenderResource { vertex_buffer }) in &self.render_resources {
+                profiler::scope!("Draw Line entity");
+                render_pass_context.render_pass.set_vertex_buffer(0, vertex_buffer.buffer.slice(..));
+                render_pass_context.render_pass.draw(0..vertex_buffer.size as u32, 0..1);
+            }
         }
-        
     }
     
-    #[profiler::function]
-    fn finalize(&mut self, _gui: &mut Gui, scene: &mut crate::app::scene::Scene) {
-        // for each entity in scene world with line mesh
-        for (_, mesh) in scene.world.query_mut::<&mut LineMesh>() {
-            mesh.is_dirty = false;
-        }
-    }
+    fn finalize(&mut self) {}
     
 }

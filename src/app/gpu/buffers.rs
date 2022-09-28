@@ -15,6 +15,7 @@ fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], co
     )
 }
 
+#[derive(Debug)]
 pub struct VertexBuffer {
     /// Label of buffer on GPU.
     pub label: Option<&'static str>,
