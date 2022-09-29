@@ -40,4 +40,5 @@ impl<'a> UpdaterModule for SVOUpdater {
         ControlFlowResultAction::None
     }
     
+    fn after_render(&mut self, state: &mut crate::app::state::State) {}
 }

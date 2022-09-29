@@ -51,4 +51,6 @@ impl UpdaterModule for CameraUpdater {
         ControlFlowResultAction::None
     }
     
+    fn after_render(&mut self, state: &mut crate::app::state::State) {}
+    
 }

@@ -9,9 +9,6 @@ name = "sdf-edit-rs"
 version = "0.0.1"
 edition = "2021"
 
-[env]
-RUST_BACKTRACE = 1
-
 [dependencies]
 profiler = { path = "profiler" }
 

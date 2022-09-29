@@ -34,6 +34,7 @@ pub trait UpdaterModule {
     fn input(&mut self, context: &mut UpdateContext) -> InputUpdateResult;
     fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction;
     fn resize(&mut self, context: &mut ResizeContext) -> ControlFlowResultAction;
+    fn after_render(&mut self, state: &mut State);
 }
 
 // InputUpdateResult
@@ -122,6 +123,13 @@ impl Updater {
             result = result.combine(module.resize(&mut context));
         }
         result
+    }
+    
+    #[profiler::function]
+    pub fn after_render(&mut self, state: &mut State) {
+        for module in self.modules.iter_mut() {
+            module.after_render(state);
+        }
     }
     
 }

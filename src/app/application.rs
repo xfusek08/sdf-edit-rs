@@ -212,9 +212,12 @@ pub async fn run(config: ApplicationConfig) {
                 renderer.render();
                 renderer.finalize();
                 
+                // this could be run in parallel with render and finalize
+                updater.after_render(&mut state);
+                
+                // ! TMP stuff
                 state.scene.counters.renders += 1;
                 
-                // ! tmp until line renderer is refactored:
                 for (_, mesh) in state.scene.world.query_mut::<&mut LineMesh>() {
                     mesh.is_dirty = false;
                 }
