@@ -4,8 +4,10 @@ use glam::{Vec3, Mat4};
 use dolly::{
     prelude::{YawPitch, Smooth, Handedness, Position},
     rig::{CameraRig, RigUpdateParams},
-    driver::RigDriver, transform::Transform,
+    driver::RigDriver,
+    transform::Transform as DollyTransform,
 };
+use super::transform::Transform;
 
 pub struct CameraProperties {
     pub aspect_ratio: f32,
@@ -81,6 +83,14 @@ impl Camera {
     pub fn view_projection_matrix(&self) -> Mat4 {
         self.projection_matrix() * self.view_matrix()
     }
+    
+    pub fn transform(&self) -> Transform {
+        Transform {
+            position: self.rig.final_transform.position,
+            rotation: self.rig.final_transform.rotation,
+            ..Default::default()
+        }
+    }
 }
 
 /// This is a custom dolly rig driver that behaves just like Arm but smooths a offset vale
@@ -111,9 +121,9 @@ impl<H: Handedness> SmoothZoomArm<H> {
 }
 
 impl<H: Handedness> RigDriver<H> for SmoothZoomArm<H> {
-    fn update(&mut self, params: RigUpdateParams<H>) -> Transform<H> {
+    fn update(&mut self, params: RigUpdateParams<H>) -> DollyTransform<H> {
         let t = self.smooth_rig.update(params.delta_time_seconds);
-        Transform {
+        DollyTransform {
             rotation: params.parent.rotation,
             position: params.parent.position + params.parent.rotation * (t.position.x * self.direction),
             phantom: PhantomData,

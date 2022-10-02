@@ -5,7 +5,7 @@ use winit::window::Window;
 
 use crate::app::{
     state::State,
-    gpu::{GPUContext, GPUCamera},
+    gpu::{GPUContext, camera::GPUCamera},
 };
 
 use super::{

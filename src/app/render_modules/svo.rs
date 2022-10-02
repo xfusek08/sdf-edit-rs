@@ -9,7 +9,7 @@ use crate::app::{
     state::State,
     gpu::{
         vertices::{SimpleVertex, Vertex},
-        texture::DepthStencilTexture
+        texture::DepthStencilTexture, camera::GPUCameraPushConstantData
     },
     renderer::{
         RenderContext,
@@ -43,8 +43,9 @@ impl SVORenderModule {
                     bind_group_layouts: &[],
                     // set camera transform matrix as shader push constant
                     push_constant_ranges: &[PushConstantRange {
-                        stages: wgpu::ShaderStages::VERTEX,
-                        range: 0..64,
+                        stages: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                        // set to size of push constant camera data
+                        range: 0..std::mem::size_of::<GPUCameraPushConstantData>() as u32,
                     }],
                 })
             ),
@@ -115,7 +116,13 @@ impl RenderModule for SVORenderModule {
                 render_pass
             } => {
                 render_pass.set_pipeline(&self.pipeline);
-                render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&[context.camera.view]));
+                
+                render_pass.set_push_constants(
+                    wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    0,
+                    bytemuck::cast_slice(&[context.camera.to_push_constant_data()]
+                ));
+                
                 render_pass.set_vertex_buffer(0, self.cube.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(self.cube.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
                 render_pass.draw_indexed(0..CUBE_INDICES.len() as u32, 0, 0..1);
@@ -156,16 +163,16 @@ impl CubeModel {
 
 const CUBE_VERTICES: &[SimpleVertex] = &[
     // front face
-    SimpleVertex(glam::Vec3::new(-1.0,  1.0, 1.0)), // 0 TL
-    SimpleVertex(glam::Vec3::new(-1.0, -1.0, 1.0)), // 1 BL
-    SimpleVertex(glam::Vec3::new( 1.0,  1.0, 1.0)), // 2 TR
-    SimpleVertex(glam::Vec3::new( 1.0, -1.0, 1.0)), // 3 BR
+    SimpleVertex(glam::Vec3::new(-0.5,  0.5, 0.5)), // 0 TL
+    SimpleVertex(glam::Vec3::new(-0.5, -0.5, 0.5)), // 1 BL
+    SimpleVertex(glam::Vec3::new( 0.5,  0.5, 0.5)), // 2 TR
+    SimpleVertex(glam::Vec3::new( 0.5, -0.5, 0.5)), // 3 BR
     
     // back face
-    SimpleVertex(glam::Vec3::new(-1.0,  1.0, -1.0)), // 4 TL
-    SimpleVertex(glam::Vec3::new(-1.0, -1.0, -1.0)), // 5 BL
-    SimpleVertex(glam::Vec3::new( 1.0,  1.0, -1.0)), // 6 TR
-    SimpleVertex(glam::Vec3::new( 1.0, -1.0, -1.0)), // 7 BR
+    SimpleVertex(glam::Vec3::new(-0.5,  0.5, -0.5)), // 4 TL
+    SimpleVertex(glam::Vec3::new(-0.5, -0.5, -0.5)), // 5 BL
+    SimpleVertex(glam::Vec3::new( 0.5,  0.5, -0.5)), // 6 TR
+    SimpleVertex(glam::Vec3::new( 0.5, -0.5, -0.5)), // 7 BR
 ];
 
 // The cube is created from two triangle strips

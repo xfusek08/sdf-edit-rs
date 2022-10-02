@@ -2,9 +2,7 @@
 mod context;
 pub use context::*;
 
-mod camera;
-pub use camera::GPUCamera;
-
+pub mod camera;
 pub mod vertices;
 pub mod buffers;
 pub mod texture;

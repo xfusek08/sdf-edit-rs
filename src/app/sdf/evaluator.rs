@@ -1,13 +1,13 @@
 
 // evaluator is meant to run asynchronously, and is responsible for computing a geometry octree from its edit list
 
-use std::{thread, sync::Arc};
+use std::{thread, sync::Arc, borrow::Cow};
 
 use crate::{app::gpu::GPUContext, info, error};
 
 use super::{
+    svo::SVOctree,
     geometry::{Geometry, GeometryID, GeometryEditList, GeometryEvaluationStatus, GeometryPool},
-    svo::{SVOctree, SVONodePoolCapacity}
 };
 
 pub struct EvaluationJob {
@@ -15,11 +15,16 @@ pub struct EvaluationJob {
     geometry_id: GeometryID,
 }
 
-pub struct Evaluator {
-    gpu: Arc<GPUContext>,
-    evaluation_jobs: Vec<EvaluationJob>,
+#[derive(Clone)]
+pub struct EvaluationGPUResources {
+    pub gpu: Arc<GPUContext>,
+    pub pipeline: Arc<wgpu::ComputePipeline>,
 }
 
+pub struct Evaluator {
+    gpu_resources: EvaluationGPUResources,
+    evaluation_jobs: Vec<EvaluationJob>,
+}
 
 // when evaluator is dropped, it should wait for all evaluation threads to finish
 impl Drop for Evaluator {
@@ -31,20 +36,30 @@ impl Drop for Evaluator {
     }
 }
 
+// Construction
 impl Evaluator {
-    
-    // NOTE: Masks are not meant to be used on CPU side - this is only for debugging purposes such as reading (parsing) the contents of the buffers for debug display.
-    const OCTREE_SUBDIVIDE_THIS_BIT: u32 = 0b10000000_00000000_00000000_00000000;
-    const OCTREE_HAS_BRICK_BIT:      u32 = 0b01000000_00000000_00000000_00000000;
-    const OCTREE_NODE_FLAGS_MASK:    u32 = 0b11000000_00000000_00000000_00000000;
-    const OCTREE_CHILD_POINTER_MASK: u32 = 0b00111111_11111111_11111111_11111111;
-    
     pub fn new(gpu: Arc<GPUContext>) -> Evaluator {
+        let pipeline = Arc::new(gpu.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("SDF Evaluator"),
+            layout: None,
+            entry_point: "main",
+            module: &gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("SVO Evaluator Compute Shader Module"),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../resources/shaders/evaluate_svo_compute.wgsl"))),
+            }),
+        }));
+        
         Self {
-            gpu,
+            gpu_resources: EvaluationGPUResources { gpu, pipeline },
             evaluation_jobs: vec![],
         }
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+// Geometry evaluation job management (public interface)
+impl Evaluator {
     
     #[profiler::function]
     pub fn evaluate_geometries(&mut self, geometry_pool: &mut GeometryPool) {
@@ -89,20 +104,21 @@ impl Evaluator {
         
         geometry.evaluation_status = GeometryEvaluationStatus::Evaluating;
         let edits = geometry.edits.clone();
-        let gpu = self.gpu.clone();
+        
         
         dbg!(&geometry_id);
         
         info!("Submitting geometry for evaluation job: {:?}", geometry_id);
         
+        
         // Spawn a native evaluation thread and store its handle
+        let gpu_resources = self.gpu_resources.clone();
         let join_handle = profiler::call!(
             std::thread::spawn(move || {
-                info!("Evaluating geometry: {:?}", geometry_id);
                 Self::evaluate(
-                    gpu.as_ref(),
                     SVOctree::default(), // TODO: use some clever resource management to reuse allocated not used octree.
-                    edits
+                    edits,
+                    gpu_resources,
                 )
             })
         );
@@ -113,15 +129,26 @@ impl Evaluator {
         }
     }
     
+}
+
+// ------------------------------------------------------------------------------------------------
+
+// Internal evaluation algorithm
+impl Evaluator {
+    // NOTE: Masks are not meant to be used on CPU side - this is only for debugging purposes such as reading (parsing) the contents of the buffers for debug display.
+    const OCTREE_SUBDIVIDE_THIS_BIT: u32 = 0b10000000_00000000_00000000_00000000;
+    const OCTREE_HAS_BRICK_BIT:      u32 = 0b01000000_00000000_00000000_00000000;
+    const OCTREE_NODE_FLAGS_MASK:    u32 = 0b11000000_00000000_00000000_00000000;
+    const OCTREE_CHILD_POINTER_MASK: u32 = 0b00111111_11111111_11111111_11111111;
+    
     /// Function evaluating one edit list into an SVOctree
     /// The SVO exists in memory because it's allocated resources could be reused to store the new SVO.
     #[profiler::function]
-    fn evaluate(gpu: &GPUContext, svo: SVOctree, edits: GeometryEditList) -> SVOctree {
+    fn evaluate(svo: SVOctree, edits: GeometryEditList, gpu_resources: EvaluationGPUResources) -> SVOctree {
         // As a tmp solution, we just return a default SVO after 1 second
         info!("evaluate");
         thread::sleep(std::time::Duration::from_millis(500));
         info!("evaluate 2");
         svo
     }
-    
 }
