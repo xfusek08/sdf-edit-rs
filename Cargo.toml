@@ -13,23 +13,19 @@ edition = "2021"
 profiler = { path = "profiler" }
 
 # Core
-log = "0.4"                                              # Generic logging API without backend (env_logger)
-env_logger = "0.9"                                       # Logging into console based on environment variable.
-pollster = "0.2"                                         # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-winit = "0.27"                                           # Windowing library (event loop namaing, window creation, etc.)
-winit_input_helper = "0.13"                              # Helper for winit input handling, storing imput state based on processed events ...
-wgpu = "0.13"                                            # A cross platform GPU API, in this applicationVulcan backend is used.
-dolly = "0.3"                                            # A camera rig library with smooting and inertia.
-glam = { version = "0.21", features = [ "bytemuck" ] }   # Math! Withsupporing SIMD optimizations
-bytemuck = { version = "1.12", features = [ "derive" ] } # Static casting between basic types
-image = { version = "0.24", features = ["jpeg", "png"] } # Handeling images for texture loading
-slotmap = "1.0"                                          # Efficient storage of entities
-hecs = "0.9"                                             # A simple minimal ECS for scene object management
+log = "0.4"                                            # Generic logging API without backend (env_logger)
+env_logger = "0.9"                                     # Logging into console based on environment variable.
+glium = "*"                                            # OpenGL abstraction layer packing windowing and og context creaton dependencies
+
+# Helptime helpers
+winit_input_helper = "0.13"                            # Helper for winit input handling, storing imput state based on processed events ...
+dolly = "0.3"                                          # A camera rig library with smooting and inertia.
+glam = { version = "0.21", features = [ "bytemuck" ] } # Math! Withsupporing SIMD optimizations
+slotmap = "1.0"                                        # Efficient storage of entities
 
 # GUI
 egui = "0.19"       # Immidiate mode gui library
-egui-wgpu = "0.19"  # GPU backend for egui
-egui-winit = "0.19" # GPU backend for egui
+egui_glium = "0.19" # Egui backend for glium
 
 [features]
 profiling = [

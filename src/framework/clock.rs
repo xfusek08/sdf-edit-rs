@@ -27,7 +27,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn now(tick_per_seconds: u64) -> Self {
+    pub fn now(tick_per_seconds: u32) -> Self {
         Self {
             update_time_window: Duration::from_secs_f64(1.0 / (tick_per_seconds as f64)),
             next_tick_scheduled: Instant::now(),
