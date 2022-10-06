@@ -37,6 +37,7 @@ impl GPUContext {
                     features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE,
                     limits: wgpu::Limits {
                         max_push_constant_size: 128,
+                        max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups
                         ..Default::default()
                     },
                 },

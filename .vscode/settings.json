@@ -1,6 +1,7 @@
 {
     "rust-analyzer.cargo.features": [ "profiling" ],
     "cSpell.words": [
+        "AABB",
         "bindgroup",
         "bytemuck",
         "despawn",
@@ -30,6 +31,7 @@
         "VULKAN",
         "wgpu",
         "winit",
+        "workgroups",
         "Zeroable"
     ],
     "workbench.colorCustomizations": {

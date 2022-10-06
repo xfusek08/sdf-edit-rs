@@ -2,7 +2,7 @@ use slotmap::{new_key_type, SlotMap};
 
 use crate::app::transform::Transform;
 
-use super::{svo::SVOctree, primitives::Primitive};
+use super::{svo::Octree, primitives::Primitive};
 
 #[derive(Clone)]
 pub enum GeometryOperation {
@@ -31,7 +31,7 @@ pub enum GeometryEvaluationStatus {
 pub struct Geometry {
     
     /// A Sparse Voxel Octree evaluated into GPU memory
-    pub svo: Option<SVOctree>,
+    pub svo: Option<Octree>,
     
     /// A list of edits that compose this geometry
     pub edits: GeometryEditList,
