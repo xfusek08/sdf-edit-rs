@@ -7,7 +7,8 @@ use dolly::{
     driver::RigDriver,
     transform::Transform as DollyTransform,
 };
-use super::transform::Transform;
+
+use super::math::Transform;
 
 pub struct CameraProperties {
     pub aspect_ratio: f32,

@@ -5,16 +5,23 @@ use std::{thread, sync::Arc, borrow::Cow};
 
 use wgpu::util::DeviceExt;
 
-use crate::{app::gpu::GPUContext, info, error};
+use crate::{
+    info,
+    error,
+    app::{
+        gpu::GPUContext,
+        math::BoundingCube
+    },
+};
 
 use super::{
     svo,
-    bounding_volumes::BoundingCube,
     geometry::{
         Geometry,
         GeometryID,
         GeometryPool,
-        GeometryEvaluationStatus, GeometryEditList,
+        GeometryEvaluationStatus,
+        GeometryEditList,
     },
 };
 

@@ -14,23 +14,19 @@ use winit::{
 
 use super::{
     clock::Clock,
-    state::{State, Scene},
     gui::Gui,
     components::Deleted,
-    transform::Transform,
+    math::Transform,
+    state::{State, Scene},
     gpu::{GPUContext, vertices::ColorVertex},
     renderer::{Renderer, render_pass::RenderPassAttachment},
     updating::{Updater, UpdateContext, ResizeContext},
-    update_modules::{
-        gui::GuiUpdater,
-        camera::CameraUpdater,
-        svo::SVOUpdater
-    },
+    update_modules::{gui::GuiUpdater, camera::CameraUpdater, svo::SVOUpdater},
     camera::{Camera, CameraProperties},
     render_modules::{
         lines::{LineMesh, LineRenderModule},
-        svo::SVORenderModule, gui::GUIRenderModule,
-        // gui::GUIRenderModule
+        svo::SVORenderModule,
+        gui::GUIRenderModule,
     },
     sdf::{
         geometry::{GeometryEdit, Geometry, GeometryPool},

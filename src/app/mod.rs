@@ -1,6 +1,7 @@
 
 // submodules
 pub mod gpu;
+pub mod math;
 pub mod sdf;
 pub mod render_modules;
 pub mod update_modules;
@@ -12,6 +13,5 @@ pub mod components;
 pub mod gui;
 pub mod log;
 pub mod state;
-pub mod transform;
 pub mod updating;
 pub mod renderer;

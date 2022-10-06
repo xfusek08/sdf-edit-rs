@@ -1,6 +1,6 @@
 use slotmap::{new_key_type, SlotMap};
 
-use crate::app::transform::Transform;
+use crate::app::math::Transform;
 
 use super::{svo::Octree, primitives::Primitive};
 

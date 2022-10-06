@@ -1,7 +1,7 @@
 
 use crate::app::{
-    sdf::bounding_volumes::AABB,
     gpu::GPUContext,
+    math::AABB,
 };
 
 use super::{NodePool, BrickPool, BrickPoolFormat, BrickVoxelFormat};

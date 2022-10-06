@@ -1,6 +1,9 @@
 use wgpu::util::DeviceExt;
 
-use crate::app::{camera::Camera, transform::Transform};
+use crate::app::{
+    camera::Camera,
+    math::Transform
+};
 
 #[derive(Debug)]
 pub struct GPUCamera {

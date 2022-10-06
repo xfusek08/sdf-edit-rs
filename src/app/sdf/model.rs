@@ -1,5 +1,5 @@
 use slotmap::new_key_type;
-use crate::app::transform::Transform;
+use crate::app::math::Transform;
 use super::geometry::GeometryID;
 
 // TODO: Create an enum from model to allow making a grouped model composites, where each node has transform and material but
