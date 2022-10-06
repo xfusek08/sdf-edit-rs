@@ -30,27 +30,30 @@ impl GPUContext {
             ).await.expect("Failed to find an appropriate adapter")
         );
         
-        let (device, queue) = profiler::call!(
-            adapter.request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE,
-                    limits: wgpu::Limits {
-                        max_push_constant_size: 128,
-                        max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups
-                        ..Default::default()
-                    },
-                },
-                None
-            ).await.expect("Failed to create device")
-        );
+        let (device, queue) = Self::new_device_queue(&adapter).await;
         
-        GPUContext {
+        Self {
             adapter,
             surface,
             device,
             queue,
         }
+    }
+    
+    #[profiler::function]
+    pub async fn new_device_queue(adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
+        adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: None,
+                features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE,
+                limits: wgpu::Limits {
+                    max_push_constant_size: 128,
+                    max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups
+                    ..Default::default()
+                },
+            },
+            None
+        ).await.expect("Failed to create device")
     }
     
 }

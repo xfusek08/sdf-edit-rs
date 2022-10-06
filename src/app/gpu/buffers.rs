@@ -50,10 +50,12 @@ impl VertexBuffer {
             self.capacity = vertices.len();
         } else {
             dbg!("Updating vertex buffer");
-            context.queue.write_buffer(
-                &self.buffer,
-                0,
-                bytemuck::cast_slice(vertices)
+            profiler::call!(
+                context.queue.write_buffer(
+                    &self.buffer,
+                    0,
+                    bytemuck::cast_slice(vertices)
+                )
             );
         }
         self.size = vertices.len();

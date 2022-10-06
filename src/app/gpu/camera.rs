@@ -76,7 +76,9 @@ impl GPUCamera {
     pub fn update(&mut self, queue: &wgpu::Queue, camera: &Camera) {
         self.transform = camera.transform();
         self.view = camera.view_projection_matrix();
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.view]));
+        profiler::call!(
+            queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.view]))
+        );
     }
     
     #[profiler::function]

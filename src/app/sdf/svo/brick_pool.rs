@@ -7,6 +7,7 @@ use super::Capacity;
 
 /// A format of one voxel in brick pool texture.
 /// - It determines how many bits are used for each voxel.
+#[derive(Debug)]
 pub enum BrickVoxelFormat {
     Distance, DistanceColor
     // TODO: f16 | f32 | f16f16 | f32f32
@@ -23,6 +24,7 @@ impl BrickVoxelFormat {
 /// A format of brick pool texture.
 /// - Used to initialize brick pool texture.
 /// - It determines total size of the texture by defining voxel format and padding around each brick.
+#[derive(Debug)]
 pub struct BrickPoolFormat {
     /// What is stored in one voxel of the brick in brick pool.
     pub voxel_format: BrickVoxelFormat,
@@ -47,8 +49,11 @@ impl BrickPoolFormat {
     pub fn padding(&self) -> u32 {
         self.padding
     }
+    pub fn voxels_per_brick_in_one_dimension(&self) -> u32 {
+        8 + 2 * self.padding
+    }
     pub fn ints_per_brick_in_one_dimension(&self) -> u32 {
-        2 * self.padding + self.voxel_format.voxel_ints()
+        self.voxels_per_brick_in_one_dimension() * self.voxel_format.voxel_ints()
     }
     pub fn bytes_per_brick_in_one_dimension(&self) -> u32 {
         (std::mem::size_of::<u32>() as u32) * self.ints_per_brick_in_one_dimension()
@@ -111,15 +116,15 @@ impl BrickPool {
     #[profiler::function]
     pub fn new(gpu: &GPUContext, capacity: Capacity, format: BrickPoolFormat) -> Self {
         let side_size = Self::dimension_from_capacity(capacity.nodes());
-        
+        dbg!((&format, side_size, format.voxels_per_brick_in_one_dimension(), side_size * format.voxels_per_brick_in_one_dimension()));
         let brick_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
                 size: wgpu::Extent3d {
-                    width:                 side_size,
-                    height:                side_size,
-                    depth_or_array_layers: side_size,
+                    width:                 side_size * format.voxels_per_brick_in_one_dimension(),
+                    height:                side_size * format.voxels_per_brick_in_one_dimension(),
+                    depth_or_array_layers: side_size * format.voxels_per_brick_in_one_dimension(),
                 },
-                label:           None,
+                label:           Some("Brick Pool Texture"),
                 mip_level_count: 1,
                 sample_count:    1,
                 dimension:       wgpu::TextureDimension::D3,
@@ -131,14 +136,14 @@ impl BrickPool {
         let brick_atlas_view = brick_atlas.create_view(&wgpu::TextureViewDescriptor::default());
         
         let side_size_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("Brick Pool Side Size Buffer"),
             contents: bytemuck::cast_slice(&[side_size]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
         
         let count = 0u32;
         let count_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("Brick Pool Count Buffer"),
             contents: bytemuck::cast_slice(&[count]),
             usage: wgpu::BufferUsages::STORAGE,
         });
@@ -214,7 +219,7 @@ impl BrickPool {
                     count: None,
                     ty: wgpu::BindingType::StorageTexture {
                         access: wgpu::StorageTextureAccess::WriteOnly,
-                        format: wgpu::TextureFormat::Rg32Float, // TODO: Use format of given BrickVoxelFormat
+                        format: wgpu::TextureFormat::R32Float, // TODO: Use format of given BrickVoxelFormat
                         view_dimension: wgpu::TextureViewDimension::D3,
                     }
                 },

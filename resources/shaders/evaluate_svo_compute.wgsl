@@ -149,10 +149,10 @@ fn load_node(node_index: u32) -> Node {
 
 // Node brick evalution
 
-// /// TODO: instead of distance pass any (generic) data storabe in brick_atlas texture
-// fn write_to_brick(voxel_coords: vec3<u32>, distance: f32) {
-//    // TODO: write data to brick
-// }
+/// TODO: instead of distance pass any (generic) data storabe in brick_atlas texture
+fn write_to_brick(voxel_coords: vec3<u32>, distance: f32) {
+    textureStore(brick_atlas, vec3<i32>(voxel_coords), vec4<f32>(distance, 0.0, 0.0, 0.0));
+}
 
 let BRICK_IS_EMPTY = 0u;
 let BRICK_IS_BOUONDARY = 1u;
@@ -165,15 +165,16 @@ var<workgroup> divide: atomic<u32>;
 var<workgroup> brick_index: u32;
 fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     var result: BrickEvaluationResult;
-    var branch_coefficients = vec3<i32>(in.local_invocation_id) - 4; // (0,0,0) - (7,7,7) => (-4,-4,-4) - (3,3,3)
-    var voxel_size = 1.0 / 8.0; // hopefully the only FP division and possibly optimize into multiplication by 0.5, 0.25 etc.
-    var half_step = voxel_size * 0.5;
-    var shift_vector = voxel_size * vec3<f32>(branch_coefficients) + half_step;
-    var voxel_center_local = bounding_cube_transform(node.vertex, shift_vector);
-    var voxel_center_global = bounding_cube_transform(work_assigment.svo_boundding_cube, voxel_center_local);
-    var voxel_size_local = voxel_size * node.vertex.w;
-    var voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
-    var sdf_value = sample_sdf(voxel_center_global);
+    
+    let branch_coefficients = vec3<i32>(in.local_invocation_id) - 4; // (0,0,0) - (7,7,7) => (-4,-4,-4) - (3,3,3)
+    let voxel_size = 1.0 / 8.0; // hopefully the only FP division and possibly optimize into multiplication by 0.5, 0.25 etc.
+    let half_step = voxel_size * 0.5;
+    let shift_vector = voxel_size * vec3<f32>(branch_coefficients) + half_step;
+    let voxel_center_local = bounding_cube_transform(node.vertex, shift_vector);
+    let voxel_center_global = bounding_cube_transform(work_assigment.svo_boundding_cube, voxel_center_local);
+    let voxel_size_local = voxel_size * node.vertex.w;
+    let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
+    let sdf_value = sample_sdf(voxel_center_global);
     
     // vote if voxel intersects sdf surface
     atomicStore(&divide, 0u);
@@ -182,9 +183,10 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     }
     workgroupBarrier();
     
-    var divided = atomicLoad(&divide);
-    if (divided != 0u) { // full workgroup branching
+    if (atomicLoad(&divide) != 0u) { // full workgroup branching
         // Save evaluated volume into a new brick
+        
+        result.brick_type = BRICK_IS_BOUONDARY;
         
         // Take next brick index
         if (in.local_invocation_index == 0u) {
@@ -193,20 +195,19 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         workgroupBarrier();
         
         // All threads in group will find voxel coordinate in brick pool based on the brick index
-        var brick_coords = brick_index_to_coords(brick_index);
+        let brick_coords = brick_index_to_coords(brick_index);
         
         // get coordinates of voxel in brick (10 = 8 + 2 padding)
-        var voxel_coords = 10u * brick_coords + in.local_invocation_id + vec3<u32>(1u, 1u, 1u);
+        let voxel_coords = 10u * brick_coords + in.local_invocation_id + vec3<u32>(1u, 1u, 1u);
         
         // // save voxel value
-        // write_to_brick(voxel_coords, sdf_value);
+        write_to_brick(voxel_coords, sdf_value);
         
-        // // update node payload
-        // if (in.local_invocation_index == 0u) {
-        //     node_payload[node.index] = encode_brick_coords(brick_coords);
-        // }
-        
-        result.brick_type = BRICK_IS_BOUONDARY;
+        // update node payload
+        if (in.local_invocation_index == 0u) {
+            // encode brick coordinates into payoad integer
+            node_payload[node.index] = ((brick_coords.x & 0x3FFu) << 20u) | ((brick_coords.y & 0x3FFu) << 10u) | (brick_coords.z & 0x3FFu);
+        }
     } else {
         // we suppose that when no boundary crossed any voxel then foolowing condition resolves same for all threads in group
         if (sdf_value < 0.0) {
@@ -216,9 +217,9 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         }
         
         // update node payload
-        // if (in.local_invocation_index == 0u) {
-        //     node_payload[node.index] = result; // solid color?
-        // }
+        if (in.local_invocation_index == 0u) {
+            node_payload[node.index] = result.brick_type; // TODO: solid color?
+        }
     }
     
     result.voxel_size = voxel_size_global;
@@ -245,10 +246,8 @@ fn subdivide_node(in: ShaderInput, node: Node) {
     workgroupBarrier();
     
     // 2) init nodes in tile in 2x2x2 threadsin workgroup
-    if (in.local_invocation_id.x < 2u && in.local_invocation_id.y < 2u && in.local_invocation_id.y < 2u) {
-        var in_tile_index = tile_start_index + in.local_invocation_index;
-        node_headers[in_tile_index] = HEADER_NOT_SUBDIVIDED_NO_HEADER;
-        
+    if (in.local_invocation_id.x < 2u && in.local_invocation_id.y < 2u && in.local_invocation_id.z < 2u) {
+        let in_tile_index = tile_start_index + in.local_invocation_id.x + in.local_invocation_id.y * 2u + in.local_invocation_id.z * 4u;
         var child_shifts = vec3<f32>(in.local_invocation_id) - 0.5; // (0,0,0) - (1,1,1) => (-0.5,-0.5,-0.5) - (0.5,0.5,0.5)
         child_shifts = child_shifts * 0.5; // (-0.5,-0.5,-0.5) - (0.5,0.5,0.5) => (-0.25,-0.25,-0.25) - (0.25,0.25,0.25)
         child_shifts = bounding_cube_transform(node.vertex, child_shifts);
@@ -272,20 +271,20 @@ fn try_set_job(job: AssignedJob) -> bool {
     }
     return false;
 }
+
 fn spawn_jobs_for_tile(in: ShaderInput, tile_node_index: u32) {
     // 1) spawn jobs for tile
     if (in.local_invocation_index == 0u) {
-        var current_node = tile_node_index;
         var remainig_to_assign = 8u; // tile have 8 nodes
         var job: AssignedJob;
-        job.node_index = current_node;
+        job.node_index = tile_node_index;
         
         // scan job buffer for free slots once
         var active_jobs = atomicLoad(&job_meta.job_count);
         for (var job_index = 0u; job_index < active_jobs; job_index++) {
             job.job_index = job_index;
             if (try_set_job(job)) {
-                current_node++;
+                job.node_index++;
                 remainig_to_assign--;
                 if (remainig_to_assign == 0u) {
                     break;
@@ -297,7 +296,7 @@ fn spawn_jobs_for_tile(in: ShaderInput, tile_node_index: u32) {
         for (; remainig_to_assign > 0u; ) {
             job.job_index = atomicAdd(&job_meta.job_count, 1u);
             if (try_set_job(job)) {
-                current_node++;
+                job.node_index++;
                 remainig_to_assign--;
             }
         }
@@ -312,24 +311,61 @@ fn finish_job(in: ShaderInput) {
     workgroupBarrier();
 }
 
+// @compute
+// @workgroup_size(8, 8, 8)
+// fn main(in: ShaderInput) {
+// loop {
+//     var job: AssignedJob = take_job(in);
+//     if (job.job_index == FINISHED_JOB_INDEX) {
+//         break;
+//     }
+    
+//     var node: Node = load_node(job.node_index);
+//     var brick_evalutaion_result = evaluate_node_brick(in, node); // As side effect: New brick might be added to brick pool, node_payload is updated, result is same for all threads in workgroup.
+    
+//     // check if node should subdivide
+//     if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
+//         subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
+//         spawn_jobs_for_tile(in, tile_start_index);
+//     }
+    
+//     finish_job(in);
+// }
+// }
+
+
+
 @compute
 @workgroup_size(8, 8, 8)
 fn main(in: ShaderInput) {
+    
+    // only first group
+    if (in.workgroup_id.x + in.workgroup_id.y + in.workgroup_id.z == 0u) {
+        let root_node = Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+        let brick_evalutaion_result = evaluate_node_brick(in, root_node);
+        if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
+            subdivide_node(in, root_node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
+            spawn_jobs_for_tile(in, tile_start_index);
+        }
+    }
+    
+    // rest of workgroups wait on job buffer for job to appear
     loop {
         var job: AssignedJob = take_job(in);
         if (job.job_index == FINISHED_JOB_INDEX) {
             break;
         }
         
-        var node: Node = load_node(job.node_index);
-        var brick_evalutaion_result = evaluate_node_brick(in, node); // As side effect: New brick might be added to brick pool, node_payload is updated, result is same for all threads in workgroup.
+        // var node: Node = load_node(job.node_index);
+        // var brick_evalutaion_result = evaluate_node_brick(in, node); // As side effect: New brick might be added to brick pool, node_payload is updated, result is same for all threads in workgroup.
         
-        // check if node should subdivide
-        if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
-            subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
-            spawn_jobs_for_tile(in, tile_start_index);
-        }
+        // // check if node should subdivide
+        // if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
+        //     subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
+        //     spawn_jobs_for_tile(in, tile_start_index);
+        // }
         
         finish_job(in);
     }
+    
 }

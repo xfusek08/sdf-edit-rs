@@ -79,34 +79,34 @@ impl NodePool {
         
         let count = 0u32;
         let count_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("SVO Node Pool Count Buffer"),
             contents: bytemuck::cast_slice(&[count]),
             usage: wgpu::BufferUsages::STORAGE,
         });
         
         let header_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
+            label: Some("SVO Node Pool Header Buffer"),
             size: capacity64 * std::mem::size_of::<u32>() as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
         
         let payload_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
+            label: Some("SVO Node Pool Payload Buffer"),
             size: capacity64 * std::mem::size_of::<u32>() as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
         
         let vertex_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
+            label: Some("SVO Node Pool Vertex Buffer"),
             size: capacity64 * std::mem::size_of::<glam::Vec4>() as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
         
         let capacity_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("SVO Node Pool Capacity Buffer"),
             contents: bytemuck::cast_slice(&[capacity]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
