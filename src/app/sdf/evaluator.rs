@@ -28,9 +28,9 @@ pub struct EvaluationGPUResources {
     pub gpu: Arc<GPUContext>,
     pub pipeline: Arc<wgpu::ComputePipeline>,
     pub work_assignment_layout: Arc<wgpu::BindGroupLayout>,
-    pub node_pool_bindgroup_layout: Arc<wgpu::BindGroupLayout>,
-    pub brick_pool_bindgroup_layout: Arc<wgpu::BindGroupLayout>,
-    pub job_buffer_bindgroup_layout: Arc<wgpu::BindGroupLayout>,
+    pub node_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
+    pub brick_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
+    pub job_buffer_bind_group_layout: Arc<wgpu::BindGroupLayout>,
 }
 
 pub struct Evaluator {
@@ -55,13 +55,13 @@ impl Evaluator {
         let work_assignment_layout = Arc::new(
             WorkAssignmentResource::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-        let node_pool_bindgroup_layout = Arc::new(
+        let node_pool_bind_group_layout = Arc::new(
             svo::NodePool::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-        let brick_pool_bindgroup_layout = Arc::new(
+        let brick_pool_bind_group_layout = Arc::new(
             svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-        let job_buffer_bindgroup_layout = Arc::new(
+        let job_buffer_bind_group_layout = Arc::new(
             JobBuffer::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
         
@@ -70,9 +70,9 @@ impl Evaluator {
                 label: Some("Line Render Pipeline Layout"),
                 bind_group_layouts: &[
                     work_assignment_layout.as_ref(),      // 0 - Work Assignment
-                    node_pool_bindgroup_layout.as_ref(),  // 1 - Node Pool
-                    brick_pool_bindgroup_layout.as_ref(), // 2 - Brick Pool
-                    job_buffer_bindgroup_layout.as_ref(), // 3 - Job buffer
+                    node_pool_bind_group_layout.as_ref(),  // 1 - Node Pool
+                    brick_pool_bind_group_layout.as_ref(), // 2 - Brick Pool
+                    job_buffer_bind_group_layout.as_ref(), // 3 - Job buffer
                 ],
                 push_constant_ranges: &[],
             })
@@ -96,9 +96,9 @@ impl Evaluator {
                 gpu,
                 pipeline,
                 work_assignment_layout,
-                node_pool_bindgroup_layout,
-                brick_pool_bindgroup_layout,
-                job_buffer_bindgroup_layout,
+                node_pool_bind_group_layout,
+                brick_pool_bind_group_layout,
+                job_buffer_bind_group_layout,
             },
         }
     }
