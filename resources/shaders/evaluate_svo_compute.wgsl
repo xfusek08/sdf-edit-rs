@@ -11,7 +11,7 @@ struct ShaderInput {
 
 struct SVOWorkAssignment {
     svo_boundding_cube: vec4<f32>, // bounding cube of the SVO in world space (xzy, distance from center to side)
-    min_voxes_size: f32,           // minimum voxel size in world space - svo will  be divided until voxel size is smaller than this value
+    max_voxel_size: f32,           // minimum voxel size in world space - svo will  be divided until voxel size is smaller than this value
 }
 @group(0) @binding(0) var<uniform> work_assigment: SVOWorkAssignment;
 
@@ -31,31 +31,17 @@ struct SVOWorkAssignment {
 @group(2) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
 @group(2) @binding(2) var<uniform> brick_pool_side_size: u32; // Number of bricks in one side of the brick atlas texture
 
-// JOB Bind group
+// Dispatch Output buffer which is input from previous dispatch and output for next dispatch
 // -----------------------------------------------------------------------------------
-// - Buffer in storage memory where unfinished jobs will wait for groups to be taken
-// - There should be root job set in job buffer by host
 
-struct Job {
-    status:     atomic<u32>, // 1: `job` waiting for evaluation, 0: `empty` - new job can be placed here, 2: `locked` - some other thread is writing to this part of job buffer
-    node_index: u32,         // Which node will be evalutaeds in this job
+struct DispatchOutput {
+    to_evaluate_nodes: u32,
+    start_index:       u32,
 }
-struct JobBufferMeta {
-    active_jobs:  atomic<u32>, // when this number is 0, all jobs are finished.
-    job_count:    atomic<u32>, // length of job buffer
-    job_capacity: u32,         // maximum number of jobs in buffer (expected to be pre-set by host)
-}
+@group(3) @binding(0) var<storage, read_write> dispatch_output: DispatchOutput;
 
-let FINISHED_JOB_INDEX: u32 = 0xFFFFFFFFu;
-struct AssignedJob {
-    job_index:  u32, // index of job in job buffer
-    node_index: u32, // index of node to be evaluted in node buffer, if no jobs are or will be available -1 is retuned.
-}
-@group(3) @binding(0) var<storage, read_write> job_meta: JobBufferMeta;
-@group(3) @binding(1) var<storage, read_write> job_buffer: array<Job>; // expected to be initialized by host to zeros
-
-// Math and supportive Function
-// -----------------------------
+// Function
+// -----------------------------------------------------------------------------------
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     // return true if distance is smaller than voxel size, using square root (might not inclue a corned on voxel cbude)
@@ -85,53 +71,6 @@ fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
     return bc.w * position + bc.xyz;
 }
 
-// Main algorithm step functions
-// -----------------------------
-
-// Wating for available jobs
-
-var<workgroup> assigned_job: AssignedJob;
-fn take_job(in: ShaderInput) -> AssignedJob {
-    var assigned_job: AssignedJob;
-    // let only one thread from group do job selection
-    if (in.local_invocation_index == 0u) {
-        var job_index = 0u;
-        loop {
-            var active_jobs = atomicLoad(&job_meta.active_jobs);
-            
-            // exit condition - work is finished
-            if (active_jobs == 0u) {
-                assigned_job.job_index  = FINISHED_JOB_INDEX;
-                break;
-            }
-            
-            // try to take job
-            
-            // use atomicCompareExchangeWeak when naga supports it: https://github.com/gfx-rs/naga/issues/1413
-            // var exchange_reslut = atomicCompareExchangeWeak(&job_buffer[job_index].status, 1u, 0u);
-            
-            // for now simulate atomic exchange weak with lock value on job status
-            var status = atomicExchange(&job_buffer[job_index].status, 2u); // lock job
-            if (status == 1u) {
-                atomicStore(&job_buffer[job_index].status, 0u); // unlock job because it was taken
-                assigned_job.job_index  = job_index;
-                assigned_job.node_index = job_buffer[job_index].node_index;
-                break;
-            } else if (status == 0u) {
-                atomicStore(&job_buffer[job_index].status, 0u); // if slot was empty unlock it
-            }
-            
-            job_index++;
-            if (job_index >= atomicLoad(&job_meta.job_count)) {
-                // scan job buffer from begining
-                job_index = 0u;
-            }
-        }
-    }
-    workgroupBarrier();
-    return assigned_job;
-}
-
 struct Node {
     index:   u32,
     header:  u32,
@@ -147,11 +86,9 @@ fn load_node(node_index: u32) -> Node {
     return node;
 }
 
-// Node brick evalution
-
-/// TODO: instead of distance pass any (generic) data storabe in brick_atlas texture
 fn write_to_brick(voxel_coords: vec3<u32>, distance: f32) {
     textureStore(brick_atlas, vec3<i32>(voxel_coords), vec4<f32>(distance, 0.0, 0.0, 0.0));
+    // TODO: write value to padding voxels
 }
 
 let BRICK_IS_EMPTY = 0u;
@@ -181,26 +118,24 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     if (in_voxel(voxel_size, sdf_value)) {
         atomicAdd(&divide, 1u);
     }
-    workgroupBarrier();
+    workgroupBarrier(); // synchronize witing of whole group if to divide or not
     
     if (atomicLoad(&divide) != 0u) { // full workgroup branching
         // Save evaluated volume into a new brick
-        
-        result.brick_type = BRICK_IS_BOUONDARY;
         
         // Take next brick index
         if (in.local_invocation_index == 0u) {
             brick_index = atomicAdd(&brick_count, 1u);
         }
-        workgroupBarrier();
+        workgroupBarrier();  // synchronize allocation of brick index
         
         // All threads in group will find voxel coordinate in brick pool based on the brick index
         let brick_coords = brick_index_to_coords(brick_index);
         
-        // get coordinates of voxel in brick (10 = 8 + 2 padding)
+        // Get coordinates of voxel in brick (10 = 8 + 2 padding)
         let voxel_coords = 10u * brick_coords + in.local_invocation_id + vec3<u32>(1u, 1u, 1u);
-        
-        // // save voxel value
+            
+        // save voxel value
         write_to_brick(voxel_coords, sdf_value);
         
         // update node payload
@@ -208,6 +143,9 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
             // encode brick coordinates into payoad integer
             node_payload[node.index] = ((brick_coords.x & 0x3FFu) << 20u) | ((brick_coords.y & 0x3FFu) << 10u) | (brick_coords.z & 0x3FFu);
         }
+        
+        // return value
+        result.brick_type = BRICK_IS_BOUONDARY;
     } else {
         // we suppose that when no boundary crossed any voxel then foolowing condition resolves same for all threads in group
         if (sdf_value < 0.0) {
@@ -223,7 +161,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     }
     
     result.voxel_size = voxel_size_global;
-    workgroupBarrier();
+    workgroupBarrier(); // synchronize writing into node_payload buffer and brick atlas
     return result;
 }
 
@@ -236,6 +174,7 @@ let HEADER_HAS_BRICK_FLAG = 0x40000000u;
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 var<workgroup> tile_start_index: u32;
 fn subdivide_node(in: ShaderInput, node: Node) {
+    
     // 1) allocate new node tile and set reference to it in node header with subdivide flag
     if (in.local_invocation_index == 0u) {
         tile_start_index = atomicAdd(&node_count, 8u);
@@ -243,7 +182,7 @@ fn subdivide_node(in: ShaderInput, node: Node) {
         var node_flags = (node_headers[node.index] | HEADER_SUBDIVIDED_FLAG) & HEADER_FLAGS_MASK;
         node_headers[node.index] = node_flags | tile_index;
     }
-    workgroupBarrier();
+    workgroupBarrier(); // synch tile_start_index value
     
     // 2) init nodes in tile in 2x2x2 threadsin workgroup
     if (in.local_invocation_id.x < 2u && in.local_invocation_id.y < 2u && in.local_invocation_id.z < 2u) {
@@ -253,119 +192,39 @@ fn subdivide_node(in: ShaderInput, node: Node) {
         child_shifts = bounding_cube_transform(node.vertex, child_shifts);
         node_vertices[in_tile_index] = vec4(child_shifts, node.vertex.w * 0.5);
     }
-    workgroupBarrier();
+    workgroupBarrier(); // synch updateing node_vertices buffer
 }
 
-// Generating jobs for tiles
-
-fn try_set_job(job: AssignedJob) -> bool {
-    var result = false;
-    var status = atomicExchange(&job_buffer[job.job_index].status, 2u); // lock job
-    if (status == 0u) {
-        job_buffer[job.job_index].node_index = job.node_index;
-        atomicStore(&job_buffer[job.job_index].status, 1u); // set to be evaluated
-        atomicAdd(&job_meta.active_jobs, 1u);
-        return true;
-    } else if (status == 0u) {
-        atomicStore(&job_buffer[job.job_index].status, status); // leave this slot be
-    }
-    return false;
-}
-
-fn spawn_jobs_for_tile(in: ShaderInput, tile_node_index: u32) {
-    // 1) spawn jobs for tile
-    if (in.local_invocation_index == 0u) {
-        var remainig_to_assign = 8u; // tile have 8 nodes
-        var job: AssignedJob;
-        job.node_index = tile_node_index;
-        
-        // scan job buffer for free slots once
-        var active_jobs = atomicLoad(&job_meta.job_count);
-        for (var job_index = 0u; job_index < active_jobs; job_index++) {
-            job.job_index = job_index;
-            if (try_set_job(job)) {
-                job.node_index++;
-                remainig_to_assign--;
-                if (remainig_to_assign == 0u) {
-                    break;
-                }
-            }
-        }
-        
-        // if some jobs were not assigned then add new jobs to ends of job buffer
-        for (; remainig_to_assign > 0u; ) {
-            job.job_index = atomicAdd(&job_meta.job_count, 1u);
-            if (try_set_job(job)) {
-                job.node_index++;
-                remainig_to_assign--;
-            }
-        }
-    }
-    workgroupBarrier();
-}
-
-fn finish_job(in: ShaderInput) {
-    if (in.local_invocation_index == 0u) {
-        atomicSub(&job_meta.active_jobs, 1u);
-    }
-    workgroupBarrier();
-}
-
-// @compute
-// @workgroup_size(8, 8, 8)
-// fn main(in: ShaderInput) {
-// loop {
-//     var job: AssignedJob = take_job(in);
-//     if (job.job_index == FINISHED_JOB_INDEX) {
-//         break;
-//     }
+fn process_node(in: ShaderInput, node: Node) {
+    let brick_evalutaion_result = evaluate_node_brick(in, node);
     
-//     var node: Node = load_node(job.node_index);
-//     var brick_evalutaion_result = evaluate_node_brick(in, node); // As side effect: New brick might be added to brick pool, node_payload is updated, result is same for all threads in workgroup.
-    
-//     // check if node should subdivide
-//     if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
-//         subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
-//         spawn_jobs_for_tile(in, tile_start_index);
-//     }
-    
-//     finish_job(in);
-// }
-// }
-
-
+    // Divide when voxels are bugger then max_voxel_size
+    if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.max_voxel_size) {
+        subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
+    }
+}
 
 @compute
 @workgroup_size(8, 8, 8)
 fn main(in: ShaderInput) {
+    let workgroup_index = in.workgroup_id.x + in.workgroup_id.y * in.num_workgroups.x + in.workgroup_id.z * in.num_workgroups.x * in.num_workgroups.y;
+    let thread_zero = workgroup_index == 0u && in.local_invocation_index == 0u;
+    let start_index = dispatch_output.start_index;
+    let to_evaluate_nodes = dispatch_output.to_evaluate_nodes;
     
-    // only first group
-    if (in.workgroup_id.x + in.workgroup_id.y + in.workgroup_id.z == 0u) {
-        let root_node = Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0));
-        let brick_evalutaion_result = evaluate_node_brick(in, root_node);
-        if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
-            subdivide_node(in, root_node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
-            spawn_jobs_for_tile(in, tile_start_index);
+    if (start_index == 0u) {
+        if (workgroup_index == 0u) {
+            process_node(in, Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0)));
         }
+    } else if (workgroup_index < to_evaluate_nodes) {
+        let node = load_node(start_index + workgroup_index);
+        process_node(in, node);
     }
     
-    // rest of workgroups wait on job buffer for job to appear
-    loop {
-        var job: AssignedJob = take_job(in);
-        if (job.job_index == FINISHED_JOB_INDEX) {
-            break;
-        }
-        
-        // var node: Node = load_node(job.node_index);
-        // var brick_evalutaion_result = evaluate_node_brick(in, node); // As side effect: New brick might be added to brick pool, node_payload is updated, result is same for all threads in workgroup.
-        
-        // // check if node should subdivide
-        // if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.min_voxes_size) {
-        //     subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
-        //     spawn_jobs_for_tile(in, tile_start_index);
-        // }
-        
-        finish_job(in);
+    // prepare next dispatch
+    if (thread_zero) {
+        let new_start_index = start_index + to_evaluate_nodes;
+        dispatch_output.start_index = new_start_index;
+        dispatch_output.to_evaluate_nodes = atomicLoad(&node_count) - new_start_index;
     }
-    
 }

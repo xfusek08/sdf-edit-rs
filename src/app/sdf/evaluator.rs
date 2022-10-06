@@ -37,7 +37,7 @@ pub struct EvaluationGPUResources {
     pub work_assignment_layout: Arc<wgpu::BindGroupLayout>,
     pub node_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
     pub brick_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
-    pub job_buffer_bind_group_layout: Arc<wgpu::BindGroupLayout>,
+    pub dispatch_param_buffer_layout: Arc<wgpu::BindGroupLayout>,
 }
 
 pub struct Evaluator {
@@ -60,7 +60,7 @@ impl Evaluator {
     #[profiler::function]
     pub fn new(gpu: Arc<GPUContext>) -> Evaluator {
         let work_assignment_layout = Arc::new(
-            WorkAssignmentResource::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
+            WorkAssignmentUniform::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
         let node_pool_bind_group_layout = Arc::new(
             svo::NodePool::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
@@ -68,18 +68,18 @@ impl Evaluator {
         let brick_pool_bind_group_layout = Arc::new(
             svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-        let job_buffer_bind_group_layout = Arc::new(
-            JobBuffer::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
+        let dispatch_param_buffer_layout = Arc::new(
+            DispatchOutputBuffer::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
         
         let pipeline_layout = { profiler::scope!("Create evaluator pipeline layout");
             gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Line Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    work_assignment_layout.as_ref(),      // 0 - Work Assignment
+                    work_assignment_layout.as_ref(),       // 0 - Work Assignment
                     node_pool_bind_group_layout.as_ref(),  // 1 - Node Pool
                     brick_pool_bind_group_layout.as_ref(), // 2 - Brick Pool
-                    job_buffer_bind_group_layout.as_ref(), // 3 - Job buffer
+                    dispatch_param_buffer_layout.as_ref(), // 3 - Dispatch Params
                 ],
                 push_constant_ranges: &[],
             })
@@ -105,7 +105,7 @@ impl Evaluator {
                 work_assignment_layout,
                 node_pool_bind_group_layout,
                 brick_pool_bind_group_layout,
-                job_buffer_bind_group_layout,
+                dispatch_param_buffer_layout,
             },
         }
     }
@@ -206,55 +206,56 @@ impl Evaluator {
             // let aabb = svo.aabb.get_or_insert_with(|| edits.aabb); // TODO: use this when implemented
             
             // Get voxel size
-            let min_voxel_size = 0.01; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
+            let min_voxel_size = 0.1; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
             
             WorkAssignment::new(aabb.bounding_cube(), min_voxel_size)
         };
         
-        let mut job_buffer = profiler::call!(
-            JobBuffer::new(&gpu_resources.gpu, 512)
-        );
+        let mut dispatch_output_buffer = DispatchOutputBuffer::new(&gpu_resources.gpu);
+        let mut work_assignment_uniform = WorkAssignmentUniform::new(&gpu_resources.gpu, work_assignment);
         
-        let mut work_assignment_resource = profiler::call!(
-            WorkAssignmentResource::new(&gpu_resources.gpu, work_assignment)
-        );
-        
-        let mut encoder = profiler::call!(
-            gpu_resources.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Evaluator Compute Encoder"),
-            })
-        );
-        
-        {
-            let mut compute_pass = profiler::call!(
-                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Evaluator Compute Pass"),
+        let execute_level = &mut |dispatch_output: DispatchOutput| {
+            profiler::scope!("Execute level");
+            
+            let mut encoder = profiler::call!(
+                gpu_resources.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Evaluator Compute Encoder"),
                 })
             );
             
-            compute_pass.insert_debug_marker("SVO Evaluation dispatch compute pass");
-            
-            profiler::call!(compute_pass.set_pipeline(&gpu_resources.pipeline));
             {
-                profiler::scope!("Settings bind groups");
-                compute_pass.set_bind_group(0, &work_assignment_resource.bind_group(&gpu_resources.gpu, &gpu_resources.work_assignment_layout), &[]);
-                compute_pass.set_bind_group(1, &svo.node_pool.bind_group(&gpu_resources.gpu, &gpu_resources.node_pool_bind_group_layout), &[]);
-                compute_pass.set_bind_group(2, &svo.brick_pool.bind_group(&gpu_resources.gpu, &gpu_resources.brick_pool_bind_group_layout), &[]);
-                compute_pass.set_bind_group(3, &job_buffer.bind_group(&gpu_resources.gpu, &gpu_resources.job_buffer_bind_group_layout), &[]);
+                let mut compute_pass = profiler::call!(
+                    encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Evaluator Compute Pass"),
+                    })
+                );
+                
+                compute_pass.insert_debug_marker("SVO Evaluation dispatch compute step");
+                
+                profiler::call!(compute_pass.set_pipeline(&gpu_resources.pipeline));
+                {
+                    profiler::scope!("Settings bind groups");
+                    compute_pass.set_bind_group(0, &work_assignment_uniform.bind_group(&gpu_resources.gpu, &gpu_resources.work_assignment_layout), &[]);
+                    compute_pass.set_bind_group(1, &svo.node_pool.bind_group(&gpu_resources.gpu, &gpu_resources.node_pool_bind_group_layout), &[]);
+                    compute_pass.set_bind_group(2, &svo.brick_pool.bind_group(&gpu_resources.gpu, &gpu_resources.brick_pool_bind_group_layout), &[]);
+                    compute_pass.set_bind_group(3, &dispatch_output_buffer.bind_group(&gpu_resources.gpu, &gpu_resources.dispatch_param_buffer_layout), &[]);
+                }
+                
+                dbg!(dispatch_output);
+                profiler::call!(compute_pass.dispatch_workgroups(dispatch_output.unevaluated_nodes, 1, 1));
+                
+            } // compute pass ends here
+            profiler::call!(gpu_resources.gpu.queue.submit(Some(encoder.finish())));
+            dispatch_output_buffer.read(&gpu_resources.gpu)
+        };
+        
+        let mut dispatch_output = DispatchOutput { unevaluated_nodes: 1, start_index: 0 };
+        loop {
+            dispatch_output = execute_level(dispatch_output);
+            if dispatch_output.unevaluated_nodes == 0 {
+                break;
             }
-            
-            profiler::call!(
-                compute_pass.dispatch_workgroups(1, 1, 1) // how many persistent threads will run
-            );
-            
-        } // drops compute_pass
-        
-        // run gpu dispatch synchronously
-        profiler::call!(gpu_resources.gpu.queue.submit(Some(encoder.finish())));
-        // profiler::call!(gpu_resources.gpu.device.poll(wgpu::Maintain::Wait)); // wait for the queue to finish
-        
-        // red result?
-        
+        }
         svo
     }
 }
@@ -283,7 +284,7 @@ impl WorkAssignment {
     }
 }
 
-struct WorkAssignmentResource {
+struct WorkAssignmentUniform {
     
     /// Work assignment Data
     work_assignment: WorkAssignment,
@@ -297,7 +298,7 @@ struct WorkAssignmentResource {
 }
 
 // GPU binding
-impl WorkAssignmentResource {
+impl WorkAssignmentUniform {
     #[profiler::function]
     pub fn new(gpu: &GPUContext, work_assignment: WorkAssignment) -> Self {
         let v = [work_assignment.clone()];
@@ -368,122 +369,77 @@ impl WorkAssignmentResource {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct JobBufferMeta {
-    active_jobs: u32,
-    job_count: u32,
-    job_capacity: u32,
+struct DispatchOutput {
+    unevaluated_nodes: u32,
+    start_index: u32,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct Job {
-    status: u32,
-    node_index: u32,
-}
-
-impl Job {
-    const STATUS_EMPTY: u32 = 0;
-    const STATUS_WAITING_FOR_EVALUATION: u32 = 1;
-    const STATUS_LOCKED: u32 = 2;
-}
-
-struct JobBuffer {
-    meta: JobBufferMeta,
-    job_meta_buffer: wgpu::Buffer,
-    job_buffer: wgpu::Buffer,
-    /// A bind group of this particular node pool.
-    /// - When accessed through a `bind_group` method it will bew created.
+struct DispatchOutputBuffer {
+    buffer: wgpu::Buffer,
     bind_group: Option<wgpu::BindGroup>,
 }
 
-impl JobBuffer {
+impl DispatchOutputBuffer {
     
     #[profiler::function]
-    pub fn new(gpu: &GPUContext, job_capacity: u32) -> Self {
-        let meta = JobBufferMeta {
-            active_jobs: 0,
-            job_count: 0,
-            job_capacity,
+    pub fn new(gpu: &GPUContext) -> Self {
+        let output = DispatchOutput {
+            unevaluated_nodes: 0,
+            start_index: 0,
         };
-        let job_meta_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Job Buffer Meta"),
-            contents: bytemuck::cast_slice(&[meta]),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        
+        let buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Dispatch Params Buffer"),
+            contents: bytemuck::cast_slice(&[output]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         });
-        let job_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Job Buffer"),
-            size: std::mem::size_of::<Job>() as u64 * job_capacity as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        
         Self {
-            meta,
-            job_meta_buffer,
-            job_buffer,
+            buffer,
             bind_group: None,
         }
     }
     
     #[profiler::function]
-    pub fn update(&mut self, gpu: &GPUContext, jobs: &[Job]) {
-        self.meta.job_count = jobs.len() as u32;
-        self.meta.active_jobs = jobs.iter().filter(|j| j.status == Job::STATUS_WAITING_FOR_EVALUATION).count() as u32;
-        profiler::call!(
-            gpu.queue.write_buffer(&self.job_meta_buffer, 0, bytemuck::cast_slice(&[self.meta]))
-        );
-        profiler::call!(
-            gpu.queue.write_buffer(&self.job_buffer, 0, bytemuck::cast_slice(jobs))
-        );
+    pub fn read(&self, gpu: &GPUContext) -> DispatchOutput {
+        let buffer_slice = self.buffer.slice(..);
+        profiler::call!(buffer_slice.map_async(wgpu::MapMode::Read, move |_| ()));
+        profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
+        let data = buffer_slice.get_mapped_range().to_vec();
+        let output = bytemuck::from_bytes::<DispatchOutput>(data.as_slice());
+        profiler::call!(self.buffer.unmap());
+        output.clone()
     }
     
     #[profiler::function]
     pub fn bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> &wgpu::BindGroup {
         if self.bind_group.is_none() {
             self.bind_group = Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Job Buffer Bind Group"),
+                label: Some("Dispatch Output Bind Group"),
                 layout: layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.job_meta_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.job_buffer.as_entire_binding(),
-                    },
-                ],
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.buffer.as_entire_binding(),
+                }],
             }));
         };
-        
         self.bind_group.as_ref().unwrap()
     }
     
     #[profiler::function]
     pub fn create_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Job Buffer Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility,
-                    count: None,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
+            label: Some("Dispatch Output Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
                 },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility,
-                    count: None,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                },
-            ],
+            }],
         })
     }
     
