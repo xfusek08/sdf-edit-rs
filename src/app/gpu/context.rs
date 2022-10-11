@@ -45,7 +45,7 @@ impl GPUContext {
         adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE,
+                features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits {
                     max_push_constant_size: 128,
                     max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups

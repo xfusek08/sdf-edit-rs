@@ -158,11 +158,7 @@ impl Evaluator {
         geometry.evaluation_status = GeometryEvaluationStatus::Evaluating;
         let edits = geometry.edits.clone();
         
-        
-        dbg!(&geometry_id);
-        
         info!("Submitting geometry for evaluation job: {:?}", geometry_id);
-        
         
         // Spawn a native evaluation thread and store its handle
         let gpu_resources = self.gpu_resources.clone();
@@ -187,34 +183,33 @@ impl Evaluator {
 
 // Internal evaluation algorithm
 impl Evaluator {
-    // NOTE: Masks are not meant to be used on CPU side - this is only for debugging purposes such as reading (parsing) the contents of the buffers for debug display.
-    const OCTREE_SUBDIVIDE_THIS_BIT: u32 = 0b10000000_00000000_00000000_00000000;
-    const OCTREE_HAS_BRICK_BIT:      u32 = 0b01000000_00000000_00000000_00000000;
-    const OCTREE_NODE_FLAGS_MASK:    u32 = 0b11000000_00000000_00000000_00000000;
-    const OCTREE_CHILD_POINTER_MASK: u32 = 0b00111111_11111111_11111111_11111111;
     
     /// Function evaluating one edit list into an SVOctree
     /// The SVO exists in memory because it's allocated resources could be reused to store the new SVO.
     #[profiler::function]
     fn evaluate(mut svo: svo::Octree, edits: GeometryEditList, gpu_resources: EvaluationGPUResources) -> svo::Octree {
         
-        // Construct assignment
-        let mut work_assignment = {
-            
-            // prepare the SVO for evaluation -> compute bounding cube
-            let aabb = svo.aabb.get_or_insert_with(|| AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE));
-            // let aabb = svo.aabb.get_or_insert_with(|| edits.aabb); // TODO: use this when implemented
-            
-            // Get voxel size
-            let min_voxel_size = 0.1; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
-            
-            WorkAssignment::new(aabb.bounding_cube(), min_voxel_size)
-        };
+        let mut work_assignment_uniform = WorkAssignmentUniform::new(
+            &gpu_resources.gpu,
+            {
+                // prepare the SVO for evaluation -> compute bounding cube
+                let aabb = svo.aabb.get_or_insert_with(|| AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE));
+                // let aabb = svo.aabb.get_or_insert_with(|| edits.aabb); // TODO: use this when implemented
+                
+                // Get voxel size
+                let min_voxel_size = 0.1; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
+                
+                WorkAssignment::new(aabb.bounding_cube(), min_voxel_size)
+            }
+        );
         
         let mut dispatch_output_buffer = DispatchOutputBuffer::new(&gpu_resources.gpu);
-        let mut work_assignment_uniform = WorkAssignmentUniform::new(&gpu_resources.gpu, work_assignment);
         
-        let execute_level = &mut |dispatch_output: DispatchOutput| {
+        let execute_level = &mut |
+            dispatch_output: DispatchOutput,
+            dispatch_output_buffer: &mut DispatchOutputBuffer,
+            work_assignment_uniform: &mut WorkAssignmentUniform
+        | {
             profiler::scope!("Execute level");
             
             let mut encoder = profiler::call!(
@@ -241,17 +236,33 @@ impl Evaluator {
                     compute_pass.set_bind_group(3, &dispatch_output_buffer.bind_group(&gpu_resources.gpu, &gpu_resources.dispatch_param_buffer_layout), &[]);
                 }
                 
-                dbg!(dispatch_output);
-                profiler::call!(compute_pass.dispatch_workgroups(dispatch_output.unevaluated_nodes, 1, 1));
+                profiler::call!(
+                    compute_pass.dispatch_workgroups(dispatch_output.unevaluated_nodes.max(1), 1, 1)
+                );
                 
-            } // compute pass ends here
+            } // compute pass drops here
+            
             profiler::call!(gpu_resources.gpu.queue.submit(Some(encoder.finish())));
             dispatch_output_buffer.read(&gpu_resources.gpu)
         };
         
-        let mut dispatch_output = DispatchOutput { unevaluated_nodes: 1, start_index: 0 };
+        // root node
+        let mut dispatch_output = execute_level(
+            DispatchOutput { unevaluated_nodes: 0, start_index: 0 },
+            &mut dispatch_output_buffer,
+            &mut work_assignment_uniform,
+        );
+        
+        // set uniform to not be root
+        work_assignment_uniform.update(
+            &gpu_resources.gpu,
+            WorkAssignment { is_root: 0, ..work_assignment_uniform.work_assignment }
+        );
+        
+        // each level
         loop {
-            dispatch_output = execute_level(dispatch_output);
+            profiler::scope!("Dispatch loop");
+            dispatch_output = execute_level(dispatch_output, &mut dispatch_output_buffer, &mut work_assignment_uniform);
             if dispatch_output.unevaluated_nodes == 0 {
                 break;
             }
@@ -271,15 +282,19 @@ struct WorkAssignment {
     /// Minimum voxel size in world space - svo will be divided until voxel size is smaller than this value
     min_voxel_size: f32,
     
-    // padding
-    _padding: [u32; 3],
+    /// If 1 then shader will evaluate as and only root brick creating first tile
+    is_root: u32,
+    
+    /// padding
+    _padding: [u32; 2],
 }
 impl WorkAssignment {
     pub fn new(svo_bounding_cube: BoundingCube, min_voxel_size: f32) -> Self {
         Self {
             svo_bounding_cube,
             min_voxel_size,
-            _padding: [0; 3],
+            is_root: 1,
+            _padding: [0; 2],
         }
     }
 }
@@ -303,11 +318,10 @@ impl WorkAssignmentUniform {
     pub fn new(gpu: &GPUContext, work_assignment: WorkAssignment) -> Self {
         let v = [work_assignment.clone()];
         let a: &[u8] = bytemuck::cast_slice(&v);
-        dbg!((work_assignment, a));
         let uniform_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Work Assignment Uniform Buffer"),
             contents: a,
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::MAP_WRITE,
         });
         
         Self {
@@ -319,13 +333,16 @@ impl WorkAssignmentUniform {
     
     #[profiler::function]
     pub fn update(&mut self, gpu: &GPUContext, work_assignment: WorkAssignment) {
-        profiler::call!(
-            gpu.queue.write_buffer(
-                &self.uniform_buffer,
-                0,
-                bytemuck::cast_slice(&[work_assignment]),
-            )
-        );
+        {
+            let x = [work_assignment.clone()];
+            let data: &[u8] = bytemuck::cast_slice(&x);
+            let buffer_slice = self.uniform_buffer.slice(..);
+            profiler::call!(buffer_slice.map_async(wgpu::MapMode::Write, move |_| ()));
+            profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
+            let mut mapped_data = profiler::call!(buffer_slice.get_mapped_range_mut());
+            profiler::call!(mapped_data.clone_from_slice(data));
+        }
+        profiler::call!(self.uniform_buffer.unmap());
         self.work_assignment = work_assignment;
     }
     
@@ -405,7 +422,7 @@ impl DispatchOutputBuffer {
         let buffer_slice = self.buffer.slice(..);
         profiler::call!(buffer_slice.map_async(wgpu::MapMode::Read, move |_| ()));
         profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
-        let data = buffer_slice.get_mapped_range().to_vec();
+        let data = profiler::call!(buffer_slice.get_mapped_range().to_vec());
         let output = bytemuck::from_bytes::<DispatchOutput>(data.as_slice());
         profiler::call!(self.buffer.unmap());
         output.clone()

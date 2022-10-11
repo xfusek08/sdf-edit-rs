@@ -116,7 +116,6 @@ impl BrickPool {
     #[profiler::function]
     pub fn new(gpu: &GPUContext, capacity: Capacity, format: BrickPoolFormat) -> Self {
         let side_size = Self::dimension_from_capacity(capacity.nodes());
-        dbg!((&format, side_size, format.voxels_per_brick_in_one_dimension(), side_size * format.voxels_per_brick_in_one_dimension()));
         let brick_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
                 size: wgpu::Extent3d {

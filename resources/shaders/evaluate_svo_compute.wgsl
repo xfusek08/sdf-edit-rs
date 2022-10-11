@@ -12,10 +12,11 @@ struct ShaderInput {
 struct SVOWorkAssignment {
     svo_boundding_cube: vec4<f32>, // bounding cube of the SVO in world space (xzy, distance from center to side)
     max_voxel_size: f32,           // minimum voxel size in world space - svo will  be divided until voxel size is smaller than this value
+    is_root: u32,                 // is this the root node? [0/1]
 }
 @group(0) @binding(0) var<uniform> work_assigment: SVOWorkAssignment;
 
-// SVO: Node pool bind group
+// SVO: Node pool bind group and associated node - fuinctions
 // -----------------------------------------------------------------------------------
 
 @group(1) @binding(0) var<storage, read_write> node_count: atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
@@ -24,12 +25,53 @@ struct SVOWorkAssignment {
 @group(1) @binding(3) var<storage, read_write> node_vertices: array<vec4<f32>>;
 @group(1) @binding(4) var<uniform>             node_pool_capacity: u32; // maximum number of nodes in tiles buffer
 
-// SVO: Brick pool bind group
+struct Node {
+    index:   u32,
+    header:  u32,
+    payload: u32,
+    vertex:  vec4<f32>,
+}
+
+fn load_node(node_index: u32) -> Node {
+    var node: Node;
+    node.index   = node_index;
+    node.header  = node_headers[node_index];
+    node.payload = node_payload[node_index];
+    node.vertex  = node_vertices[node_index];
+    return node;
+}
+
+/// Combines tile index and flags into single node header integer
+/// !!! `is_subdivided` must have value 0 or 1
+/// !!! `is_leaf` must have value 0 or 1
+let HEADER_IS_SUBDIVIDED_SHIFT = 31u;
+let HEADER_HAS_BRICK_SHIFT = 30u;
+let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+fn create_node_header(value: u32, is_subdivided: u32, has_brick: u32) -> u32 {
+    return (value & HEADER_TILE_INDEX_MASK) | (is_subdivided << HEADER_IS_SUBDIVIDED_SHIFT) | (has_brick << HEADER_HAS_BRICK_SHIFT);
+}
+
+/// Encodes brick location into single integer
+fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
+    return ((brick_location.x & 0x3FFu) << 20u) | ((brick_location.y & 0x3FFu) << 10u) | (brick_location.z & 0x3FFu);
+}
+
+// SVO: Brick pool bind group and associated functions
 // -----------------------------------------------------------------------------------
 
 @group(2) @binding(0) var brick_atlas: texture_storage_3d<r32float, write>;
 @group(2) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
 @group(2) @binding(2) var<uniform> brick_pool_side_size: u32; // Number of bricks in one side of the brick atlas texture
+
+/// Converts brick index to brick location in brick atlas texture
+fn brick_index_to_coords(index: u32) -> vec3<u32> {
+    var side_size = brick_pool_side_size;
+    return  vec3<u32>(
+        index % side_size,
+        (index / side_size) % side_size,
+        (index / side_size) / side_size
+    );
+}
 
 // Dispatch Output buffer which is input from previous dispatch and output for next dispatch
 // -----------------------------------------------------------------------------------
@@ -58,32 +100,8 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
     return length(position - sphere_center) - sphere_radius;
 }
 
-fn brick_index_to_coords(index: u32) -> vec3<u32> {
-    var side_size = brick_pool_side_size;
-    return  vec3<u32>(
-        index % side_size,
-        (index / side_size) % side_size,
-        (index / side_size) / side_size
-    );
-}
-
 fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
     return bc.w * position + bc.xyz;
-}
-
-struct Node {
-    index:   u32,
-    header:  u32,
-    payload: u32,
-    vertex:  vec4<f32>,
-}
-fn load_node(node_index: u32) -> Node {
-    var node: Node;
-    node.index   = node_index;
-    node.header  = node_headers[node_index];
-    node.payload = node_payload[node_index];
-    node.vertex  = node_vertices[node_index];
-    return node;
 }
 
 fn write_to_brick(voxel_coords: vec3<u32>, distance: f32) {
@@ -97,6 +115,7 @@ let BRICK_IS_FILLED = 2u;
 struct BrickEvaluationResult {
     brick_type: u32,
     voxel_size: f32,
+    brick_location: vec3<u32>,
 }
 var<workgroup> divide: atomic<u32>;
 var<workgroup> brick_index: u32;
@@ -138,14 +157,9 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         // save voxel value
         write_to_brick(voxel_coords, sdf_value);
         
-        // update node payload
-        if (in.local_invocation_index == 0u) {
-            // encode brick coordinates into payoad integer
-            node_payload[node.index] = ((brick_coords.x & 0x3FFu) << 20u) | ((brick_coords.y & 0x3FFu) << 10u) | (brick_coords.z & 0x3FFu);
-        }
-        
         // return value
         result.brick_type = BRICK_IS_BOUONDARY;
+        result.brick_location = brick_coords;
     } else {
         // we suppose that when no boundary crossed any voxel then foolowing condition resolves same for all threads in group
         if (sdf_value < 0.0) {
@@ -153,55 +167,76 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         } else {
             result.brick_type = BRICK_IS_EMPTY;
         }
-        
-        // update node payload
-        if (in.local_invocation_index == 0u) {
-            node_payload[node.index] = result.brick_type; // TODO: solid color?
-        }
     }
     
     result.voxel_size = voxel_size_global;
-    workgroupBarrier(); // synchronize writing into node_payload buffer and brick atlas
     return result;
 }
 
-// Subdividing node and creating a initialized child tile
-
-let HEADER_NOT_SUBDIVIDED_NO_HEADER = 0u;
-let HEADER_FLAGS_MASK = 0xC0000000u;
-let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
-let HEADER_HAS_BRICK_FLAG = 0x40000000u;
-let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
-var<workgroup> tile_start_index: u32;
-fn subdivide_node(in: ShaderInput, node: Node) {
-    
-    // 1) allocate new node tile and set reference to it in node header with subdivide flag
+/// Allocates a new tile and returns its index
+var<workgroup> tile_index: u32;
+fn create_tile(in: ShaderInput) -> u32 {
     if (in.local_invocation_index == 0u) {
-        tile_start_index = atomicAdd(&node_count, 8u);
-        var tile_index = (tile_start_index >> 3u) & HEADER_TILE_INDEX_MASK;
-        var node_flags = (node_headers[node.index] | HEADER_SUBDIVIDED_FLAG) & HEADER_FLAGS_MASK;
-        node_headers[node.index] = node_flags | tile_index;
+        let first_tile_node_index = atomicAdd(&node_count, 8u);
+        tile_index = first_tile_node_index >> 3u;
     }
     workgroupBarrier(); // synch tile_start_index value
-    
-    // 2) init nodes in tile in 2x2x2 threadsin workgroup
+    return tile_index;
+}
+
+/// Initializes a new tile by computing vertices for each node and writing them into node_vertices buffer
+fn initialize_tile(in: ShaderInput, parent_node: Node, tile_index: u32) {
     if (in.local_invocation_id.x < 2u && in.local_invocation_id.y < 2u && in.local_invocation_id.z < 2u) {
-        let in_tile_index = tile_start_index + in.local_invocation_id.x + in.local_invocation_id.y * 2u + in.local_invocation_id.z * 4u;
-        var child_shifts = vec3<f32>(in.local_invocation_id) - 0.5; // (0,0,0) - (1,1,1) => (-0.5,-0.5,-0.5) - (0.5,0.5,0.5)
-        child_shifts = child_shifts * 0.5; // (-0.5,-0.5,-0.5) - (0.5,0.5,0.5) => (-0.25,-0.25,-0.25) - (0.25,0.25,0.25)
-        child_shifts = bounding_cube_transform(node.vertex, child_shifts);
-        node_vertices[in_tile_index] = vec4(child_shifts, node.vertex.w * 0.5);
+        let start_node_tile = tile_index << 3u;
+        let node_index = start_node_tile + in.local_invocation_id.x + in.local_invocation_id.y * 2u + in.local_invocation_id.z * 4u;
+        
+        var child_shift = vec3<f32>(in.local_invocation_id) - 0.5; // (0,0,0) - (1,1,1) => (-0.5,-0.5,-0.5) - (0.5,0.5,0.5)
+        child_shift = child_shift * 0.5;                                           // (-0.5,-0.5,-0.5) - (0.5,0.5,0.5) => (-0.25,-0.25,-0.25) - (0.25,0.25,0.25)
+        child_shift = bounding_cube_transform(parent_node.vertex, child_shift);
+        
+        node_vertices[node_index] = vec4(child_shift, parent_node.vertex.w * 0.5);
     }
     workgroupBarrier(); // synch updateing node_vertices buffer
 }
 
+/// !!! whole workgroup must enter !!!
 fn process_node(in: ShaderInput, node: Node) {
-    let brick_evalutaion_result = evaluate_node_brick(in, node);
+    var is_subdivided = 0u;
+    var has_brick = 0u;
+    var tile_index = 0u;
     
-    // Divide when voxels are bugger then max_voxel_size
-    if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY && brick_evalutaion_result.voxel_size > work_assigment.max_voxel_size) {
-        subdivide_node(in, node); // As side effect: New initialized tile is added to node pool and ints first node index is store in tile_start_index, node_header is updated to point to new tile index.
+    let brick_evalutaion_result = evaluate_node_brick(in, node);
+    if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY) {
+        has_brick = 1u;
+        if (brick_evalutaion_result.voxel_size > work_assigment.max_voxel_size) {
+            is_subdivided = 1u;
+            tile_index = create_tile(in);
+            initialize_tile(in, node, tile_index);
+        }
     }
+    
+    // Update node buffers
+    if (in.local_invocation_index == 0u) {
+        // link node to its tile
+        node_headers[node.index] = create_node_header(tile_index, is_subdivided, has_brick);
+        
+        // set payload value (brick coords or full/empty flag)
+        if (has_brick == 1u) {
+            node_payload[node.index] = create_node_brick_payload(brick_evalutaion_result.brick_location);
+        } else {
+            node_payload[node.index] = brick_evalutaion_result.brick_type;
+        }
+    }
+    workgroupBarrier();
+}
+
+/// !!! Enter only with single workgroup !!!
+fn process_root(in: ShaderInput) {
+    let node = Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    let brick_evalutaion_result = evaluate_node_brick(in, node);
+    let tile_index = create_tile(in);
+    initialize_tile(in, node, tile_index);
+    // No need to write brick location anywhere, for rott it is always (0,0,0)
 }
 
 @compute
@@ -212,10 +247,8 @@ fn main(in: ShaderInput) {
     let start_index = dispatch_output.start_index;
     let to_evaluate_nodes = dispatch_output.to_evaluate_nodes;
     
-    if (start_index == 0u) {
-        if (workgroup_index == 0u) {
-            process_node(in, Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0)));
-        }
+    if (work_assigment.is_root == 1u && workgroup_index == 0u) {
+        process_root(in);
     } else if (workgroup_index < to_evaluate_nodes) {
         let node = load_node(start_index + workgroup_index);
         process_node(in, node);
