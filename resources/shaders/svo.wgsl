@@ -28,7 +28,7 @@ struct Ray {
 };
 
 // tmp
-let node_vertex = V4(0.0, 0.0, 0.0, 1.0);
+let node_vertex = V4(-0.25, -0.25, -0.25, 0.5);
 let transform_matrix = M4_IDENTITY;
 // tmp end
 
@@ -70,6 +70,7 @@ fn get_distance_to_end_of_brick(position: V3, direction: V3) -> f32 {
 
 struct VertexInput {
     @location(0) position: V3,
+    // @location(1) node_vertex: vec4<f32>
 }
 
 struct VertexOutput {
@@ -92,13 +93,11 @@ struct VertexOutput {
 fn vs_main(model: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     
-    var brick_position = node_vertex.xyz;
     var brick_inverted_size = 1.0 / node_vertex.w;
-    var step_size = node_vertex.w * 0.5;
     var brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
     
-    var position = brick_position + model.position;
-    out.position = pc.view_projection * V4(model.position, 1.0);
+    var position = node_vertex.xyz + (node_vertex.w * model.position);
+    out.position = pc.view_projection * V4(position, 1.0);
     out.frag_pos = position;
     
     var brick_to_local_transform = scale(brick_inverted_size) * translate(brick_shift) * M4_IDENTITY;
@@ -121,11 +120,11 @@ fn fs_main(in: VertexOutput) -> @location(0) V4 {
     );
     var fragment_pos = (brick_to_local_transform * V4(in.frag_pos, 1.0)).xyz;
     
-    // var ray: Ray;
-    // ray.origin = fragment_pos;
-    // ray.direction = normalize(fragment_pos - in.brick_local_camera_pos.xyz);
-    // ray.dist = get_distance_to_end_of_brick(ray.origin, ray.direction);
+    var ray: Ray;
+    ray.origin = fragment_pos;
+    ray.direction = normalize(fragment_pos - in.brick_local_camera_pos.xyz);
+    ray.dist = get_distance_to_end_of_brick(ray.origin, ray.direction);
     
-    return V4(normalize(abs(fragment_pos)), 1.0);
-    // return V4(normalize(in.brick_local_camera_pos.xyz) * 0.5, 1.0);
+    // return V4(normalize(abs(fragment_pos)), 1.0);
+    return V4(ray.dist, ray.dist, ray.dist, 1.0);
 }

@@ -94,7 +94,7 @@ pub struct DepthStencilTexture {
 }
 
 impl DepthStencilTexture {
-    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24PlusStencil8;
     
     #[profiler::function]
     pub fn new(label: &str, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {

@@ -1,6 +1,144 @@
+
+use std::marker::PhantomData;
+
 use wgpu::util::DeviceExt;
 
 use super::{GPUContext, vertices::Vertex};
+
+pub trait BufferItem:  {}
+
+#[derive(Debug)]
+pub struct Buffer<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> {
+    /// Label of buffer on GPU.
+    pub label: Option<&'static str>,
+    /// Vertex buffer on GPU.
+    pub buffer: wgpu::Buffer,
+    /// The number of vertices in the buffer.
+    pub size: usize,
+    /// Capacity of the buffer (how many vertices it can hold).
+    pub capacity: usize,
+    
+    /// TODO: delete after wgpu 0.14
+    pub usage: wgpu::BufferUsages,
+    
+    /// The type of the buffer item data.
+    _phantom: PhantomData<I>,
+}
+
+// Statics (Helpers, Constructors)
+impl<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
+    /// Create a new buffer on the GPU.
+    #[profiler::function]
+    pub fn new(gpu: &GPUContext, label: Option<&'static str>, data: &[I], usage: wgpu::BufferUsages) -> Buffer<I> {
+        let size = data.len();
+        let buffer = gpu.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor { label, usage, contents: bytemuck::cast_slice(data) }
+        );
+        
+        Buffer { label, buffer, size, capacity: size, usage, _phantom: PhantomData }
+    }
+    
+    /// Create a new buffer on the GPU with a given capacity without initializing it.
+    #[profiler::function]
+    pub fn new_empty(gpu: &GPUContext, label: Option<&'static str>, capacity: usize, usage: wgpu::BufferUsages) -> Buffer<I> {
+        let size = 0;
+        let buffer = gpu.device.create_buffer(
+            &wgpu::BufferDescriptor {
+                label,
+                size: Self::bytes_for_item_count(capacity) as u64,
+                usage,
+                mapped_at_creation: false,
+            }
+        );
+        Buffer { label, buffer, size, capacity: size, usage, _phantom: PhantomData }
+    }
+    
+    /// Helper function to compute how many bytes will occupy given number of items in this buffer
+    pub fn bytes_for_item_count(count: usize) -> usize {
+        (count * std::mem::size_of::<I>()) as usize
+    }
+    
+    /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
+    #[profiler::function]
+    pub fn static_read(buffer: &wgpu::Buffer, gpu: &GPUContext) -> Vec<I> {
+        let data = {
+            let buffer_slice = buffer.slice(..);
+            profiler::call!(buffer_slice.map_async(wgpu::MapMode::Read, move |_| ()));
+            profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
+            let data = profiler::call!(buffer_slice.get_mapped_range());
+            bytemuck::cast_slice(&data).to_vec()
+        };
+        profiler::call!(buffer.unmap());
+        data
+    }
+}
+
+// Instance methods
+impl<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
+    
+    /// Returns allocated number of bytes (on GPU) for this buffer
+    pub fn byte_size(&self) -> usize {
+        // self.buffer.size() as usize // TODO: wgpu 0.14
+        self.size * std::mem::size_of::<I>()
+    }
+    
+    /// Returns the usage with which this buffer was created
+    pub fn usage(&self) -> wgpu::BufferUsages {
+        // self.buffer.usage() // TODO: wgpu 0.14
+        self.usage
+    }
+    
+    /// Update the buffer on the GPU using wgpu queue with the given data.
+    /// - If the buffer is not large enough, it will be reallocated with the new size.
+    #[profiler::function]
+    pub fn queue_update(&mut self, gpu: &GPUContext, new_data: &[I]) {
+        if new_data.len() > self.capacity {
+            self.buffer = gpu.device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: self.label,
+                    usage: self.usage(),
+                    contents: bytemuck::cast_slice(new_data),
+                }
+            );
+            self.capacity = new_data.len();
+        } else {
+            profiler::call!(
+                gpu.queue.write_buffer(
+                    &self.buffer,
+                    0,
+                    bytemuck::cast_slice(new_data)
+                )
+            );
+        }
+        self.size = new_data.len();
+    }
+    
+    /// If new capacity is larger than current capacity, resize the buffer.
+    /// - This operation does not copy the old data to the new buffer.
+    /// - Returns true if the buffer was resized and thus the old data is invalid.
+    #[profiler::function]
+    pub fn resize(&mut self, gpu: &GPUContext, new_capacity: usize) -> bool {
+        if new_capacity > self.capacity {
+            self.buffer = gpu.device.create_buffer(
+                &wgpu::BufferDescriptor {
+                    label: self.label,
+                    size:  Self::bytes_for_item_count(new_capacity) as u64,
+                    usage: self.usage(),
+                    mapped_at_creation: false,
+                }
+            );
+            self.capacity = new_capacity;
+            return true;
+        }
+        false
+    }
+    
+    /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
+    pub fn read(&self, gpu: &GPUContext) -> Vec<I> {
+        Self::static_read(&self.buffer, gpu)
+    }
+}
+
 
 // TODO Generalize Buffer for different usage types
 

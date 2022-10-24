@@ -34,7 +34,11 @@ impl GUIRenderModule {
     #[profiler::function]
     pub fn new(context: &RenderContext) -> GUIRenderModule {
         Self {
-            egui_renderer: RenderPass::new(&context.gpu.device, context.surface_config.format, 1),
+            egui_renderer: RenderPass::new(
+                &context.gpu.device,
+                context.surface_config.format,
+                1
+            ),
             render_data: None,
         }
     }

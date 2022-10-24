@@ -25,7 +25,7 @@ use super::{
     camera::{Camera, CameraProperties},
     render_modules::{
         lines::{LineMesh, LineRenderModule},
-        svo::SVORenderModule,
+        svo_wireframe::SVOWireframeRenderModule,
         gui::GUIRenderModule,
     },
     sdf::{
@@ -96,7 +96,7 @@ fn init_renderer(gpu: Arc<GPUContext>, window: &Window) -> Renderer {
     
     // load modules
     let line_module = renderer.add_module(|c| LineRenderModule::new(c));
-    let svo_module = renderer.add_module(|c| SVORenderModule::new(c));
+    let svo_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
     let gui_module = renderer.add_module(|c| GUIRenderModule::new(c));
     
     // passes are executed in order of their registration

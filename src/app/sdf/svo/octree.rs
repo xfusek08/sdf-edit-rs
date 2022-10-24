@@ -42,6 +42,13 @@ impl Capacity {
     
 }
 
+#[derive(Clone, Debug, Copy)]
+pub struct SVOLevel {
+    pub start_index: u32,
+    pub node_count: u32,
+}
+
+
 // Sparse Voxel Octree
 // -------------------
 
@@ -57,6 +64,9 @@ pub struct Octree {
     
     /// A 3D texture atlas on GPU holding an NxNxN array of SDF bricks with padding.
     pub brick_pool: BrickPool,
+    
+    /// A list of SVO levels.
+    pub levels: Vec<SVOLevel>
 }
 
 impl Octree {
@@ -74,6 +84,7 @@ impl Octree {
                     padding: 1,
                 }
             ),
+            levels: vec![],
         }
     }
 }

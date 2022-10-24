@@ -1,8 +1,9 @@
 use wgpu::util::DeviceExt;
-use crate::app::gpu::GPUContext;
+use crate::app::gpu::{GPUContext, buffers::Buffer};
 use super::Capacity;
 
 /// A Node Pool of the SVO residing on GPU.
+#[derive(Debug)]
 pub struct NodePool {
     
     /// A total number of nodes that can be stored currently in the buffers.
@@ -66,13 +67,16 @@ impl NodePool {
     pub fn capacity_buffer(&self) -> &wgpu::Buffer {
         &self.capacity_buffer
     }
+    
+    pub fn buffers_changed(&mut self) {
+        self.count = None;
+    }
 }
 
 impl NodePool {
     /// Creates empty GPU octree by allocating buffers on GPU.
     #[profiler::function]
     pub fn new(gpu: &GPUContext, capacity: Capacity) -> Self {
-        let count = 0;
         
         let capacity = capacity.nodes();
         let capacity64 = capacity as u64;
@@ -81,7 +85,7 @@ impl NodePool {
         let count_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("SVO Node Pool Count Buffer"),
             contents: bytemuck::cast_slice(&[count]),
-            usage: wgpu::BufferUsages::STORAGE,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         });
         
         let header_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -101,7 +105,7 @@ impl NodePool {
         let vertex_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("SVO Node Pool Vertex Buffer"),
             size: capacity64 * std::mem::size_of::<glam::Vec4>() as u64,
-            usage: wgpu::BufferUsages::STORAGE,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         
@@ -126,8 +130,9 @@ impl NodePool {
     /// Reads value from count buffer on GPU into internal `count` property and returns its value.
     #[profiler::function]
     pub fn load_count(&mut self, gpu: &GPUContext) -> u32 {
-        // TODO: implement this
-        return 0;
+        self.count.get_or_insert_with(|| {
+            Buffer::<u32>::static_read(&self.count_buffer, gpu)[0]
+        }).clone()
     }
     
     /// Returns existing bind group or creates a new one with given layout.

@@ -9,13 +9,14 @@ use crate::{
     info,
     error,
     app::{
-        gpu::GPUContext,
+        gpu::{GPUContext, buffers::Buffer},
         math::{BoundingCube, AABB}
     },
 };
 
 use super::{
     svo,
+    svo::SVOLevel,
     geometry::{
         Geometry,
         GeometryID,
@@ -37,7 +38,6 @@ pub struct EvaluationGPUResources {
     pub work_assignment_layout: Arc<wgpu::BindGroupLayout>,
     pub node_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
     pub brick_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
-    pub dispatch_param_buffer_layout: Arc<wgpu::BindGroupLayout>,
 }
 
 pub struct Evaluator {
@@ -68,10 +68,7 @@ impl Evaluator {
         let brick_pool_bind_group_layout = Arc::new(
             svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-        let dispatch_param_buffer_layout = Arc::new(
-            DispatchOutputBuffer::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
-        );
-        
+
         let pipeline_layout = { profiler::scope!("Create evaluator pipeline layout");
             gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Line Render Pipeline Layout"),
@@ -79,7 +76,6 @@ impl Evaluator {
                     work_assignment_layout.as_ref(),       // 0 - Work Assignment
                     node_pool_bind_group_layout.as_ref(),  // 1 - Node Pool
                     brick_pool_bind_group_layout.as_ref(), // 2 - Brick Pool
-                    dispatch_param_buffer_layout.as_ref(), // 3 - Dispatch Params
                 ],
                 push_constant_ranges: &[],
             })
@@ -105,7 +101,6 @@ impl Evaluator {
                 work_assignment_layout,
                 node_pool_bind_group_layout,
                 brick_pool_bind_group_layout,
-                dispatch_param_buffer_layout,
             },
         }
     }
@@ -166,7 +161,7 @@ impl Evaluator {
             std::thread::spawn(move || {
                 // TODO: use some clever resource management to reuse allocated not used octree.
                 Self::evaluate(
-                    profiler::call!(svo::Octree::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(12))),
+                    svo::Octree::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(12)),
                     edits,
                     gpu_resources,
                 )
@@ -189,32 +184,52 @@ impl Evaluator {
     #[profiler::function]
     fn evaluate(mut svo: svo::Octree, edits: GeometryEditList, gpu_resources: EvaluationGPUResources) -> svo::Octree {
         
+        // 1. Work assignment uniform
+        // a) prepare the SVO for evaluation -> compute bounding cube
+        let aabb = svo.aabb.get_or_insert_with(|| AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE));
+        // TODO: when implemented: let aabb = svo.aabb.get_or_insert_with(|| edits.aabb);
+        
+        // b) Get voxel size
+        let min_voxel_size = 0.001; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
+        
+        // c) Create work assignment uniform
         let mut work_assignment_uniform = WorkAssignmentUniform::new(
             &gpu_resources.gpu,
-            {
-                // prepare the SVO for evaluation -> compute bounding cube
-                let aabb = svo.aabb.get_or_insert_with(|| AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE));
-                // let aabb = svo.aabb.get_or_insert_with(|| edits.aabb); // TODO: use this when implemented
-                
-                // Get voxel size
-                let min_voxel_size = 0.1; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
-                
-                WorkAssignment::new(aabb.bounding_cube(), min_voxel_size)
-            }
+            WorkAssignment::new_root(aabb.bounding_cube(), min_voxel_size)
         );
         
-        let mut dispatch_output_buffer = DispatchOutputBuffer::new(&gpu_resources.gpu);
-        
-        let execute_level = &mut |
-            dispatch_output: DispatchOutput,
-            dispatch_output_buffer: &mut DispatchOutputBuffer,
-            work_assignment_uniform: &mut WorkAssignmentUniform
-        | {
-            profiler::scope!("Execute level");
+        // 2. Lambda evaluating one SVO level (root if None given)
+        let evaluate_level = &mut |
+            level: Option<SVOLevel> // None -> root
+        | -> SVOLevel {
+            profiler::scope!("Evaluating a SVO level");
             
+            dbg!("Evaluating level: {:?}", level);
+            
+            // Update start index uniform for dispatch
+            let (
+                start_index,
+                node_count_to_evaluate,
+                is_root
+            ) = if let Some(SVOLevel { start_index, node_count }) = level {
+                (start_index, node_count, false)
+            } else {
+                (0, 1, true)
+            };
+            
+            // set uniform to not be root
+            work_assignment_uniform.update(&gpu_resources.gpu, WorkAssignment {
+                is_root: if level.is_none() { 1 } else { 0 },
+                start_index: start_index,
+                ..work_assignment_uniform.work_assignment
+            });
+            
+            let old_node_count = svo.node_pool.load_count(&gpu_resources.gpu);
+            
+            // Command encoder for compute pass
             let mut encoder = profiler::call!(
                 gpu_resources.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Evaluator Compute Encoder"),
+                    label: Some("Evaluator Compute Pass Command Encoder"),
                 })
             );
             
@@ -227,46 +242,67 @@ impl Evaluator {
                 
                 compute_pass.insert_debug_marker("SVO Evaluation dispatch compute step");
                 
-                profiler::call!(compute_pass.set_pipeline(&gpu_resources.pipeline));
+                profiler::call!(
+                    compute_pass.set_pipeline(&gpu_resources.pipeline)
+                );
+                
                 {
                     profiler::scope!("Settings bind groups");
                     compute_pass.set_bind_group(0, &work_assignment_uniform.bind_group(&gpu_resources.gpu, &gpu_resources.work_assignment_layout), &[]);
                     compute_pass.set_bind_group(1, &svo.node_pool.bind_group(&gpu_resources.gpu, &gpu_resources.node_pool_bind_group_layout), &[]);
                     compute_pass.set_bind_group(2, &svo.brick_pool.bind_group(&gpu_resources.gpu, &gpu_resources.brick_pool_bind_group_layout), &[]);
-                    compute_pass.set_bind_group(3, &dispatch_output_buffer.bind_group(&gpu_resources.gpu, &gpu_resources.dispatch_param_buffer_layout), &[]);
                 }
                 
                 profiler::call!(
-                    compute_pass.dispatch_workgroups(dispatch_output.unevaluated_nodes.max(1), 1, 1)
+                    compute_pass.dispatch_workgroups(node_count_to_evaluate, 1, 1)
                 );
                 
             } // compute pass drops here
             
             profiler::call!(gpu_resources.gpu.queue.submit(Some(encoder.finish())));
-            dispatch_output_buffer.read(&gpu_resources.gpu)
+            
+            // Wait for queue to finish
+            profiler::call!(gpu_resources.gpu.device.poll(wgpu::Maintain::Wait));
+            
+            // Read node count from buffer and calculate newly created level
+            svo.node_pool.buffers_changed();
+            let new_node_count = svo.node_pool.load_count(&gpu_resources.gpu);
+            let added_nodes = new_node_count - old_node_count;
+            
+            if is_root {
+                SVOLevel {
+                    start_index: 0,
+                    node_count: added_nodes,
+                }
+            } else {
+                SVOLevel {
+                    start_index: start_index + node_count_to_evaluate,
+                    node_count: added_nodes,
+                }
+            }
         };
         
-        // root node
-        let mut dispatch_output = execute_level(
-            DispatchOutput { unevaluated_nodes: 0, start_index: 0 },
-            &mut dispatch_output_buffer,
-            &mut work_assignment_uniform,
-        );
-        
-        // set uniform to not be root
-        work_assignment_uniform.update(
-            &gpu_resources.gpu,
-            WorkAssignment { is_root: 0, ..work_assignment_uniform.work_assignment }
-        );
-        
-        // each level
-        loop {
-            profiler::scope!("Dispatch loop");
-            dispatch_output = execute_level(dispatch_output, &mut dispatch_output_buffer, &mut work_assignment_uniform);
-            if dispatch_output.unevaluated_nodes == 0 {
-                break;
+        // Root node
+        let mut level = evaluate_level(None);
+        let mut cnt = 0;
+        // Evaluate levels until resulting level ha no more nodes to be evaluated
+        loop { profiler::scope!("Dispatch loop");
+            level = evaluate_level(Some(level));
+            dbg!("Level: {:?}", level);
+            if level.node_count == 0 {
+                break; // end on first empty level
+            } else {
+                svo.levels.push(level); // register level into octree
             }
+            // cnt += 1;
+            // if cnt > 4 {
+            //     dbg!("Too many levels");
+            //     break;
+            // }
         }
+        
+        svo.node_pool.buffers_changed();
+        svo.node_pool.load_count(&gpu_resources.gpu);
         svo
     }
 }
@@ -285,16 +321,20 @@ struct WorkAssignment {
     /// If 1 then shader will evaluate as and only root brick creating first tile
     is_root: u32,
     
+    /// Index of first node of first unevaluated tile which is to be evaluated
+    start_index: u32,
+    
     /// padding
-    _padding: [u32; 2],
+    _padding: u32,
 }
 impl WorkAssignment {
-    pub fn new(svo_bounding_cube: BoundingCube, min_voxel_size: f32) -> Self {
+    pub fn new_root(svo_bounding_cube: BoundingCube, min_voxel_size: f32) -> Self {
         Self {
             svo_bounding_cube,
             min_voxel_size,
             is_root: 1,
-            _padding: [0; 2],
+            start_index: 0,
+            _padding: 0,
         }
     }
 }
@@ -305,7 +345,7 @@ struct WorkAssignmentUniform {
     work_assignment: WorkAssignment,
     
     /// This structure represented in uniform buffer on GPU
-    uniform_buffer: wgpu::Buffer,
+    uniform_buffer: Buffer<WorkAssignment>,
     
     /// A bind group of this particular node pool.
     /// - When accessed through a `bind_group` method it will bew created.
@@ -316,14 +356,12 @@ struct WorkAssignmentUniform {
 impl WorkAssignmentUniform {
     #[profiler::function]
     pub fn new(gpu: &GPUContext, work_assignment: WorkAssignment) -> Self {
-        let v = [work_assignment.clone()];
-        let a: &[u8] = bytemuck::cast_slice(&v);
-        let uniform_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Work Assignment Uniform Buffer"),
-            contents: a,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::MAP_WRITE,
-        });
-        
+        let uniform_buffer = Buffer::new(
+            gpu,
+            Some("Work Assignment Uniform Buffer"),
+            &[work_assignment],
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ
+        );
         Self {
             work_assignment,
             uniform_buffer,
@@ -333,16 +371,7 @@ impl WorkAssignmentUniform {
     
     #[profiler::function]
     pub fn update(&mut self, gpu: &GPUContext, work_assignment: WorkAssignment) {
-        {
-            let x = [work_assignment.clone()];
-            let data: &[u8] = bytemuck::cast_slice(&x);
-            let buffer_slice = self.uniform_buffer.slice(..);
-            profiler::call!(buffer_slice.map_async(wgpu::MapMode::Write, move |_| ()));
-            profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
-            let mut mapped_data = profiler::call!(buffer_slice.get_mapped_range_mut());
-            profiler::call!(mapped_data.clone_from_slice(data));
-        }
-        profiler::call!(self.uniform_buffer.unmap());
+        self.uniform_buffer.queue_update(gpu, &[work_assignment]);
         self.work_assignment = work_assignment;
     }
     
@@ -355,7 +384,7 @@ impl WorkAssignmentUniform {
                 layout: layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.uniform_buffer.as_entire_binding(),
+                    resource: self.uniform_buffer.buffer.as_entire_binding(),
                 }],
             }));
         };
@@ -373,86 +402,6 @@ impl WorkAssignmentUniform {
                 count: None,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-            }],
-        })
-    }
-    
-}
-
-// ------------------------------------------------------------------------------------------------
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct DispatchOutput {
-    unevaluated_nodes: u32,
-    start_index: u32,
-}
-
-struct DispatchOutputBuffer {
-    buffer: wgpu::Buffer,
-    bind_group: Option<wgpu::BindGroup>,
-}
-
-impl DispatchOutputBuffer {
-    
-    #[profiler::function]
-    pub fn new(gpu: &GPUContext) -> Self {
-        let output = DispatchOutput {
-            unevaluated_nodes: 0,
-            start_index: 0,
-        };
-        
-        let buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Dispatch Params Buffer"),
-            contents: bytemuck::cast_slice(&[output]),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
-        });
-        
-        Self {
-            buffer,
-            bind_group: None,
-        }
-    }
-    
-    #[profiler::function]
-    pub fn read(&self, gpu: &GPUContext) -> DispatchOutput {
-        let buffer_slice = self.buffer.slice(..);
-        profiler::call!(buffer_slice.map_async(wgpu::MapMode::Read, move |_| ()));
-        profiler::call!(gpu.device.poll(wgpu::Maintain::Wait));
-        let data = profiler::call!(buffer_slice.get_mapped_range().to_vec());
-        let output = bytemuck::from_bytes::<DispatchOutput>(data.as_slice());
-        profiler::call!(self.buffer.unmap());
-        output.clone()
-    }
-    
-    #[profiler::function]
-    pub fn bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> &wgpu::BindGroup {
-        if self.bind_group.is_none() {
-            self.bind_group = Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Dispatch Output Bind Group"),
-                layout: layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.buffer.as_entire_binding(),
-                }],
-            }));
-        };
-        self.bind_group.as_ref().unwrap()
-    }
-    
-    #[profiler::function]
-    pub fn create_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
-        gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Dispatch Output Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility,
-                count: None,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
                     has_dynamic_offset: false,
                     min_binding_size: None,
                 },
