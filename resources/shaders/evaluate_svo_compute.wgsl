@@ -79,9 +79,10 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
 // -----------------------------------------------------------------------------------
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
-    // return true if distance is smaller than voxel size, using square root (might not inclue a corned on voxel cbude)
     // TODO: use max-norm for evaluating this
-    return abs(dinstance) < 1.4142136 * voxel_size;
+    let sqrt_3 = 1.7320508075688772935274463415059;
+    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.5;
+    return abs(dinstance) < voxel_bounding_spehere_radius;
 }
 
 fn sample_sdf(position: vec3<f32>) -> f32 {
@@ -89,7 +90,7 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
     
     // tmp - only one sphere
     var sphere_center = vec3<f32>(0.0, 0.0, 0.0);
-    var sphere_radius = 0.5;
+    var sphere_radius = 0.2;
     return length(position - sphere_center) - sphere_radius;
 }
 
@@ -124,15 +125,19 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     let voxel_size_local = voxel_size * node.vertex.w;
     let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
     let sdf_value = sample_sdf(voxel_center_global);
+    let sdf_value = length(voxel_center_global) - 0.2;
     
     // vote if voxel intersects sdf surface
-    atomicStore(&divide, 0u);
+    if (in.local_invocation_index == 0u) {
+        atomicStore(&divide, 0u);
+    }
+    
     if (in_voxel(voxel_size, sdf_value)) {
         atomicAdd(&divide, 1u);
     }
     workgroupBarrier(); // synchronize witing of whole group if to divide or not
     
-    if (atomicLoad(&divide) != 0u) { // full workgroup branching
+    if (atomicLoad(&divide) > 0u) { // full workgroup branching
         // Save evaluated volume into a new brick
         
         // Take next brick index

@@ -152,6 +152,7 @@ impl Evaluator {
         
         geometry.evaluation_status = GeometryEvaluationStatus::Evaluating;
         let edits = geometry.edits.clone();
+        let min_voxel_size = geometry.min_voxel_size();
         
         info!("Submitting geometry for evaluation job: {:?}", geometry_id);
         
@@ -161,9 +162,10 @@ impl Evaluator {
             std::thread::spawn(move || {
                 // TODO: use some clever resource management to reuse allocated not used octree.
                 Self::evaluate(
-                    svo::Octree::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(12)),
+                    svo::Octree::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(20)),
                     edits,
                     gpu_resources,
+                    min_voxel_size
                 )
             })
         );
@@ -182,15 +184,12 @@ impl Evaluator {
     /// Function evaluating one edit list into an SVOctree
     /// The SVO exists in memory because it's allocated resources could be reused to store the new SVO.
     #[profiler::function]
-    fn evaluate(mut svo: svo::Octree, edits: GeometryEditList, gpu_resources: EvaluationGPUResources) -> svo::Octree {
+    fn evaluate(mut svo: svo::Octree, edits: GeometryEditList, gpu_resources: EvaluationGPUResources, min_voxel_size: f32) -> svo::Octree {
         
         // 1. Work assignment uniform
         // a) prepare the SVO for evaluation -> compute bounding cube
         let aabb = svo.aabb.get_or_insert_with(|| AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE));
         // TODO: when implemented: let aabb = svo.aabb.get_or_insert_with(|| edits.aabb);
-        
-        // b) Get voxel size
-        let min_voxel_size = 0.001; // NOTE: Arbitrary for now -> settable by gui into a property on geometry
         
         // c) Create work assignment uniform
         let mut work_assignment_uniform = WorkAssignmentUniform::new(

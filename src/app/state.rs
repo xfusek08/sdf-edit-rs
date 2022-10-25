@@ -9,6 +9,7 @@ use super::{
         model::{Model, ModelID},
         geometry::GeometryPool
     },
+    update_modules::tmp_evaluator_config::TmpEvaluatorConfigProps,
 };
 
 #[derive(Debug, Default)]
@@ -25,6 +26,8 @@ pub struct Scene {
     // tmp stuff
     pub world: World,
     pub counters: SceneCounters,
+    
+    pub tmp_evaluator_config: TmpEvaluatorConfigProps,
 }
 
 pub struct State {

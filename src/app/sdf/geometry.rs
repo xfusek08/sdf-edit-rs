@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use slotmap::{new_key_type, SlotMap};
 
 use crate::app::math::Transform;
@@ -36,7 +38,6 @@ pub struct Geometry {
     /// A list of edits that compose this geometry
     pub edits: GeometryEditList,
     
-    
     /// The status of the geometry evaluation used by evaluator
     ///   - `NeedsEvaluation` means that the geometry has been edited and needs to be evaluated
     ///      evaluator on next update collects all geometries with this status and spawns and evaluation job.
@@ -44,20 +45,34 @@ pub struct Geometry {
     ///   - `Evaluated` means that the geometry does not need to be evaluated.
     pub evaluation_status: GeometryEvaluationStatus,
     
+    /// nodes containing voxels bigger that this will be subdivided
+    min_voxel_size: f32,
 }
 
 impl Geometry {
-    pub fn new() -> Self {
+    pub const VOXEL_SIZE_RANGE: RangeInclusive<f32> = 0.001..=0.1;
+    
+    pub fn new(min_voxel_size: f32) -> Self {
         Self {
             svo:               None,
             edits:             vec![],
             evaluation_status: GeometryEvaluationStatus::NeedsEvaluation,
+            min_voxel_size: min_voxel_size.clamp(*Self::VOXEL_SIZE_RANGE.start(), *Self::VOXEL_SIZE_RANGE.end()),
         }
     }
     
     pub fn with_edits(mut self, edits: GeometryEditList) -> Self {
         self.edits = edits;
         self
+    }
+    
+    pub fn min_voxel_size(&self) -> f32 {
+        self.min_voxel_size
+    }
+    
+    pub fn set_min_voxel_size(&mut self, min_voxel_size: f32) {
+        self.min_voxel_size = min_voxel_size.clamp(*Self::VOXEL_SIZE_RANGE.start(), *Self::VOXEL_SIZE_RANGE.end());
+        self.evaluation_status = GeometryEvaluationStatus::NeedsEvaluation;
     }
     
 }

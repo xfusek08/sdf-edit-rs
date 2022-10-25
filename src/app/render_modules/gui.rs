@@ -1,16 +1,15 @@
 /// This file is inspired by: https://github.com/hasenbanck/egui_example/blob/master/src/main.rs
-
 use egui::ClippedPrimitive;
 use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
 
 use crate::app::{
     gui::GuiDataToRender,
-    state::State,
     renderer::{
-        RenderContext,
         render_module::RenderModule,
-        render_pass::{RenderPassAttachment, RenderPassContext}
+        render_pass::{RenderPassAttachment, RenderPassContext},
+        RenderContext,
     },
+    state::State,
 };
 
 struct RenderData {
@@ -30,35 +29,31 @@ impl std::fmt::Debug for GUIRenderModule {
 
 // Construct this render module (a pipeline) from render context
 impl GUIRenderModule {
-    
     #[profiler::function]
     pub fn new(context: &RenderContext) -> GUIRenderModule {
         Self {
-            egui_renderer: RenderPass::new(
-                &context.gpu.device,
-                context.surface_config.format,
-                1
-            ),
+            egui_renderer: RenderPass::new(&context.gpu.device, context.surface_config.format, 1),
             render_data: None,
         }
     }
-    
 }
 
 impl RenderModule for GUIRenderModule {
-    
     #[profiler::function]
     fn prepare(&mut self, state: &State, context: &RenderContext) {
-        
         let gui = &state.gui;
-        if let Some(GuiDataToRender { textures_delta, shapes }) = gui.data_to_render.as_ref() {
-            
+        if let Some(GuiDataToRender {
+            textures_delta,
+            shapes,
+        }) = gui.data_to_render.as_ref()
+        {
             let screen_descriptor = ScreenDescriptor {
                 size_in_pixels: [context.surface_config.width, context.surface_config.height],
                 pixels_per_point: context.scale_factor as f32,
             };
-            
-            { profiler::scope!("Update Textures");
+
+            {
+                profiler::scope!("Update Textures");
                 for (id, image_delta) in &textures_delta.set {
                     profiler::scope!("Update Texture");
                     self.egui_renderer.update_texture(
@@ -69,33 +64,36 @@ impl RenderModule for GUIRenderModule {
                     );
                 }
             }
-            
+
             let paint_jobs = {
                 profiler::scope!("Recalculate shapes to paint jobs");
                 gui.egui_ctx.tessellate(shapes.clone())
             };
-            
-            { profiler::scope!("Update egui buffers");
+
+            {
+                profiler::scope!("Update egui buffers");
                 self.egui_renderer.update_buffers(
                     &context.gpu.device,
                     &context.gpu.queue,
                     &paint_jobs,
-                    &screen_descriptor
+                    &screen_descriptor,
                 )
             }
-            
-            { profiler::scope!("Free textures which are no longer used");
+
+            {
+                profiler::scope!("Free textures which are no longer used");
                 for id in &textures_delta.free {
                     self.egui_renderer.free_texture(id);
                 }
             }
-            
-            
-            self.render_data = Some(RenderData { paint_jobs, screen_descriptor });
+
+            self.render_data = Some(RenderData {
+                paint_jobs,
+                screen_descriptor,
+            });
         }
-        
     }
-    
+
     #[profiler::function]
     fn render<'pass, 'a: 'pass>(
         &'a self,
@@ -105,22 +103,21 @@ impl RenderModule for GUIRenderModule {
         match render_pass_context {
             RenderPassContext {
                 attachment: RenderPassAttachment::Gui { .. },
-                render_pass
+                render_pass,
             } => {
                 if let Some(data) = self.render_data.as_ref() {
                     render_pass.push_debug_group("egu render pass");
                     self.egui_renderer.execute_with_renderpass(
                         render_pass,
                         &data.paint_jobs,
-                        &data.screen_descriptor
+                        &data.screen_descriptor,
                     );
                     render_pass.pop_debug_group();
                 }
-            },
+            }
             _ => {}
         }
     }
-    
+
     fn finalize(&mut self) {}
-    
 }

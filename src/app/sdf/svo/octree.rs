@@ -66,7 +66,7 @@ pub struct Octree {
     pub brick_pool: BrickPool,
     
     /// A list of SVO levels.
-    pub levels: Vec<SVOLevel>
+    pub levels: Vec<SVOLevel>,
 }
 
 impl Octree {
@@ -84,7 +84,7 @@ impl Octree {
                     padding: 1,
                 }
             ),
-            levels: vec![],
+            levels: vec![]
         }
     }
 }

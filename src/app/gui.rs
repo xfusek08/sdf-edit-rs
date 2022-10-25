@@ -4,6 +4,7 @@ use egui::{Style, epaint::ClippedShape};
 use winit::event_loop::EventLoopWindowTarget;
 
 use super::state::Scene;
+use crate::app::sdf::geometry::Geometry;
 
 #[profiler::function]
 pub fn style_gui(mut style: Style) -> Style {
@@ -32,6 +33,19 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
                     ui.label("renders:");
                     ui.label(format!("{}", scene.counters.renders));
                     ui.end_row();
+                    ui.label("Render Svo Level Begin:");
+                    ui.add(egui::DragValue::new(&mut scene.tmp_evaluator_config.render_svo_level_begin).speed(1).clamp_range(0..=scene.tmp_evaluator_config.render_svo_level_end - 1));
+                    ui.end_row();
+                    ui.label("Render Svo Level End:");
+                    ui.add(egui::DragValue::new(&mut scene.tmp_evaluator_config.render_svo_level_end).speed(1).clamp_range(scene.tmp_evaluator_config.render_svo_level_begin + 1..=20));
+                    ui.end_row();
+                    ui.label("Min voxel Size:");
+                    ui.add(
+                        egui::Slider::new(&mut scene.tmp_evaluator_config.min_voxel_size, Geometry::VOXEL_SIZE_RANGE)
+                            .step_by(0.001)
+                            .clamp_to_range(true)
+                    );
+                    
                 });
             
             ui.separator();
@@ -47,6 +61,29 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
                     );
                     ui.end_row();
             });
+            
+            ui.separator();
+            
+            ui.label("TMP SVO Stats");
+            for (geometry_id, geometry) in scene.geometry_pool.iter() {
+                let id = format!("{:?}", geometry_id);
+                ui.label(format!("Geometry: {}", id));
+                ui.label("SVO:");
+                if let Some(svo) = geometry.svo.as_ref() {
+                    egui::Grid::new(&id).num_columns(2).show(ui, |ui| {
+                        ui.label("Svo Node Count:");
+                        ui.label(format!("{:?}", svo.node_pool.count()));
+                        ui.end_row();
+                        ui.label("Svo Level Count:");
+                        ui.label(format!("{}", svo.levels.len()));
+                        ui.end_row();
+                    });
+                } else {
+                    ui.label("None");
+                }
+                
+                ui.spacing();
+            }
         });
 }
 

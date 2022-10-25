@@ -15,3 +15,5 @@ pub mod log;
 pub mod state;
 pub mod updating;
 pub mod renderer;
+pub mod pipelines;
+pub mod objects;

@@ -4,35 +4,45 @@ use slotmap::SlotMap;
 use winit_input_helper::WinitInputHelper;
 
 use winit::{
+    window::{Window, WindowBuilder},
+    event_loop::{EventLoop, ControlFlow, EventLoopWindowTarget},
     error::OsError,
     platform::run_return::EventLoopExtRunReturn,
     event::Event,
     dpi::PhysicalSize,
-    window::{Window, WindowBuilder},
-    event_loop::{EventLoop, ControlFlow, EventLoopWindowTarget},
 };
 
 use super::{
-    clock::Clock,
-    gui::Gui,
-    components::Deleted,
-    math::Transform,
-    state::{State, Scene},
-    gpu::{GPUContext, vertices::ColorVertex},
-    renderer::{Renderer, render_pass::RenderPassAttachment},
-    updating::{Updater, UpdateContext, ResizeContext},
-    update_modules::{gui::GuiUpdater, camera::CameraUpdater, svo::SVOUpdater},
-    camera::{Camera, CameraProperties},
+    update_modules::{
+        gui::GuiUpdater,
+        camera::CameraUpdater,
+        svo::SVOUpdater,
+        tmp_evaluator_config::{
+            TmpEvaluatorConfigProps,
+            TmpEvaluatorConfig, VoxelSizeOutlineComponent
+        }
+    },
     render_modules::{
         lines::{LineMesh, LineRenderModule},
         svo_wireframe::SVOWireframeRenderModule,
         gui::GUIRenderModule,
+        cube_outline::CubeOutlineRenderModule,
     },
     sdf::{
         geometry::{GeometryEdit, Geometry, GeometryPool},
         primitives::Primitive,
         model::{ModelID, Model}
     },
+    state::{State, Scene},
+    gpu::{GPUContext, vertices::ColorVertex},
+    renderer::{Renderer, render_pass::RenderPassAttachment},
+    updating::{Updater, UpdateContext, ResizeContext},
+    camera::{Camera, CameraProperties},
+    clock::Clock,
+    gui::Gui,
+    components::Deleted,
+    math::Transform,
+    objects::cube::CubeOutlineComponent,
 };
 
 use crate::error;
@@ -55,37 +65,48 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
     ));
     
     // create and register test geometry
+    let min_voxel_size = 0.5;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
-    let test_geometry = Geometry::new().with_edits(vec![
-        GeometryEdit {
-            primitive: Primitive::Sphere {
-                center: glam::Vec3::ZERO,
-                radius: 1.0
-            },
-            operation: super::sdf::geometry::GeometryOperation::Add,
-            transform: Transform::default(),
-            blending: 0.0,
-        }
-    ]);
+    let test_geometry = Geometry::new(min_voxel_size)
+        .with_edits(vec![
+            GeometryEdit {
+                primitive: Primitive::Sphere {
+                    center: glam::Vec3::ZERO,
+                    radius: 1.0
+                },
+                operation: super::sdf::geometry::GeometryOperation::Add,
+                transform: Transform::default(),
+                blending: 0.0,
+            }
+        ]);
+    
     let test_geometry_id = geometry_pool.insert(test_geometry);
     
-    // create and register tes model
+    // create and register test model
     let mut model_pool: SlotMap<ModelID, Model> = SlotMap::with_key();
     let test_model = Model::new(test_geometry_id);
     model_pool.insert(test_model);
+    
+    // Show voxel size instance
+    world.spawn((VoxelSizeOutlineComponent, CubeOutlineComponent::new(1.5, 0.0, 0.0, min_voxel_size)));
     
     State {
         gui: Gui::new(&event_loop),
         scene: Scene {
             camera: Camera::new(CameraProperties {
                 aspect_ratio: window.inner_size().width as f32 / window.inner_size().height as f32,
-                fov: 50.0,
+                fov: 10.0,
                 ..Default::default()
             }).orbit(glam::Vec3::ZERO, 10.0),
             geometry_pool,
             model_pool,
             world,
             counters: Default::default(),
+            tmp_evaluator_config: TmpEvaluatorConfigProps {
+                render_svo_level_begin: 0,
+                render_svo_level_end: 10,
+                min_voxel_size,
+            }
         },
     }
 }
@@ -96,11 +117,12 @@ fn init_renderer(gpu: Arc<GPUContext>, window: &Window) -> Renderer {
     
     // load modules
     let line_module = renderer.add_module(|c| LineRenderModule::new(c));
+    let cube_outline = renderer.add_module(|c| CubeOutlineRenderModule::new(c));
     let svo_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
     let gui_module = renderer.add_module(|c| GUIRenderModule::new(c));
     
     // passes are executed in order of their registration
-    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, svo_module]);
+    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, cube_outline, svo_module]);
     renderer.set_render_pass(|c| RenderPassAttachment::gui(c), &[gui_module]);
     
     renderer
@@ -134,6 +156,7 @@ pub async fn run(config: ApplicationConfig) {
     // Updating system
     let mut updater = Updater::new()
         .with_module(GuiUpdater)
+        .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
         .with_module(SVOUpdater::new(gpu.clone())); // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context
     
