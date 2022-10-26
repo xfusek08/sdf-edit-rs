@@ -52,6 +52,7 @@ pub struct SVOLevel {
 // Sparse Voxel Octree
 // -------------------
 
+#[derive(Debug)]
 pub struct Octree {
     
     /// AABB of octree tightly fitting the geometry

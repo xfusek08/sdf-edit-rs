@@ -26,7 +26,7 @@ use super::{
         lines::{LineMesh, LineRenderModule},
         svo_wireframe::SVOWireframeRenderModule,
         gui::GUIRenderModule,
-        cube_outline::CubeOutlineRenderModule,
+        cube_outline::CubeOutlineRenderModule, svo_solid_bricks::SvoSolidBricksRenderModule,
     },
     sdf::{
         geometry::{GeometryEdit, Geometry, GeometryPool},
@@ -103,8 +103,7 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
             world,
             counters: Default::default(),
             tmp_evaluator_config: TmpEvaluatorConfigProps {
-                render_svo_level_begin: 0,
-                render_svo_level_end: 10,
+                render_level: 0,
                 min_voxel_size,
             }
         },
@@ -118,11 +117,12 @@ fn init_renderer(gpu: Arc<GPUContext>, window: &Window) -> Renderer {
     // load modules
     let line_module = renderer.add_module(|c| LineRenderModule::new(c));
     let cube_outline = renderer.add_module(|c| CubeOutlineRenderModule::new(c));
-    let svo_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
+    let svo_wireframe_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
+    let svo_brick_module = renderer.add_module(|c| SvoSolidBricksRenderModule::new(c));
     let gui_module = renderer.add_module(|c| GUIRenderModule::new(c));
     
     // passes are executed in order of their registration
-    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, cube_outline, svo_module]);
+    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, cube_outline, svo_brick_module, svo_wireframe_module]);
     renderer.set_render_pass(|c| RenderPassAttachment::gui(c), &[gui_module]);
     
     renderer

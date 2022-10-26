@@ -11,8 +11,7 @@ use crate::app::{
 
 #[derive(Clone)]
 pub struct TmpEvaluatorConfigProps {
-    pub render_svo_level_begin: u32,
-    pub render_svo_level_end: u32,
+    pub render_level: u32,
     pub min_voxel_size: f32,
 }
 
@@ -35,8 +34,7 @@ impl<'a> UpdaterModule for TmpEvaluatorConfig {
         let scene_props = context.state.scene.tmp_evaluator_config.clone();
 
         if let Some(TmpEvaluatorConfigProps {
-            render_svo_level_begin,
-            render_svo_level_end,
+            render_level,
             min_voxel_size,
         }) = self.prev_props {
             if scene_props.min_voxel_size != min_voxel_size {

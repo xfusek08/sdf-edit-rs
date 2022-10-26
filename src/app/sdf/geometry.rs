@@ -1,9 +1,6 @@
-use std::ops::RangeInclusive;
-
+use std::{ops::RangeInclusive, sync::Arc};
 use slotmap::{new_key_type, SlotMap};
-
 use crate::app::math::Transform;
-
 use super::{svo::Octree, primitives::Primitive};
 
 #[derive(Clone)]
@@ -33,7 +30,7 @@ pub enum GeometryEvaluationStatus {
 pub struct Geometry {
     
     /// A Sparse Voxel Octree evaluated into GPU memory
-    pub svo: Option<Octree>,
+    pub svo: Option<Arc<Octree>>,
     
     /// A list of edits that compose this geometry
     pub edits: GeometryEditList,

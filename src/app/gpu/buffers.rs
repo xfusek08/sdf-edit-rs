@@ -1,5 +1,5 @@
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, fmt::Debug};
 
 use wgpu::util::DeviceExt;
 
@@ -8,7 +8,7 @@ use super::{GPUContext, vertices::Vertex};
 pub trait BufferItem:  {}
 
 #[derive(Debug)]
-pub struct Buffer<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> {
+pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> {
     /// Label of buffer on GPU.
     pub label: Option<&'static str>,
     /// Vertex buffer on GPU.
@@ -26,7 +26,7 @@ pub struct Buffer<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> {
 }
 
 // Statics (Helpers, Constructors)
-impl<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
+impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// Create a new buffer on the GPU.
     #[profiler::function]
     pub fn new(gpu: &GPUContext, label: Option<&'static str>, data: &[I], usage: wgpu::BufferUsages) -> Buffer<I> {
@@ -74,7 +74,7 @@ impl<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
 }
 
 // Instance methods
-impl<I: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
+impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
     /// Returns allocated number of bytes (on GPU) for this buffer
     pub fn byte_size(&self) -> usize {

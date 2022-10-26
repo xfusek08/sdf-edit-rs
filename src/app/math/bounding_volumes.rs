@@ -6,6 +6,7 @@ pub struct BoundingCube {
     pub size: f32,
 }
 
+#[derive(Debug)]
 pub struct AABB {
     pub min: glam::Vec3,
     pub max: glam::Vec3,

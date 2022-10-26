@@ -35,10 +35,6 @@ pub struct NodePool {
     /// A uniform buffer holding value for capacity of node pool.
     capacity_buffer: wgpu::Buffer,
     
-    /// A bind group of this particular node pool.
-    /// - When accessed through a `bind_group` method it will bew created.
-    bind_group: Option<wgpu::BindGroup>,
-    
     /// A value into which a count information is read from count_buffer.
     /// - If None, `load_count` method must be call to populate this value.
     count: Option<u32>
@@ -123,7 +119,6 @@ impl NodePool {
             vertex_buffer,
             capacity_buffer,
             count: Some(count),
-            bind_group: None,
         }
     }
     
@@ -137,46 +132,43 @@ impl NodePool {
     
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> &wgpu::BindGroup {
-        if self.bind_group.is_none() {
-            self.bind_group = Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("SVO Node Pool Bind Group"),
-                layout: layout,
-                entries: &[
-                    // node_count
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.count_buffer().as_entire_binding(),
-                    },
-                    // node_headers
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.header_buffer().as_entire_binding(),
-                    },
-                    // node_payload
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: self.payload_buffer().as_entire_binding(),
-                    },
-                    // node_vertices
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: self.vertex_buffer().as_entire_binding(),
-                    },
-                    // node_pool_capacity
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: self.capacity_buffer().as_entire_binding(),
-                    },
-                ],
-            }));
-        }
-        self.bind_group.as_ref().unwrap()
+    pub fn create_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SVO Node Pool Bind Group"),
+            layout: layout,
+            entries: &[
+                // node_count
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.count_buffer().as_entire_binding(),
+                },
+                // node_headers
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.header_buffer().as_entire_binding(),
+                },
+                // node_payload
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.payload_buffer().as_entire_binding(),
+                },
+                // node_vertices
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.vertex_buffer().as_entire_binding(),
+                },
+                // node_pool_capacity
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.capacity_buffer().as_entire_binding(),
+                },
+            ],
+        })
     }
-
+    
     /// Creates and returns a custom binding for the node pool.
     #[profiler::function]
-    pub fn create_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
+    pub fn create_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages, read_only: bool) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Node Pool Bind Group Layout"),
             entries: &[
@@ -186,7 +178,7 @@ impl NodePool {
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        ty: wgpu::BufferBindingType::Storage { read_only },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -197,7 +189,7 @@ impl NodePool {
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        ty: wgpu::BufferBindingType::Storage { read_only },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -208,7 +200,7 @@ impl NodePool {
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        ty: wgpu::BufferBindingType::Storage { read_only },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -219,7 +211,7 @@ impl NodePool {
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        ty: wgpu::BufferBindingType::Storage { read_only },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },

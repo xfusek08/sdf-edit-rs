@@ -61,6 +61,7 @@ impl BrickPoolFormat {
 }
 
 /// A Brick Pool of the SVO residing on GPU.
+#[derive(Debug)]
 pub struct BrickPool {
     
     /// A gpu texture that stores all the bricks.
@@ -128,7 +129,7 @@ impl BrickPool {
                 sample_count:    1,
                 dimension:       wgpu::TextureDimension::D3,
                 format:          wgpu::TextureFormat::R32Float,
-                usage:           wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::STORAGE_BINDING,
+                usage:           wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
             }
         );
         
@@ -178,38 +179,75 @@ impl BrickPool {
 impl BrickPool {
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> &wgpu::BindGroup {
-        if self.bind_group.is_none() {
-            self.bind_group = Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("SVO Node Pool Bind Group"),
-                layout: layout,
-                entries: &[
-                    // brick_atlas
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.brick_atlas_view),
-                    },
-                    // count_buffer
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.count_buffer().as_entire_binding(),
-                    },
-                    // side_size_buffer
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: self.side_size_buffer().as_entire_binding(),
-                    },
-                ],
-            }));
-        };
-        self.bind_group.as_ref().unwrap()
+    pub fn create_write_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SVO Node Pool Bind Group"),
+            layout: layout,
+            entries: &[
+                // brick_atlas
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.brick_atlas_view),
+                },
+                // count_buffer
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.count_buffer().as_entire_binding(),
+                },
+                // side_size_buffer
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.side_size_buffer().as_entire_binding(),
+                },
+            ],
+        })
+    }
+    
+    #[profiler::function]
+    pub fn create_read_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+        let diffuse_sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SVO Node Pool Bind Group"),
+            layout: layout,
+            entries: &[
+                // brick_atlas
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.brick_atlas_view),
+                },
+                // brick_atlas sampler
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+                },
+                // count_buffer
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.count_buffer().as_entire_binding(),
+                },
+                // side_size_buffer
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.side_size_buffer().as_entire_binding(),
+                },
+            ],
+        })
     }
     
     /// Creates and returns a custom binding for the node pool.
     #[profiler::function]
     pub fn create_write_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("SVO Node Pool Bind Group Layout"),
+            label: Some("SVO Brick Pool Bind Group Write Layout"),
             entries: &[
                 // brick_atlas
                 wgpu::BindGroupLayoutEntry {
@@ -236,6 +274,55 @@ impl BrickPool {
                 // side_size_buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                },
+            ],
+        })
+    }
+    
+    #[profiler::function]
+    pub fn create_read_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
+        gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("SVO Brick Pool Bind Group Read Layout"),
+            entries: &[
+                // brick_atlas
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false }, // see https://github.com/gfx-rs/wgpu/issues/2107
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    }
+                },
+                // brick_atlas sampler
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                },
+                // count_buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                },
+                // side_size_buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {

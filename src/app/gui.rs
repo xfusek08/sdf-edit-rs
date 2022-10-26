@@ -33,12 +33,6 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
                     ui.label("renders:");
                     ui.label(format!("{}", scene.counters.renders));
                     ui.end_row();
-                    ui.label("Render Svo Level Begin:");
-                    ui.add(egui::DragValue::new(&mut scene.tmp_evaluator_config.render_svo_level_begin).speed(1).clamp_range(0..=scene.tmp_evaluator_config.render_svo_level_end - 1));
-                    ui.end_row();
-                    ui.label("Render Svo Level End:");
-                    ui.add(egui::DragValue::new(&mut scene.tmp_evaluator_config.render_svo_level_end).speed(1).clamp_range(scene.tmp_evaluator_config.render_svo_level_begin + 1..=20));
-                    ui.end_row();
                     ui.label("Min voxel Size:");
                     ui.add(
                         egui::Slider::new(&mut scene.tmp_evaluator_config.min_voxel_size, Geometry::VOXEL_SIZE_RANGE)
@@ -64,6 +58,8 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
             
             ui.separator();
             
+            let mut render_level = scene.tmp_evaluator_config.render_level;
+            
             ui.label("TMP SVO Stats");
             for (geometry_id, geometry) in scene.geometry_pool.iter() {
                 let id = format!("{:?}", geometry_id);
@@ -71,16 +67,32 @@ pub fn gui(ctx: &egui::Context, scene: &mut Scene) {
                 ui.label("SVO:");
                 if let Some(svo) = geometry.svo.as_ref() {
                     egui::Grid::new(&id).num_columns(2).show(ui, |ui| {
+                        ui.label("Render Svo Level");
+                        
+                        let levels = svo.levels.len() as u32;
+                        if levels > 0 {
+                            ui.add(egui::Slider::new(
+                                &mut render_level,
+                                0..=levels - 1,
+                            ).step_by(1.0).clamp_to_range(true));
+                        }
+                        ui.label(format!("/ {}", levels - 1));
+                        
+                        ui.end_row();
                         ui.label("Svo Node Count:");
                         ui.label(format!("{:?}", svo.node_pool.count()));
                         ui.end_row();
                         ui.label("Svo Level Count:");
                         ui.label(format!("{}", svo.levels.len()));
                         ui.end_row();
+                        ui.label("Svo Capacity:");
+                        ui.label(format!("{:?}", svo.node_pool.capacity()));
                     });
                 } else {
                     ui.label("None");
                 }
+                
+                scene.tmp_evaluator_config.render_level = render_level;
                 
                 ui.spacing();
             }

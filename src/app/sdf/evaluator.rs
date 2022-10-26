@@ -63,7 +63,7 @@ impl Evaluator {
             WorkAssignmentUniform::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
         let node_pool_bind_group_layout = Arc::new(
-            svo::NodePool::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
+            svo::NodePool::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE, false)
         );
         let brick_pool_bind_group_layout = Arc::new(
             svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
@@ -135,7 +135,7 @@ impl Evaluator {
                 Ok(svo) => {
                     if let Some(geometry) = geometry_pool.get_mut(job.geometry_id) {
                         info!("Finished evaluating geometry {:?}:", job.geometry_id);
-                        geometry.svo = Some(svo);
+                        geometry.svo = Some(Arc::new(svo));
                         geometry.evaluation_status = GeometryEvaluationStatus::Evaluated;
                     }
                 },
@@ -225,6 +225,10 @@ impl Evaluator {
             
             let old_node_count = svo.node_pool.load_count(&gpu_resources.gpu);
             
+            let uniform_bind_group = work_assignment_uniform.create_bind_group(&gpu_resources.gpu, &gpu_resources.work_assignment_layout);
+            let node_bind_group = svo.node_pool.create_bind_group(&gpu_resources.gpu, &gpu_resources.node_pool_bind_group_layout);
+            let brick_bind_group = svo.brick_pool.create_write_bind_group(&gpu_resources.gpu, &gpu_resources.brick_pool_bind_group_layout);
+            
             // Command encoder for compute pass
             let mut encoder = profiler::call!(
                 gpu_resources.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -247,9 +251,9 @@ impl Evaluator {
                 
                 {
                     profiler::scope!("Settings bind groups");
-                    compute_pass.set_bind_group(0, &work_assignment_uniform.bind_group(&gpu_resources.gpu, &gpu_resources.work_assignment_layout), &[]);
-                    compute_pass.set_bind_group(1, &svo.node_pool.bind_group(&gpu_resources.gpu, &gpu_resources.node_pool_bind_group_layout), &[]);
-                    compute_pass.set_bind_group(2, &svo.brick_pool.bind_group(&gpu_resources.gpu, &gpu_resources.brick_pool_bind_group_layout), &[]);
+                    compute_pass.set_bind_group(0, &uniform_bind_group, &[]);
+                    compute_pass.set_bind_group(1, &node_bind_group, &[]);
+                    compute_pass.set_bind_group(2, &brick_bind_group, &[]);
                 }
                 
                 profiler::call!(
@@ -283,7 +287,8 @@ impl Evaluator {
         
         // Root node
         let mut level = evaluate_level(None);
-        let mut cnt = 0;
+        svo.levels.push(level);
+        
         // Evaluate levels until resulting level ha no more nodes to be evaluated
         loop { profiler::scope!("Dispatch loop");
             level = evaluate_level(Some(level));
@@ -293,11 +298,6 @@ impl Evaluator {
             } else {
                 svo.levels.push(level); // register level into octree
             }
-            // cnt += 1;
-            // if cnt > 4 {
-            //     dbg!("Too many levels");
-            //     break;
-            // }
         }
         
         svo.node_pool.buffers_changed();
@@ -376,18 +376,15 @@ impl WorkAssignmentUniform {
     
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> &wgpu::BindGroup {
-        if self.bind_group.is_none() {
-            self.bind_group = Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("WorkAssignment Bind Group"),
-                layout: layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.uniform_buffer.buffer.as_entire_binding(),
-                }],
-            }));
-        };
-        self.bind_group.as_ref().unwrap()
+    pub fn create_bind_group(&mut self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("WorkAssignment Bind Group"),
+            layout: layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.uniform_buffer.buffer.as_entire_binding(),
+            }],
+        })
     }
     
     /// Creates and returns a custom binding for the node pool.
