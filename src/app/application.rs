@@ -26,7 +26,7 @@ use super::{
         lines::{LineMesh, LineRenderModule},
         svo_wireframe::SVOWireframeRenderModule,
         gui::GUIRenderModule,
-        cube_outline::CubeOutlineRenderModule, svo_solid_bricks::SvoSolidBricksRenderModule,
+        cube_outline::CubeOutlineRenderModule, svo_solid_bricks::SvoSolidBricksRenderModule, svo_sdf_bricks::SvoSDFBricksRenderModule,
     },
     sdf::{
         geometry::{GeometryEdit, Geometry, GeometryPool},
@@ -65,7 +65,7 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
     ));
     
     // create and register test geometry
-    let min_voxel_size = 0.5;
+    let min_voxel_size = 0.01;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     let test_geometry = Geometry::new(min_voxel_size)
         .with_edits(vec![
@@ -119,10 +119,11 @@ fn init_renderer(gpu: Arc<GPUContext>, window: &Window) -> Renderer {
     let cube_outline = renderer.add_module(|c| CubeOutlineRenderModule::new(c));
     let svo_wireframe_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
     let svo_brick_module = renderer.add_module(|c| SvoSolidBricksRenderModule::new(c));
+    let svo_sdf_brick_module = renderer.add_module(|c| SvoSDFBricksRenderModule::new(c));
     let gui_module = renderer.add_module(|c| GUIRenderModule::new(c));
     
     // passes are executed in order of their registration
-    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, cube_outline, svo_brick_module, svo_wireframe_module]);
+    renderer.set_render_pass(|c| RenderPassAttachment::base(c), &[line_module, cube_outline, svo_sdf_brick_module, svo_wireframe_module]);
     renderer.set_render_pass(|c| RenderPassAttachment::gui(c), &[gui_module]);
     
     renderer

@@ -139,6 +139,16 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
 }
 
+impl Buffer<u32> {
+    pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<u32>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &wgpu::vertex_attr_array![1 => Uint32],
+        }
+    }
+}
+
 
 // TODO Generalize Buffer for different usage types
 

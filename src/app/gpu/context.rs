@@ -45,7 +45,12 @@ impl GPUContext {
         adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::POLYGON_MODE_LINE | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
+                features:
+                    wgpu::Features::PUSH_CONSTANTS // To allow push constants
+                    | wgpu::Features::POLYGON_MODE_LINE // to allow wireframe rendering
+                    | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS // to allow mapping of primary buffers to memory
+                    | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES // to allow sampling storage textures see: https://github.com/gfx-rs/wgpu/issues/1412 and https://github.com/gfx-rs/wgpu-rs/issues/877#issuecomment-826896142
+                ,
                 limits: wgpu::Limits {
                     max_push_constant_size: 128,
                     max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups

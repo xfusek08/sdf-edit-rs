@@ -18,8 +18,8 @@ pub struct GPUCamera {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUCameraPushConstantData {
-    view:     glam::Mat4,
-    position: glam::Vec4,
+    pub view:     glam::Mat4,
+    pub position: glam::Vec4,
 }
 
 impl GPUCamera {

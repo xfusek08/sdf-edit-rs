@@ -43,6 +43,8 @@ impl Default for BrickPoolFormat {
 }
 
 impl BrickPoolFormat {
+    pub const BRICK_SIZE: u32 = 8;
+    
     pub fn voxel_format(&self) -> &BrickVoxelFormat {
         &self.voxel_format
     }
@@ -50,7 +52,7 @@ impl BrickPoolFormat {
         self.padding
     }
     pub fn voxels_per_brick_in_one_dimension(&self) -> u32 {
-        8 + 2 * self.padding
+        Self::BRICK_SIZE + 2 * self.padding
     }
     pub fn ints_per_brick_in_one_dimension(&self) -> u32 {
         self.voxels_per_brick_in_one_dimension() * self.voxel_format.voxel_ints()
@@ -107,8 +109,26 @@ impl BrickPool {
     pub fn count_buffer(&self) -> &wgpu::Buffer {
         &self.count_buffer
     }
+    /// Number of voxels in one dimension of entire brick pool.
+    pub fn atlas_edge_size(&self) -> u32 {
+        (BrickPoolFormat::BRICK_SIZE + 2) * self.side_size
+    }
+    /// Spacing between bricks in the brick pool atlas to normalize integer brick coordinates into [0, 1] range.
+    pub fn atlas_stride(&self) -> f32 {
+        1.0 / self.side_size as f32
+    }
+    /// Size of one voxel in the brick pool atlas.
+    pub fn atlas_voxel_size(&self) -> f32 {
+        1.0 / self.atlas_edge_size() as f32
+    }
+    /// A shrink coefficient of normalize coordinate into a single brick in the brick pool atlas.
+    pub fn atlas_scale(&self) -> f32 {
+        BrickPoolFormat::BRICK_SIZE as f32 * self.atlas_voxel_size()
+    }
+    
 }
 
+// Statics and constructors
 impl BrickPool {
     
     /// Creates empty brick pool texture.
@@ -297,7 +317,7 @@ impl BrickPool {
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false }, // see https://github.com/gfx-rs/wgpu/issues/2107
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true }, // see https://github.com/gfx-rs/wgpu/issues/2107
                         view_dimension: wgpu::TextureViewDimension::D3,
                         multisampled: false,
                     }

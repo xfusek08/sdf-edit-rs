@@ -125,14 +125,13 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     let voxel_size_local = voxel_size * node.vertex.w;
     let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
     let sdf_value = sample_sdf(voxel_center_global);
-    let sdf_value = length(voxel_center_global) - 0.2;
     
     // vote if voxel intersects sdf surface
     if (in.local_invocation_index == 0u) {
         atomicStore(&divide, 0u);
     }
     
-    if (in_voxel(voxel_size, sdf_value)) {
+    if (in_voxel(voxel_size_global, sdf_value)) {
         atomicAdd(&divide, 1u);
     }
     workgroupBarrier(); // synchronize witing of whole group if to divide or not
