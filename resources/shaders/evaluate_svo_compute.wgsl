@@ -75,6 +75,11 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
     );
 }
 
+struct BrickPaddingIndices {
+    data: array<vec3<u32>, 488>
+}
+@group(3) @binding(0) var<uniform> brick_padding_indices: BrickPaddingIndices;
+
 // Function
 // -----------------------------------------------------------------------------------
 
@@ -98,9 +103,23 @@ fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
     return bc.w * position + bc.xyz;
 }
 
-fn write_to_brick(voxel_coords: vec3<u32>, distance: f32) {
-    textureStore(brick_atlas, vec3<i32>(voxel_coords), vec4<f32>(distance, 0.0, 0.0, 0.0));
-    // TODO: write value to padding voxels
+fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
+    textureStore(brick_atlas, voxel_coords, vec4<f32>(distance, 0.0, 0.0, 0.0));
+}
+
+struct GlobalVoxelDesc {
+    center: vec3<f32>,
+    size: f32,
+}
+fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> GlobalVoxelDesc {
+    let voxel_size = 0.125; // 1.0 / 8.0;
+    let half_step = 0.0625; // voxel_size * 0.5;
+    let shift_vector = voxel_size * vec3<f32>(centered_voxel_index) + half_step;
+    let voxel_center_local = bounding_cube_transform(node.vertex, shift_vector);
+    let voxel_center_global = bounding_cube_transform(work_assigment.svo_boundding_cube, voxel_center_local);
+    let voxel_size_local = voxel_size * node.vertex.w;
+    let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
+    return GlobalVoxelDesc(voxel_center_global, voxel_size_global);
 }
 
 let BRICK_IS_EMPTY = 0u;
@@ -116,22 +135,16 @@ var<workgroup> brick_index: u32;
 fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     var result: BrickEvaluationResult;
     
-    let branch_coefficients = vec3<i32>(in.local_invocation_id) - 4; // (0,0,0) - (7,7,7) => (-4,-4,-4) - (3,3,3)
-    let voxel_size = 1.0 / 8.0; // hopefully the only FP division and possibly optimize into multiplication by 0.5, 0.25 etc.
-    let half_step = voxel_size * 0.5;
-    let shift_vector = voxel_size * vec3<f32>(branch_coefficients) + half_step;
-    let voxel_center_local = bounding_cube_transform(node.vertex, shift_vector);
-    let voxel_center_global = bounding_cube_transform(work_assigment.svo_boundding_cube, voxel_center_local);
-    let voxel_size_local = voxel_size * node.vertex.w;
-    let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
-    let sdf_value = sample_sdf(voxel_center_global);
+    let centered_voxel_index = vec3<i32>(in.local_invocation_id) - 4; // (0,0,0) - (7,7,7) => (-4,-4,-4) - (3,3,3)
+    let voxel_global_desc = calculate_global_voxel(centered_voxel_index, node);
+    let sdf_value = sample_sdf(voxel_global_desc.center);
     
     // vote if voxel intersects sdf surface
     if (in.local_invocation_index == 0u) {
         atomicStore(&divide, 0u);
     }
     
-    if (in_voxel(voxel_size_global, sdf_value)) {
+    if (in_voxel(voxel_global_desc.size, sdf_value)) {
         atomicAdd(&divide, 1u);
     }
     workgroupBarrier(); // synchronize witing of whole group if to divide or not
@@ -147,12 +160,24 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         
         // All threads in group will find voxel coordinate in brick pool based on the brick index
         let brick_coords = brick_index_to_coords(brick_index);
+        let brick_coords_10 = brick_coords * 10u;
         
         // Get coordinates of voxel in brick (10 = 8 + 2 padding)
-        let voxel_coords = 10u * brick_coords + in.local_invocation_id + vec3<u32>(1u, 1u, 1u);
+        let voxel_coords = brick_coords_10 + in.local_invocation_id + 1u;
         
         // save voxel value
-        write_to_brick(voxel_coords, sdf_value);
+        write_to_brick(vec3<i32>(voxel_coords), sdf_value);
+        
+        // Write padding
+        if (in.local_invocation_index < 488u) {
+            let padding_index = brick_padding_indices.data[in.local_invocation_index];
+            let centered_voxel_index = vec3<i32>(padding_index) - 5;
+            let voxel_global_desc = calculate_global_voxel(centered_voxel_index, node);
+            let sdf_value = sample_sdf(voxel_global_desc.center);
+            let voxel_coords = brick_coords_10 + padding_index;
+            write_to_brick(vec3<i32>(voxel_coords), sdf_value);
+        }
+        workgroupBarrier();  // wait for all threads to finish writing padding to brick
         
         // return value
         result.brick_type = BRICK_IS_BOUONDARY;
@@ -166,7 +191,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         }
     }
     
-    result.voxel_size = voxel_size_global;
+    result.voxel_size = voxel_global_desc.size;
     return result;
 }
 

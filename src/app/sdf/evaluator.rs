@@ -3,8 +3,6 @@
 
 use std::{thread, sync::Arc, borrow::Cow};
 
-use wgpu::util::DeviceExt;
-
 use crate::{
     info,
     error,
@@ -32,12 +30,15 @@ pub struct EvaluationJob {
 }
 
 #[derive(Clone)]
-pub struct EvaluationGPUResources {
+struct EvaluationGPUResources {
     pub gpu: Arc<GPUContext>,
     pub pipeline: Arc<wgpu::ComputePipeline>,
     pub work_assignment_layout: Arc<wgpu::BindGroupLayout>,
     pub node_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
     pub brick_pool_bind_group_layout: Arc<wgpu::BindGroupLayout>,
+    
+    // a constant uniform buffer of precomputed indices for padding of the brick in the brick pool
+    pub brick_padding_indices_uniform: Arc<BrickPaddingIndicesUniform>,
 }
 
 pub struct Evaluator {
@@ -68,14 +69,18 @@ impl Evaluator {
         let brick_pool_bind_group_layout = Arc::new(
             svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
         );
-
+        let brick_padding_indices_uniform = Arc::new(
+            BrickPaddingIndicesUniform::new(gpu.as_ref())
+        );
+        
         let pipeline_layout = { profiler::scope!("Create evaluator pipeline layout");
             gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Line Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    work_assignment_layout.as_ref(),       // 0 - Work Assignment
-                    node_pool_bind_group_layout.as_ref(),  // 1 - Node Pool
-                    brick_pool_bind_group_layout.as_ref(), // 2 - Brick Pool
+                    work_assignment_layout.as_ref(),                  // 0 - Work Assignment
+                    node_pool_bind_group_layout.as_ref(),             // 1 - Node Pool
+                    brick_pool_bind_group_layout.as_ref(),            // 2 - Brick Pool
+                    &brick_padding_indices_uniform.bind_group_layout, // 3 - Brick Padding Indices
                 ],
                 push_constant_ranges: &[],
             })
@@ -101,6 +106,7 @@ impl Evaluator {
                 work_assignment_layout,
                 node_pool_bind_group_layout,
                 brick_pool_bind_group_layout,
+                brick_padding_indices_uniform,
             },
         }
     }
@@ -254,6 +260,7 @@ impl Evaluator {
                     compute_pass.set_bind_group(0, &uniform_bind_group, &[]);
                     compute_pass.set_bind_group(1, &node_bind_group, &[]);
                     compute_pass.set_bind_group(2, &brick_bind_group, &[]);
+                    compute_pass.set_bind_group(3, &gpu_resources.brick_padding_indices_uniform.bind_group, &[]);
                 }
                 
                 profiler::call!(
@@ -405,4 +412,71 @@ impl WorkAssignmentUniform {
         })
     }
     
+}
+
+/// This is fixed and constant uniform buffer, with exactly 488 3d indices of padding voxels around 8x8x8 brick
+/// creating a 10x10x10 brick. This is used to create padding around the brick to avoid border artifacts.
+struct BrickPaddingIndicesUniform {
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
+    uniform_buffer: Buffer<glam::UVec4>,
+}
+
+impl BrickPaddingIndicesUniform {
+    #[profiler::function]
+    pub fn new(gpu: &GPUContext) -> Self {
+        let padding_indices = Self::generate_indices();
+        
+        let uniform_buffer = Buffer::new(
+            gpu,
+            Some("Brick Padding Indices Uniform Buffer"),
+            &padding_indices,
+            wgpu::BufferUsages::UNIFORM
+        );
+        
+        let bind_group_layout = gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Brick Padding Indices Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+            }],
+        });
+        
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Brick Padding Indices Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.buffer.as_entire_binding(),
+            }],
+        });
+        
+        Self {
+            uniform_buffer,
+            bind_group_layout,
+            bind_group,
+        }
+    }
+    
+    fn generate_indices() -> [glam::UVec4; 488] {
+        let mut indices = [glam::UVec4::ZERO; 488];
+        let mut i = 0;
+        for x in 0..10 {
+            for y in 0..10 {
+                for z in 0..10 {
+                    if x == 0 || x == 9 || y == 0 || y == 9 || z == 0 || z == 9 {
+                        indices[i] = glam::UVec4::new(x, y, z, 0);
+                        i += 1;
+                    }
+                }
+            }
+        }
+        indices
+    }
 }

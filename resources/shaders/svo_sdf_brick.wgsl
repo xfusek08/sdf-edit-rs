@@ -133,12 +133,58 @@ fn get_distance_to_end_of_brick(position: vec3<f32>, direction: vec3<f32>) -> f3
     return min(tMaxV.x, min(tMaxV.y, tMaxV.z));
 }
 
+fn sample_volume_distance(in: VertexOutput, act_position: vec3<f32>,) -> f32 {
+    return textureSample(
+        brick_atlas,
+        brick_atlas_sampler,
+        act_position * pc.brick_scale + in.brick_shift
+    ).r;
+}
+
+let NORMAL_OFFSET = 0.01;
+
+/// Compute normal (gradient of sdf) for given point in volume
+/// see: https://iquilezles.org/articles/normalsSDF/
+fn get_normal(in: VertexOutput, act_position: vec3<f32>, current_distance: f32) -> vec3<f32> {
+    let e = vec2<f32>(NORMAL_OFFSET, 0.0);
+    let n = vec3<f32>(
+        sample_volume_distance(in, act_position + e.xyy),
+        sample_volume_distance(in, act_position + e.yxy),
+        sample_volume_distance(in, act_position + e.yyx)
+    ) - current_distance;
+    return normalize(n);
+}
+
+// Computing basic Phong lighting
+fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>) -> vec4<f32> {
+    let lightPos = (to_local_matrix * vec4<f32>(100.0, 100.0, 100.0, 1.0)).xyz;
+    let local_camera_pos = (to_local_matrix * pc.camera_position).xyz;
+    let lightColor = vec3<f32>(1.0, 1.0, 1.0);
+    let ambient = vec3<f32>(1.0, 1.0, 1.0) * 0.25;
+    let objectColor = vec3<f32>(0.8, 0.5, 0.3); // TODO: get color from model/voxel ??
+    let specularStrength = 0.1; // TODO: get shader details from model
+    
+    // diffuse
+    let lightDir = normalize(lightPos);
+    let diff = max(dot(normal, lightDir), 0.0);
+    let diffuse = diff * lightColor;
+    
+    // specular
+    let viewDir = normalize(local_camera_pos - pos);
+    let reflectDir = reflect(-lightDir, normal);
+    let spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    let specular = specularStrength * spec * lightColor;
+    
+    let result = (ambient + diffuse + specular) * objectColor;
+    return vec4<f32>(result, 1.0);
+}
+
 let HIT_DISTANCE: f32 = 0.01;
 let MAX_STEPS: u32 = 50u;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    var brick_to_local_transform = mat4x4<f32>(
+    let brick_to_local_transform = mat4x4<f32>(
         in.brick_to_local_transform_1,
         in.brick_to_local_transform_2,
         in.brick_to_local_transform_3,
@@ -157,14 +203,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     loop {
         
         let act_position = ray.dist * ray.direction + ray.origin;
-        let dist_to_volume = textureSample(
-            brick_atlas,
-            brick_atlas_sampler,
-            act_position * pc.brick_scale + in.brick_shift
-        ).r;
+        let dist_to_volume = sample_volume_distance(in, act_position);
         
         if (dist_to_volume < HIT_DISTANCE) {
-            return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+            return get_hit_color(
+                act_position,
+                get_normal(
+                    in,
+                    act_position,
+                    dist_to_volume
+                ),
+                brick_to_local_transform
+            );
         }
         
         ray.dist += dist_to_volume;
