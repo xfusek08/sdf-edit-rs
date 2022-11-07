@@ -3,7 +3,7 @@ use std::{marker::PhantomData, fmt::Debug};
 
 use wgpu::util::DeviceExt;
 
-use super::{GPUContext, vertices::Vertex};
+use super::{Context, vertices::Vertex};
 
 pub trait BufferItem:  {}
 
@@ -29,7 +29,7 @@ pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> 
 impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// Create a new buffer on the GPU.
     #[profiler::function]
-    pub fn new(gpu: &GPUContext, label: Option<&'static str>, data: &[I], usage: wgpu::BufferUsages) -> Buffer<I> {
+    pub fn new(gpu: &Context, label: Option<&'static str>, data: &[I], usage: wgpu::BufferUsages) -> Buffer<I> {
         let size = data.len();
         let buffer = gpu.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor { label, usage, contents: bytemuck::cast_slice(data) }
@@ -40,7 +40,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
     /// Create a new buffer on the GPU with a given capacity without initializing it.
     #[profiler::function]
-    pub fn new_empty(gpu: &GPUContext, label: Option<&'static str>, capacity: usize, usage: wgpu::BufferUsages) -> Buffer<I> {
+    pub fn new_empty(gpu: &Context, label: Option<&'static str>, capacity: usize, usage: wgpu::BufferUsages) -> Buffer<I> {
         let size = 0;
         let buffer = gpu.device.create_buffer(
             &wgpu::BufferDescriptor {
@@ -60,7 +60,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
     #[profiler::function]
-    pub fn static_read(buffer: &wgpu::Buffer, gpu: &GPUContext) -> Vec<I> {
+    pub fn static_read(buffer: &wgpu::Buffer, gpu: &Context) -> Vec<I> {
         let data = {
             let buffer_slice = buffer.slice(..);
             profiler::call!(buffer_slice.map_async(wgpu::MapMode::Read, move |_| ()));
@@ -91,7 +91,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// Update the buffer on the GPU using wgpu queue with the given data.
     /// - If the buffer is not large enough, it will be reallocated with the new size.
     #[profiler::function]
-    pub fn queue_update(&mut self, gpu: &GPUContext, new_data: &[I]) {
+    pub fn queue_update(&mut self, gpu: &Context, new_data: &[I]) {
         if new_data.len() > self.capacity {
             self.buffer = gpu.device.create_buffer_init(
                 &wgpu::util::BufferInitDescriptor {
@@ -117,7 +117,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// - This operation does not copy the old data to the new buffer.
     /// - Returns true if the buffer was resized and thus the old data is invalid.
     #[profiler::function]
-    pub fn resize(&mut self, gpu: &GPUContext, new_capacity: usize) -> bool {
+    pub fn resize(&mut self, gpu: &Context, new_capacity: usize) -> bool {
         if new_capacity > self.capacity {
             self.buffer = gpu.device.create_buffer(
                 &wgpu::BufferDescriptor {
@@ -134,7 +134,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
-    pub fn read(&self, gpu: &GPUContext) -> Vec<I> {
+    pub fn read(&self, gpu: &Context) -> Vec<I> {
         Self::static_read(&self.buffer, gpu)
     }
 }
@@ -153,7 +153,7 @@ impl Buffer<u32> {
 // TODO Generalize Buffer for different usage types
 
 /// Creates new vertex buffer on GPU from vertex data.
-fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &GPUContext) -> wgpu::Buffer {
+fn init_vertex_buffer<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &Context) -> wgpu::Buffer {
     context.device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {
             label,
@@ -178,7 +178,7 @@ pub struct VertexBuffer {
 impl VertexBuffer {
     /// Create a new vertex buffer.
     #[profiler::function]
-    pub fn new<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &GPUContext) -> Self {
+    pub fn new<V: Vertex>(label: Option<&'static str>, vertices: &[V], context: &Context) -> Self {
         Self {
             label,
             buffer: init_vertex_buffer(label, vertices, context),
@@ -190,7 +190,7 @@ impl VertexBuffer {
     /// Update the buffer with new data.
     ///  - After update old buffer reference does not make sense, hence self is moved into this method.
     #[profiler::function]
-    pub fn update<V: Vertex>(&mut self, context: &GPUContext, vertices: &[V]) {
+    pub fn update<V: Vertex>(&mut self, context: &Context, vertices: &[V]) {
         dbg!("update vertex buffer");
         if vertices.len() > self.capacity {
             dbg!("update vertex buffer: resize");

@@ -1,12 +1,14 @@
 use wgpu::util::DeviceExt;
 
-use crate::app::{
-    camera::Camera,
-    math::Transform
+use crate::{
+    framework::{
+        self,
+        math::Transform,
+    },
 };
 
 #[derive(Debug)]
-pub struct GPUCamera {
+pub struct Camera {
     pub binding: u32,
     pub view: glam::Mat4,
     pub transform: Transform,
@@ -17,12 +19,12 @@ pub struct GPUCamera {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GPUCameraPushConstantData {
+pub struct PushConstantData {
     pub view:     glam::Mat4,
     pub position: glam::Vec4,
 }
 
-impl GPUCamera {
+impl Camera {
     
     #[profiler::function]
     pub fn new(binding: u32, device: &wgpu::Device) -> Self {
@@ -73,7 +75,7 @@ impl GPUCamera {
     }
     
     #[profiler::function]
-    pub fn update(&mut self, queue: &wgpu::Queue, camera: &Camera) {
+    pub fn update(&mut self, queue: &wgpu::Queue, camera: &framework::camera::Camera) {
         self.transform = camera.transform();
         self.view = camera.view_projection_matrix();
         profiler::call!(
@@ -82,8 +84,8 @@ impl GPUCamera {
     }
     
     #[profiler::function]
-    pub fn to_push_constant_data(&self) -> GPUCameraPushConstantData {
-        GPUCameraPushConstantData {
+    pub fn to_push_constant_data(&self) -> PushConstantData {
+        PushConstantData {
             view: self.view,
             position: glam::Vec4::from((self.transform.position, 1.0)),
         }

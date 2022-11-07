@@ -3,18 +3,18 @@
 pub use wgpu::PushConstantRange;
 pub use wgpu::util::DeviceExt;
 
-use crate::app::{
-    renderer::{
-        RenderContext,
-        render_module::RenderModule,
-        render_pass::{RenderPassAttachment, RenderPassContext}
+use crate::{
+    sdf::svo,
+    app::{
+        renderer::{
+            RenderContext,
+            render_module::RenderModule,
+            render_pass::{RenderPassAttachment, RenderPassContext}
+        },
+        state::State,
+        pipelines::cube_outline::CubeOutlinePipeline,
     },
-    state::State,
-    sdf::svo::NodePool,
-    pipelines::cube_outline::CubeOutlinePipeline,
 };
-
-
 
 #[derive(Debug)]
 pub struct SVOWireframeRenderModule {
@@ -37,7 +37,7 @@ impl RenderModule for SVOWireframeRenderModule {
         // -------------------------------------------------------------------------------------------------------
         
         // Get all nodes from all valid node pools from all geometries with their node count
-        let values: Vec<(u32, &NodePool)> = state.scene.geometry_pool
+        let values: Vec<(u32, &svo::NodePool)> = state.scene.geometry_pool
             .iter()
             .filter_map(|(_, geometry)| {
                 if let Some(svo) = &geometry.svo {
@@ -64,7 +64,6 @@ impl RenderModule for SVOWireframeRenderModule {
             self.pipeline.instance_buffer.resize(&context.gpu, total_count);
             encoder.pop_debug_group();
         }
-        
         
         // Copy all vertices into the buffer from all node pools
         let mut vertices_copied = 0;

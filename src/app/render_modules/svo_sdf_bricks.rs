@@ -1,13 +1,15 @@
 use std::{sync::Arc, ops::Deref};
 
-use crate::app::{
-    renderer::{
-        render_pass::{RenderPassContext, RenderPassAttachment},
-        render_module::RenderModule,
-        RenderContext,
+use crate::{
+    sdf::svo::{self, Svo},
+    app::{
+        renderer::{
+            render_pass::{RenderPassContext, RenderPassAttachment},
+            render_module::RenderModule,
+            RenderContext,
+        },
+        pipelines::svo_sdf_brick::SvoSDFBrickPipeline,
     },
-    pipelines::svo_sdf_brick::SvoSDFBrickPipeline,
-    sdf::svo::{Octree, SVOLevel},
 };
 
 ///! This is main renderer of evaluated geometries
@@ -15,7 +17,7 @@ use crate::app::{
 #[derive(Debug)]
 pub struct SvoSDFBricksRenderModule {
     pipeline: SvoSDFBrickPipeline,
-    svo: Option<Arc<Octree>>,
+    svo: Option<Arc<Svo>>,
 }
 
 impl SvoSDFBricksRenderModule {
@@ -42,7 +44,7 @@ impl RenderModule for SvoSDFBricksRenderModule {
         if let Some(svo) = svo {
             let level = svo.levels.get(state.scene.tmp_evaluator_config.render_level as usize);
             
-            if let Some(SVOLevel { node_count, start_index }) = level {
+            if let Some(svo::Level { node_count, start_index }) = level {
                 let end = start_index + node_count;
                 let new_data: Vec<u32> = (*start_index..end).collect();
                 self.pipeline.brick_instance_buffer.queue_update(

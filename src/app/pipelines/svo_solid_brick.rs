@@ -1,20 +1,16 @@
 
 use std::borrow::Cow;
 
-use crate::app::{
-    gpu::{
-        vertices::{SimpleVertex, Vertex},
-        camera::GPUCameraPushConstantData,
-        texture::DepthStencilTexture,
-        buffers::Buffer,
-        GPUContext,
+use crate::{
+    framework::gpu::{self, vertices::Vertex},
+    sdf::svo::{self, Svo},
+    app::{
+        objects::cube::{CubeSolidMesh, CUBE_INDICES_TRIANGLE_STRIP},
+        renderer::RenderContext,
     },
-    objects::cube::{CubeSolidMesh, CUBE_INDICES_TRIANGLE_STRIP},
-    sdf::svo::{Octree, self},
-    renderer::RenderContext,
 };
 
-type SDFBrickInstanceBuffer = Buffer<u32>;
+type SDFBrickInstanceBuffer = gpu::Buffer<u32>;
 #[derive(Debug)]
 struct SvoBindGroups {
     pub node_pool: wgpu::BindGroup,
@@ -65,7 +61,7 @@ impl SvoSolidBrickPipeline {
                     push_constant_ranges: &[wgpu::PushConstantRange {
                         stages: wgpu::ShaderStages::VERTEX_FRAGMENT,
                         // set to size of push constant camera data
-                        range: 0..std::mem::size_of::<GPUCameraPushConstantData>() as u32,
+                        range: 0..std::mem::size_of::<gpu::camera::PushConstantData>() as u32,
                     }],
                 })
             ),
@@ -75,7 +71,7 @@ impl SvoSolidBrickPipeline {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[
-                    SimpleVertex::vertex_layout(),
+                    gpu::vertices::SimpleVertex::vertex_layout(),
                     SDFBrickInstanceBuffer::vertex_layout(),
                 ],
             },
@@ -106,7 +102,7 @@ impl SvoSolidBrickPipeline {
             },
             
             // use depth buffer for depth testing (if any in context)
-            depth_stencil: Some(DepthStencilTexture::stencil()),
+            depth_stencil: Some(gpu::DepthStencilTexture::stencil()),
             
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
@@ -126,7 +122,7 @@ impl SvoSolidBrickPipeline {
         }
     }
     
-    pub fn set_svo(&mut self, gpu: &GPUContext, svo: &Octree) {
+    pub fn set_svo(&mut self, gpu: &gpu::Context, svo: &Svo) {
         self.bind_groups = Some(SvoBindGroups {
             node_pool: svo.node_pool.create_bind_group(&gpu, &self.node_pool_bind_group_layout),
             brick_pool: svo.brick_pool.create_read_bind_group(&gpu, &self.brick_pool_bind_group_layout),

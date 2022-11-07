@@ -28,24 +28,33 @@ use super::{
         gui::GUIRenderModule,
         cube_outline::CubeOutlineRenderModule, svo_solid_bricks::SvoSolidBricksRenderModule, svo_sdf_bricks::SvoSDFBricksRenderModule,
     },
-    sdf::{
-        geometry::{GeometryEdit, Geometry, GeometryPool},
-        primitives::Primitive,
-        model::{ModelID, Model}
-    },
     state::{State, Scene},
-    gpu::{GPUContext, vertices::ColorVertex},
     renderer::{Renderer, render_pass::RenderPassAttachment},
     updating::{Updater, UpdateContext, ResizeContext},
-    camera::{Camera, CameraProperties},
     clock::Clock,
     gui::Gui,
     components::Deleted,
-    math::Transform,
     objects::cube::CubeOutlineComponent,
 };
 
-use crate::error;
+use crate::{
+    error,
+    framework::{
+        math::Transform,
+        camera::{Camera, CameraProperties},
+        gpu::{self, vertices::ColorVertex}
+    },
+    sdf::{
+        geometry::{
+            GeometryPool,
+            Geometry,
+            GeometryEdit,
+            GeometryOperation
+        },
+        primitives::Primitive,
+        model::{Model, ModelPool}
+    },
+};
 
 /// Create application state
 fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> State {
@@ -74,7 +83,7 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
                     center: glam::Vec3::ZERO,
                     radius: 1.0
                 },
-                operation: super::sdf::geometry::GeometryOperation::Add,
+                operation: GeometryOperation::Add,
                 transform: Transform::default(),
                 blending: 0.0,
             }
@@ -83,7 +92,7 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
     let test_geometry_id = geometry_pool.insert(test_geometry);
     
     // create and register test model
-    let mut model_pool: SlotMap<ModelID, Model> = SlotMap::with_key();
+    let mut model_pool: ModelPool = SlotMap::with_key();
     let test_model = Model::new(test_geometry_id);
     model_pool.insert(test_model);
     
@@ -111,7 +120,7 @@ fn init_state<T>(event_loop: &EventLoopWindowTarget<T>, window: &Window) -> Stat
 }
 
 /// Defines "dynamic" structure of renderer, imagine as simple render graph.
-fn init_renderer(gpu: Arc<GPUContext>, window: &Window) -> Renderer {
+fn init_renderer(gpu: Arc<gpu::Context>, window: &Window) -> Renderer {
     let mut renderer = Renderer::new(gpu, window);
     
     // load modules
@@ -152,7 +161,7 @@ pub async fn run(config: ApplicationConfig) {
     
     let mut event_loop = EventLoop::new();
     let window = create_window(&event_loop, config).unwrap();
-    let gpu = Arc::new(GPUContext::new(&window).await);
+    let gpu = Arc::new(gpu::Context::new(&window).await);
     
     // Updating system
     let mut updater = Updater::new()

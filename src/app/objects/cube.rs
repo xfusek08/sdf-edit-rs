@@ -2,7 +2,8 @@
 use glam::Vec4Swizzles;
 use wgpu::util::DeviceExt;
 
-use crate::app::gpu::vertices::SimpleVertex;
+use crate::framework::gpu::vertices::SimpleVertex;
+
 use super::PRIMITIVE_RESTART;
 
 pub const CUBE_VERTICES: &[SimpleVertex] = &[

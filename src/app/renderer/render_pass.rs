@@ -1,5 +1,5 @@
 
-use crate::app::gpu::texture::DepthStencilTexture;
+use crate::framework::gpu;
 
 use super::RenderContext;
 
@@ -8,7 +8,7 @@ pub enum RenderPassAttachment {
     /// Main render pass drawing color values to the screen, using depth buffer
     Base {
         clear_color: wgpu::Color,
-        depth_texture: DepthStencilTexture,
+        depth_texture: gpu::DepthStencilTexture,
     },
     
     /// Render pass drawing gui elements to the screen
@@ -30,7 +30,7 @@ impl RenderPassAttachment {
     pub fn base(context: &RenderContext) -> Self {
         Self::Base {
             clear_color: wgpu::Color { r: 0.1, g: 0.2, b: 0.3, a: 1.0 },
-            depth_texture: DepthStencilTexture::new(
+            depth_texture: gpu::DepthStencilTexture::new(
                 "Base Pass Depth texture",
                 &context.gpu.device,
                 &context.surface_config
@@ -51,7 +51,7 @@ impl RenderPassAttachment {
     pub fn resize(&mut self, context: &RenderContext, scale_factor: f64) {
         match self {
             Self::Base { depth_texture, .. } => {
-                *depth_texture = DepthStencilTexture::new(
+                *depth_texture = gpu::DepthStencilTexture::new(
                     "Base Pass Depth texture",
                     &context.gpu.device,
                     &context.surface_config

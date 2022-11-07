@@ -1,7 +1,9 @@
 
-use crate::app::{
-    gpu::GPUContext,
-    math::AABB,
+use crate::{
+    framework::{
+        gpu,
+        math::AABB,
+    },
 };
 
 use super::{NodePool, BrickPool, BrickPoolFormat, BrickVoxelFormat};
@@ -36,24 +38,21 @@ impl Capacity {
             //     8^n = 1 << (3 * n)
             Self::Depth(d) => (1 << (3 * (d + 1))) / 7,
             
-            Self::BrickPoolSide(size) => (size * size * size)
+            Self::BrickPoolSide(size) => size * size * size
         }
     }
     
 }
 
 #[derive(Clone, Debug, Copy)]
-pub struct SVOLevel {
+pub struct Level {
     pub start_index: u32,
     pub node_count: u32,
 }
 
-
-// Sparse Voxel Octree
-// -------------------
-
+/// A Sparse Voxel Octree residing on GPU.
 #[derive(Debug)]
-pub struct Octree {
+pub struct Svo {
     
     /// AABB of octree tightly fitting the geometry
     /// - It might not be computed yet, in which case it will be None.
@@ -67,12 +66,12 @@ pub struct Octree {
     pub brick_pool: BrickPool,
     
     /// A list of SVO levels.
-    pub levels: Vec<SVOLevel>,
+    pub levels: Vec<Level>,
 }
 
-impl Octree {
+impl Svo {
     #[profiler::function]
-    pub fn new(gpu: &GPUContext, initial_capacity: Capacity) -> Self {
+    pub fn new(gpu: &gpu::Context, initial_capacity: Capacity) -> Self {
         // TODO: Optional BrickPoolFormat?
         Self {
             aabb: None,

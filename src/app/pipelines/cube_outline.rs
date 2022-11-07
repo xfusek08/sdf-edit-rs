@@ -1,27 +1,18 @@
 
 use std::borrow::Cow;
 
-use crate::app::{
-    renderer::RenderContext,
-    objects::cube::{
-        CubeWireframeMesh,
-        CUBE_INDICES_LINE_STRIP, CubeOutlineComponent
-    },
-    gpu::{
-        camera::{
-            GPUCameraPushConstantData,
-            GPUCamera
+use crate::{
+    framework::gpu::{self, vertices::Vertex},
+    app::{
+        renderer::RenderContext,
+        objects::cube::{
+            CubeWireframeMesh,
+            CUBE_INDICES_LINE_STRIP, CubeOutlineComponent
         },
-        vertices::{
-            SimpleVertex,
-            Vertex
-        },
-        buffers::Buffer,
-        texture::DepthStencilTexture,
     },
 };
 
-type CubeInstanceBuffer = Buffer<CubeOutlineComponent>;
+type CubeInstanceBuffer = gpu::Buffer<CubeOutlineComponent>;
 impl CubeInstanceBuffer {
     pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
@@ -60,7 +51,7 @@ impl CubeOutlinePipeline {
                     push_constant_ranges: &[wgpu::PushConstantRange {
                         stages: wgpu::ShaderStages::VERTEX_FRAGMENT,
                         // set to size of push constant camera data
-                        range: 0..std::mem::size_of::<GPUCameraPushConstantData>() as u32,
+                        range: 0..std::mem::size_of::<gpu::camera::PushConstantData>() as u32,
                     }],
                 })
             ),
@@ -70,7 +61,7 @@ impl CubeOutlinePipeline {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[
-                    SimpleVertex::vertex_layout(),
+                    gpu::vertices::SimpleVertex::vertex_layout(),
                     CubeInstanceBuffer::vertex_layout(),
                 ],
             },
@@ -101,7 +92,7 @@ impl CubeOutlinePipeline {
             },
             
             // use depth buffer for depth testing (if any in context)
-            depth_stencil: Some(DepthStencilTexture::stencil()),
+            depth_stencil: Some(gpu::DepthStencilTexture::stencil()),
             
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
@@ -119,7 +110,7 @@ impl CubeOutlinePipeline {
     }
     
     /// Runs this pipeline for given render pass
-    pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, camera: &GPUCamera) {
+    pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, camera: &gpu::camera::Camera) {
         pass.set_pipeline(&self.pipeline);
         pass.set_push_constants(
             wgpu::ShaderStages::VERTEX_FRAGMENT,

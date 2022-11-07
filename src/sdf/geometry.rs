@@ -1,7 +1,15 @@
 use std::{ops::RangeInclusive, sync::Arc};
 use slotmap::{new_key_type, SlotMap};
-use crate::app::math::Transform;
-use super::{svo::Octree, primitives::Primitive};
+use crate::framework::math::Transform;
+
+use super::{svo::Svo, primitives::Primitive};
+
+new_key_type! {
+    /// An index of geometry instance which can be shared between multiple models
+    pub struct GeometryID;
+}
+
+pub type GeometryPool = SlotMap<GeometryID, Geometry>;
 
 #[derive(Clone)]
 pub enum GeometryOperation {
@@ -30,7 +38,7 @@ pub enum GeometryEvaluationStatus {
 pub struct Geometry {
     
     /// A Sparse Voxel Octree evaluated into GPU memory
-    pub svo: Option<Arc<Octree>>,
+    pub svo: Option<Arc<Svo>>,
     
     /// A list of edits that compose this geometry
     pub edits: GeometryEditList,
@@ -73,10 +81,3 @@ impl Geometry {
     }
     
 }
-
-new_key_type! {
-    /// An index of geometry instance which can be shared between multiple models
-    pub struct GeometryID;
-}
-
-pub type GeometryPool = SlotMap<GeometryID, Geometry>;

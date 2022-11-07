@@ -1,8 +1,7 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::app::gpu::GPUContext;
-
+use crate::framework::gpu;
 use super::Capacity;
 
 /// A format of one voxel in brick pool texture.
@@ -135,7 +134,7 @@ impl BrickPool {
     ///   `capacity` - Used to set minimal amount of bricks that can be stored in this texture.
     ///   `context`  - GPU context.
     #[profiler::function]
-    pub fn new(gpu: &GPUContext, capacity: Capacity, format: BrickPoolFormat) -> Self {
+    pub fn new(gpu: &gpu::Context, capacity: Capacity, format: BrickPoolFormat) -> Self {
         let side_size = Self::dimension_from_capacity(capacity.nodes());
         let brick_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
@@ -199,7 +198,7 @@ impl BrickPool {
 impl BrickPool {
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn create_write_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+    pub fn create_write_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("SVO Node Pool Bind Group"),
             layout: layout,
@@ -224,7 +223,7 @@ impl BrickPool {
     }
     
     #[profiler::function]
-    pub fn create_read_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+    pub fn create_read_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
         let diffuse_sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -265,7 +264,7 @@ impl BrickPool {
     
     /// Creates and returns a custom binding for the node pool.
     #[profiler::function]
-    pub fn create_write_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
+    pub fn create_write_bind_group_layout(gpu: &gpu::Context, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Brick Pool Bind Group Write Layout"),
             entries: &[
@@ -307,7 +306,7 @@ impl BrickPool {
     }
     
     #[profiler::function]
-    pub fn create_read_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
+    pub fn create_read_bind_group_layout(gpu: &gpu::Context, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Brick Pool Bind Group Read Layout"),
             entries: &[

@@ -1,14 +1,12 @@
 
 use hecs::World;
-use slotmap::SlotMap;
+use crate::{
+    framework::camera::Camera,
+    sdf::{model::ModelPool, geometry::GeometryPool},
+};
 
 use super::{
-    camera::Camera,
     gui::Gui,
-    sdf::{
-        model::{Model, ModelID},
-        geometry::GeometryPool
-    },
     update_modules::tmp_evaluator_config::TmpEvaluatorConfigProps,
 };
 
@@ -21,7 +19,7 @@ pub struct SceneCounters {
 pub struct Scene {
     pub camera: Camera,
     pub geometry_pool: GeometryPool,
-    pub model_pool: SlotMap<ModelID, Model>,
+    pub model_pool: ModelPool,
     
     // tmp stuff
     pub world: World,

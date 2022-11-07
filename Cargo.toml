@@ -1,16 +1,10 @@
-[workspace]
-members = [
-    ".",
-    "profiler",
-]
-
 [package]
 name = "sdf-edit-rs"
 version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-profiler = { path = "profiler" }
+profiler = { path = "crates/profiler" }
 
 # Core
 log = "0.4.17"                                             # Generic logging API without backend (env_logger)

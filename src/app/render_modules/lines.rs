@@ -13,21 +13,16 @@ use std::{
 use hecs::Entity;
 
 use crate::{
+    framework::gpu::{self, vertices::Vertex},
     app::{
         state::State,
         components::Deleted,
-        gpu::{
-            GPUContext,
-            buffers::VertexBuffer,
-            vertices::{ ColorVertex, Vertex},
-            texture::DepthStencilTexture,
-        },
         renderer::{
             RenderContext,
             render_module::RenderModule,
             render_pass::{RenderPassAttachment, RenderPassContext}
-    }
-    }
+        }
+    },
 };
 
 // ECS Components to define line (renderable) entity
@@ -36,7 +31,7 @@ use crate::{
 #[derive(Debug)]
 pub struct LineMesh {
     pub is_dirty: bool,
-    pub vertices: &'static [ColorVertex],
+    pub vertices: &'static [gpu::vertices::ColorVertex],
 }
 
 // Line Render Resource
@@ -44,19 +39,19 @@ pub struct LineMesh {
 
 #[derive(Debug)]
 struct LineRenderResource {
-    vertex_buffer: VertexBuffer,
+    vertex_buffer: gpu::VertexBuffer,
 }
 impl LineRenderResource {
     
     #[profiler::function]
-    fn new(mesh: &LineMesh, context: &GPUContext) -> Self {
+    fn new(mesh: &LineMesh, context: &gpu::Context) -> Self {
         Self {
-            vertex_buffer: VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
+            vertex_buffer: gpu::VertexBuffer::new(Some("Line Vertex Buffer"), mesh.vertices, context)
         }
     }
     
     #[profiler::function]
-    fn update(&mut self, mesh: &LineMesh, context: &GPUContext) {
+    fn update(&mut self, mesh: &LineMesh, context: &gpu::Context) {
         self.vertex_buffer.update(context, mesh.vertices);
     }
 }
@@ -97,7 +92,7 @@ impl LineRenderModule {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[ColorVertex::vertex_layout()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
+                buffers: &[gpu::vertices::ColorVertex::vertex_layout()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
             },
             // ⬇ Fragment shader -> define an entry point in our shader
             fragment: Some(wgpu::FragmentState {
@@ -122,7 +117,7 @@ impl LineRenderModule {
             },
             
             // use depth buffer for depth testing (if any in context)
-            depth_stencil: Some(DepthStencilTexture::stencil()),
+            depth_stencil: Some(gpu::DepthStencilTexture::stencil()),
             
             // ⬇ configure multisampling
             multisample: wgpu::MultisampleState {

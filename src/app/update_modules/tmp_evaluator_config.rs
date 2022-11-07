@@ -2,9 +2,9 @@
 ///! And sends the svo of the geometry for evaluation
 use std::sync::Arc;
 
+use crate::framework::gpu;
 use crate::app::{
     application::ControlFlowResultAction,
-    gpu::GPUContext,
     objects::cube::CubeOutlineComponent,
     updating::{InputUpdateResult, UpdateContext, UpdaterModule},
 };
@@ -23,7 +23,7 @@ pub struct TmpEvaluatorConfig {
 }
 
 impl TmpEvaluatorConfig {
-    pub fn new(gpu: Arc<GPUContext>) -> TmpEvaluatorConfig {
+    pub fn new(gpu: Arc<gpu::Context>) -> TmpEvaluatorConfig {
         Self { prev_props: None }
     }
 }

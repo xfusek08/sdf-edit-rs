@@ -1,5 +1,5 @@
 use wgpu::util::DeviceExt;
-use crate::app::gpu::{GPUContext, buffers::Buffer};
+use crate::framework::gpu;
 use super::Capacity;
 
 /// A Node Pool of the SVO residing on GPU.
@@ -63,7 +63,6 @@ impl NodePool {
     pub fn capacity_buffer(&self) -> &wgpu::Buffer {
         &self.capacity_buffer
     }
-    
     pub fn buffers_changed(&mut self) {
         self.count = None;
     }
@@ -72,7 +71,7 @@ impl NodePool {
 impl NodePool {
     /// Creates empty GPU octree by allocating buffers on GPU.
     #[profiler::function]
-    pub fn new(gpu: &GPUContext, capacity: Capacity) -> Self {
+    pub fn new(gpu: &gpu::Context, capacity: Capacity) -> Self {
         
         let capacity = capacity.nodes();
         let capacity64 = capacity as u64;
@@ -124,15 +123,15 @@ impl NodePool {
     
     /// Reads value from count buffer on GPU into internal `count` property and returns its value.
     #[profiler::function]
-    pub fn load_count(&mut self, gpu: &GPUContext) -> u32 {
+    pub fn load_count(&mut self, gpu: &gpu::Context) -> u32 {
         self.count.get_or_insert_with(|| {
-            Buffer::<u32>::static_read(&self.count_buffer, gpu)[0]
+            gpu::Buffer::<u32>::static_read(&self.count_buffer, gpu)[0]
         }).clone()
     }
     
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn create_bind_group(&self, gpu: &GPUContext, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+    pub fn create_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("SVO Node Pool Bind Group"),
             layout: layout,
@@ -168,7 +167,7 @@ impl NodePool {
     
     /// Creates and returns a custom binding for the node pool.
     #[profiler::function]
-    pub fn create_bind_group_layout(gpu: &GPUContext, visibility: wgpu::ShaderStages, read_only: bool) -> wgpu::BindGroupLayout {
+    pub fn create_bind_group_layout(gpu: &gpu::Context, visibility: wgpu::ShaderStages, read_only: bool) -> wgpu::BindGroupLayout {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Node Pool Bind Group Layout"),
             entries: &[

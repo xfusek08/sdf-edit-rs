@@ -1,8 +1,9 @@
 use dolly::prelude::{YawPitch, RightHanded};
 
+use crate::framework::camera::SmoothZoomArm;
 use crate::app::{
     application::ControlFlowResultAction,
-    updating::{UpdaterModule, UpdateContext, InputUpdateResult, ResizeContext}, camera::SmoothZoomArm,
+    updating::{UpdaterModule, UpdateContext, InputUpdateResult, ResizeContext},
 };
 
 

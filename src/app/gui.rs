@@ -3,8 +3,9 @@
 use egui::{Style, epaint::ClippedShape};
 use winit::event_loop::EventLoopWindowTarget;
 
+use crate::sdf::geometry::Geometry;
+
 use super::state::Scene;
-use crate::app::sdf::geometry::Geometry;
 
 #[profiler::function]
 pub fn style_gui(mut style: Style) -> Style {

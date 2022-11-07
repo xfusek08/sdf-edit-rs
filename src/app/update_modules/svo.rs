@@ -3,11 +3,11 @@
 
 use std::sync::Arc;
 
+use crate::framework::gpu;
+use crate::sdf::evaluator::Evaluator;
 use crate::app::{
     application::ControlFlowResultAction,
-    gpu::GPUContext,
     updating::{UpdaterModule, UpdateContext, InputUpdateResult},
-    sdf::evaluator::Evaluator,
 };
 
 pub struct SVOUpdater {
@@ -15,7 +15,7 @@ pub struct SVOUpdater {
 }
 
 impl SVOUpdater {
-    pub fn new(gpu: Arc<GPUContext>) -> SVOUpdater {
+    pub fn new(gpu: Arc<gpu::Context>) -> SVOUpdater {
         Self {
             evaluator: Evaluator::new(gpu),
         }

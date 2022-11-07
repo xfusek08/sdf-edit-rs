@@ -1,14 +1,14 @@
 use winit::window::Window;
 
 #[derive(Debug)]
-pub struct GPUContext {
+pub struct Context {
     pub surface: wgpu::Surface,
     pub adapter: wgpu::Adapter,
     pub device:  wgpu::Device,
     pub queue:   wgpu::Queue,
 }
 
-impl GPUContext {
+impl Context {
     
     #[profiler::function]
     pub async fn new(window: &Window) -> Self {

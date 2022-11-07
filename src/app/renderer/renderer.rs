@@ -3,9 +3,10 @@ use std::{sync::Arc, fmt::Debug};
 use slotmap::{SlotMap, new_key_type};
 use winit::window::Window;
 
+use crate::framework::gpu;
+
 use crate::app::{
     state::State,
-    gpu::{GPUContext, camera::GPUCamera},
 };
 
 use super::{
@@ -21,7 +22,7 @@ new_key_type! { pub struct RenderPassID; }
 pub struct RenderContext {
     
     /// A GPU context which is shared with whole application
-    pub gpu: Arc<GPUContext>,
+    pub gpu: Arc<gpu::Context>,
     
     /// Configuration of surface is renderers responsibility
     pub surface_config: wgpu::SurfaceConfiguration,
@@ -32,7 +33,7 @@ pub struct RenderContext {
     /// Shared GPU resources provided for all render modules
     
     /// A camera GPU resource
-    pub camera: GPUCamera,
+    pub camera: gpu::camera::Camera,
     
 }
 
@@ -51,7 +52,7 @@ pub struct Renderer {
 
 // Renderer construction methods
 impl Renderer {
-    pub fn new(gpu: Arc<GPUContext>, window: &Window) -> Self {
+    pub fn new(gpu: Arc<gpu::Context>, window: &Window) -> Self {
         // setup surface for rendering
         let surface_config = wgpu::SurfaceConfiguration {
             usage:        wgpu::TextureUsages::RENDER_ATTACHMENT,             // texture will be used to draw on screen
@@ -68,7 +69,7 @@ impl Renderer {
                 gpu: gpu.clone(),
                 surface_config,
                 scale_factor:  window.scale_factor(),
-                camera:        GPUCamera::new(0, &gpu.device),
+                camera:        gpu::camera::Camera::new(0, &gpu.device),
             },
             modules: SlotMap::with_key(),
             passes:  SlotMap::with_key(),

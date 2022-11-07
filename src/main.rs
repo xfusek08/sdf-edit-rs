@@ -1,6 +1,9 @@
 use crate::app::application::{self, ApplicationConfig};
 
 mod app;
+mod framework;
+mod sdf;
+mod demo_app;
 
 fn main() {
     env_logger::init();
