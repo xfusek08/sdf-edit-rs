@@ -7,7 +7,6 @@ pub mod application;
 pub mod clock;
 pub mod components;
 pub mod gui;
-pub mod log;
 pub mod state;
 pub mod updating;
 pub mod renderer;

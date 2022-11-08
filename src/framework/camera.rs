@@ -2,13 +2,13 @@ use std::marker::PhantomData;
 
 use glam::{Vec3, Mat4};
 use dolly::{
-    prelude::{YawPitch, Smooth, Handedness, Position},
+    prelude::{YawPitch, Smooth, Handedness, Position, RightHanded},
     rig::{CameraRig, RigUpdateParams},
     driver::RigDriver,
     transform::Transform as DollyTransform,
 };
 
-use super::math::Transform;
+use super::{math::Transform, updater::{UpdaterModule, UpdateContext, InputUpdateResult, UpdateResultAction, ResizeContext, AfterRenderContext}};
 
 pub struct CameraProperties {
     pub aspect_ratio: f32,
@@ -130,4 +130,59 @@ impl<H: Handedness> RigDriver<H> for SmoothZoomArm<H> {
             phantom: PhantomData,
         }
     }
+}
+
+pub trait SceneWithCamera {
+    fn get_camera(&self) -> &Camera;
+    fn get_camera_mut(&mut self) -> &mut Camera;
+}
+
+#[derive(Default)]
+pub struct CameraUpdater;
+
+impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
+    
+    #[profiler::function]
+    fn input(&mut self, context: &mut UpdateContext<S>) -> InputUpdateResult {
+        let camera = &mut context.scene.get_camera_mut();
+        
+        let (dx, dy) = context.input.mouse_diff();
+        if (dx != 0.0 || dy != 0.0) && context.input.mouse_held(0) {
+            camera
+                .rig
+                .driver_mut::<YawPitch>()
+                .rotate_yaw_pitch(-dx * 0.7, -dy * 0.7);
+        }
+        let scroll = context.input.scroll_diff();
+        if scroll != 0.0 {
+            camera
+                .rig
+                .driver_mut::<SmoothZoomArm<RightHanded>>()
+                .scale_distance(1.0 + scroll * -0.3);
+        }
+        
+        InputUpdateResult::default() // do not prevent event propagation
+    }
+    
+    #[profiler::function]
+    fn update(&mut self, context: &mut UpdateContext<S>) -> UpdateResultAction {
+        let camera = &mut context.scene.get_camera_mut();
+        
+        let orig = camera.rig.final_transform;
+        let new = camera.rig.update(context.tick.delta.as_secs_f32());
+        if orig.position != new.position || orig.rotation != new.rotation {
+            return UpdateResultAction::Redraw;
+        }
+        UpdateResultAction::None
+    }
+    
+    #[profiler::function]
+    fn resize(&mut self, context: &mut ResizeContext<S>) -> UpdateResultAction {
+        let camera = &mut context.scene.get_camera_mut();
+        camera.aspect_ratio = context.size.width as f32 / context.size.height as f32;
+        UpdateResultAction::None
+    }
+    
+    fn after_render(&mut self, state: &mut AfterRenderContext<S>) {}
+    
 }

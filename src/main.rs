@@ -1,15 +1,25 @@
-use crate::app::application::{self, ApplicationConfig};
 
-mod app;
+// mod app;
 mod framework;
 mod sdf;
 mod demo_app;
+
+use crate::framework::application;
 
 fn main() {
     env_logger::init();
     profiler::session_begin! ("sdf-editor-app");
     info!("Starting...");
-    let config = ApplicationConfig::default(); // TODO: load config from file/arguments
-    pollster::block_on(application::run(config));
+    pollster::block_on(application::run(
+        application::ApplicationDescriptor {
+            define_renderer: demo_app::define_renderer,
+            define_updater:  demo_app::define_updater,
+            init_scene:      demo_app::init_scene,
+            style_gui:       demo_app::style_gui,
+        },
+        application::RunParams {
+            ..Default::default()
+        }
+    ));
     info!("Exiting");
 }

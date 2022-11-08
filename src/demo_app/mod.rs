@@ -1,3 +1,9 @@
 mod demo_app;
+pub use demo_app::*;
 
-pub use demo_app::App;
+mod scene;
+pub use scene::*;
+
+pub mod components;
+
+pub mod line_module;

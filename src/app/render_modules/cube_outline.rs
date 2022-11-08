@@ -1,3 +1,5 @@
+///! This module renders all cubes as outlines in scene.
+///
 use crate::app::{
     objects::cube::CubeOutlineComponent,
     pipelines::cube_outline::CubeOutlinePipeline,
@@ -7,8 +9,6 @@ use crate::app::{
         RenderContext,
     },
 };
-
-///! This module renders all cube outlines in scene.
 
 #[derive(Debug)]
 pub struct CubeOutlineRenderModule {

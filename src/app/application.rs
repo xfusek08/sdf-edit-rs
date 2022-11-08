@@ -32,7 +32,7 @@ use super::{
     renderer::{Renderer, render_pass::RenderPassAttachment},
     updating::{Updater, UpdateContext, ResizeContext},
     clock::Clock,
-    gui::Gui,
+    gui::{Gui, self},
     components::Deleted,
     objects::cube::CubeOutlineComponent,
 };
@@ -165,7 +165,7 @@ pub async fn run(config: ApplicationConfig) {
     
     // Updating system
     let mut updater = Updater::new()
-        .with_module(GuiUpdater)
+        .with_module(GuiUpdater::new(gui::gui))
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
         .with_module(SVOUpdater::new(gpu.clone())); // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context

@@ -1,39 +1,48 @@
 
-use crate::app::{
-    gui::GuiDataToRender,
-    application::ControlFlowResultAction,
-    updating::{UpdateContext, UpdaterModule, InputUpdateResult, ResizeContext}, state::{State, Scene},
+use crate::framework::updater::{
+    UpdaterModule,
+    UpdateContext,
+    InputUpdateResult,
+    UpdateResultAction,
+    ResizeContext,
+    AfterRenderContext
 };
 
-pub struct GuiUpdater<F>
+use super::GuiDataToRender;
+
+pub struct GuiUpdateModule<F, Scene>
 where
     F: Fn(&egui::Context, &mut Scene) -> (),
 {
     draw_gui: F,
+    _phantom: std::marker::PhantomData<Scene>,
 }
 
-impl<F> GuiUpdater<F>
+impl<F, Scene> GuiUpdateModule<F, Scene>
 where
     F: Fn(&egui::Context, &mut Scene) -> (),
 {
     pub fn new(draw_gui: F) -> Self {
         Self {
-            draw_gui
+            draw_gui,
+            _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<F> UpdaterModule for GuiUpdater<F>
+impl<F, Scene> UpdaterModule<Scene> for GuiUpdateModule<F, Scene>
 where
     F: Fn(&egui::Context, &mut Scene) -> (),
 {
     
-    fn input(&mut self, _: &mut UpdateContext) -> InputUpdateResult {
+    fn input(&mut self, context: &mut UpdateContext<Scene>) -> InputUpdateResult {
         InputUpdateResult::default()
     }
     
-    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        let State { gui, scene, ..} = context.state;
+    #[profiler::function]
+    fn update(&mut self, context: &mut UpdateContext<Scene>) -> UpdateResultAction {
+        let gui = &mut context.gui;
+        let scene = &mut context.scene;
         
         let raw_input = profiler::call!(
             gui.egui_winit.take_egui_input(context.window)
@@ -65,20 +74,18 @@ where
         
         gui.data_to_render = Some(GuiDataToRender { textures_delta, shapes });
         
-        ControlFlowResultAction::None
+        UpdateResultAction::None
     }
     
     #[profiler::function]
-    fn resize(&mut self, context: &mut ResizeContext) -> ControlFlowResultAction {
-        let gui = &mut context.state.gui;
-        gui.egui_ctx.set_pixels_per_point(context.scale_factor as f32);
-        ControlFlowResultAction::None
+    fn resize(&mut self, context: &mut ResizeContext<Scene>) -> UpdateResultAction {
+        context.gui.egui_ctx.set_pixels_per_point(context.scale_factor as f32);
+        UpdateResultAction::None
     }
     
     /// After frame is renderer clean render data
     #[profiler::function]
-    fn after_render(&mut self, state: &mut crate::app::state::State) {
-        let gui = &mut state.gui;
-        gui.data_to_render = None;
+    fn after_render(&mut self, state: &mut AfterRenderContext<Scene>) {
+        state.gui.data_to_render = None;
     }
 }

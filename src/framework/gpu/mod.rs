@@ -1,7 +1,6 @@
 
 pub mod vertices;
 pub mod utils;
-pub mod camera;
 
 mod context;
 mod buffers;
