@@ -1,10 +1,5 @@
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct BoundingCube {
-    pub pos: glam::Vec3,
-    pub size: f32,
-}
+use super::BoundingCube;
 
 #[derive(Debug)]
 pub struct AABB {
@@ -15,6 +10,13 @@ pub struct AABB {
 impl AABB {
     
     pub fn new(min: glam::Vec3, max: glam::Vec3) -> Self {
+        Self { min, max }
+    }
+    
+    pub fn from_bounding_cube(bounding_cube: &BoundingCube) -> Self {
+        let half_size = bounding_cube.size * 0.5;
+        let min = bounding_cube.pos - glam::Vec3::splat(half_size);
+        let max = bounding_cube.pos + glam::Vec3::splat(half_size);
         Self { min, max }
     }
     

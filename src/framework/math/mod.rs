@@ -1,6 +1,9 @@
 
-mod bounding_volumes;
-mod transform;
+mod aabb;
+pub use aabb::*;
 
-pub use bounding_volumes::*;
+mod bounding_cube;
+pub use bounding_cube::*;
+
+mod transform;
 pub use transform::*;

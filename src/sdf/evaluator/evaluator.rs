@@ -85,7 +85,7 @@ impl Evaluator {
                 entry_point: "main",
                 module: &gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("SVO Evaluator Compute Shader Module"),
-                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("evaluator_shader.wgsl"))),
+                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("_shader.wgsl"))),
                 }),
             }))
         };

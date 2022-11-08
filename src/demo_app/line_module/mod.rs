@@ -18,7 +18,7 @@ use crate::framework::{
     renderer::{RenderContext, RenderModule, RenderPassContext, RenderPassAttachment},
 };
 
-use super::Scene;
+use super::scene::Scene;
 
 // LineMesh
 // --------
@@ -51,7 +51,7 @@ impl LineRenderResource {
     }
 }
 
-// LinesRenderModule
+// LinesRenderModuleshader
 // -----------------
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ impl LineRenderModule {
         // ⬇ load and compile wgsl shader code
         let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Line Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("_shader.wgsl"))),
         });
         
         // ⬇ define layout of buffers for out render pipeline

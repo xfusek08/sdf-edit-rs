@@ -1,8 +1,7 @@
 mod demo_app;
 pub use demo_app::*;
 
-mod scene;
-pub use scene::*;
+pub mod scene;
 
 pub mod components;
 

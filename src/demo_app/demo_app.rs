@@ -35,7 +35,7 @@ use crate::{
 };
 
 use super::{
-    Scene,
+    scene::Scene,
     components::Deleted,
     line_module::{
         LineRenderModule,
