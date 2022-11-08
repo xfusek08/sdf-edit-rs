@@ -17,7 +17,8 @@ use crate::{
         gui::{
             GuiRenderModule,
             GuiUpdateModule
-        }, gpu::vertices::ColorVertex,
+        },
+        gpu::vertices::ColorVertex,
     },
     sdf::{
         primitives::Primitive,

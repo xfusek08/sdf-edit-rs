@@ -1,14 +1,29 @@
+
 use std::marker::PhantomData;
 
 use glam::{Vec3, Mat4};
+
 use dolly::{
-    prelude::{YawPitch, Smooth, Handedness, Position, RightHanded},
-    rig::{CameraRig, RigUpdateParams},
     driver::RigDriver,
     transform::Transform as DollyTransform,
+    rig::{CameraRig, RigUpdateParams},
+    prelude::{YawPitch, Smooth, Handedness, Position, RightHanded},
 };
 
-use super::{math::Transform, updater::{UpdaterModule, UpdateContext, InputUpdateResult, UpdateResultAction, ResizeContext, AfterRenderContext}};
+use super::{
+    math::Transform,
+    updater::{
+        UpdaterModule,
+        UpdateContext,
+        InputUpdateResult,
+        UpdateResultAction,
+        ResizeContext,
+        AfterRenderContext
+    }
+};
+
+// CameraProperties
+// ----------------
 
 pub struct CameraProperties {
     pub aspect_ratio: f32,
@@ -27,6 +42,9 @@ impl Default for CameraProperties {
     }
 }
 
+// Camera
+// ------
+
 pub struct Camera {
     pub rig: dolly::rig::CameraRig,
     pub aspect_ratio: f32,
@@ -35,7 +53,6 @@ pub struct Camera {
     pub far: f32,
 }
 
-// builder
 impl Camera {
     
     pub fn new(properties: CameraProperties) -> Self {
@@ -94,6 +111,9 @@ impl Camera {
     }
 }
 
+// SmoothZoomArm
+// -------------
+
 /// This is a custom dolly rig driver that behaves just like Arm but smooths a offset vale
 /// Implementation based on example: https://github.com/h3r2tic/dolly/blob/main/examples/nested_driver.rs
 /// Offsets the camera along a vector, in the coordinate space of the parent.
@@ -132,10 +152,16 @@ impl<H: Handedness> RigDriver<H> for SmoothZoomArm<H> {
     }
 }
 
+// SceneWithCamera Trait
+// ---------------------
+
 pub trait SceneWithCamera {
     fn get_camera(&self) -> &Camera;
     fn get_camera_mut(&mut self) -> &mut Camera;
 }
+
+// CameraUpdater
+// -------------
 
 #[derive(Default)]
 pub struct CameraUpdater;
@@ -183,6 +209,6 @@ impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
         UpdateResultAction::None
     }
     
-    fn after_render(&mut self, state: &mut AfterRenderContext<S>) {}
+    fn after_render(&mut self, _: &mut AfterRenderContext<S>) {}
     
 }

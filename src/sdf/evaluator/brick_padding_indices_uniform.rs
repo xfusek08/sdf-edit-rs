@@ -1,8 +1,8 @@
+///! Module providing a GPU uniform immutable resource which enumerates exactly 488 3d indices of the surface crust of a 10x10x10 brick.
+///! It is meant to efficiently assign gpu threads in 8x8x8 workgroup to evaluate a SDF brick padding after the brick is evaluated.
 
 use crate::framework::gpu;
 
-/// This is fixed and constant uniform buffer, with exactly 488 3d indices of padding voxels around 8x8x8 brick
-/// creating a 10x10x10 brick. This is used to create padding around the brick to avoid border artifacts.
 pub struct BrickPaddingIndicesUniform {
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,

@@ -1,5 +1,6 @@
 ///! This is updater module which checks if there is a geometry requesting an SVO evaluation
 ///! And sends the svo of the geometry for evaluation
+
 use std::sync::Arc;
 
 use crate::framework::gpu;

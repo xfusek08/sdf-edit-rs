@@ -1,5 +1,4 @@
-
-// evaluator is meant to run asynchronously, and is responsible for computing a geometry octree from its edit list
+//! evaluator is meant to run asynchronously, and is responsible for computing a geometry octree from its edit list
 
 use std::{thread, sync::Arc, borrow::Cow};
 
@@ -27,7 +26,7 @@ use super::{
     },
 };
 
-pub struct EvaluationJob {
+struct EvaluationJob {
     join_handle: thread::JoinHandle<svo::Svo>,
     geometry_id: GeometryID,
 }
