@@ -43,7 +43,7 @@ impl CubeOutlinePipeline {
     pub fn new(context: &RenderContext) -> Self {
         let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Cube Outline Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("outline_shader.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("_outline_shader.wgsl"))),
         });
         
         let pipeline = context.gpu.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

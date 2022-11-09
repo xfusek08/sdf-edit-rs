@@ -39,18 +39,22 @@ use super::{
     scene::Scene,
     components::Deleted,
     modules::{
+        svo_evaluator::SvoEvaluatorUpdater,
+        svo_wireframe::SvoWireframeRenderModule,
+        svo_sdf_brick::SvoSdfBricksRenderModule,
         line::{
             LineRenderModule,
             LineMesh,
         },
-        cube::{CubeOutlineRenderModule,
+        cube::{
+            CubeOutlineRenderModule,
             CubeOutlineComponent,
         },
         tmp_evaluator_config::{
             VoxelSizeOutlineComponent,
             TmpEvaluatorConfigProps,
             TmpEvaluatorConfig,
-        }
+        },
     },
 };
 
@@ -60,17 +64,17 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
     // load modules
     let line_module = renderer.add_module(LineRenderModule::new);
     let cube_outline = renderer.add_module(CubeOutlineRenderModule::new);
-    // let svo_wireframe_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
+    let svo_wireframe_module = renderer.add_module(SvoWireframeRenderModule::new);
     // let svo_brick_module = renderer.add_module(|c| SvoSolidBricksRenderModule::new(c));
-    // let svo_sdf_brick_module = renderer.add_module(|c| SvoSDFBricksRenderModule::new(c));
+    let svo_sdf_brick_module = renderer.add_module(SvoSdfBricksRenderModule::new);
     let gui_module = renderer.add_module(GuiRenderModule::new);
     
     // passes are executed in order of their registration
     renderer.set_render_pass(RenderPassAttachment::base, &[
         line_module,
         cube_outline,
-        // svo_sdf_brick_module,
-        // svo_wireframe_module
+        svo_sdf_brick_module,
+        svo_wireframe_module
     ]);
     renderer.set_render_pass(RenderPassAttachment::gui, &[gui_module]);
     
@@ -82,7 +86,7 @@ pub fn define_updater(context: &Context) -> Updater<Scene> {
         .with_module(GuiUpdateModule::new(draw_gui))
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
-        // .with_module(SVOUpdater::new(gpu.clone())); // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context
+        .with_module(SvoEvaluatorUpdater::new(context.gpu.clone())) // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context
 }
 
 pub fn init_scene(context: &Context) -> Scene {

@@ -84,28 +84,3 @@ impl CubeWireframeMesh {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct CubeSolidMesh {
-    pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
-}
-impl CubeSolidMesh {
-    #[profiler::function]
-    pub fn new(device: &wgpu::Device) -> Self {
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Cube Vertex Buffer"),
-            contents: bytemuck::cast_slice(&CUBE_VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Cube Index Buffer"),
-            contents: bytemuck::cast_slice(&CUBE_INDICES_TRIANGLE_STRIP),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-        Self {
-            vertex_buffer,
-            index_buffer,
-        }
-    }
-}

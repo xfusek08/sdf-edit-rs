@@ -2,14 +2,15 @@
 mod outline_pipeline;
 pub use outline_pipeline::*;
 
-mod outline_render;
-pub use outline_render::*;
+mod outline_render_module;
+pub use outline_render_module::*;
 
 use wgpu::util::DeviceExt;
-
 use glam::Vec4Swizzles;
-
-use crate::framework::gpu::{vertices::SimpleVertex, utils::PRIMITIVE_RESTART};
+use crate::framework::gpu::{
+    vertices::SimpleVertex,
+    utils::PRIMITIVE_RESTART
+};
 
 /// Component which will be rendered as cube outline
 #[repr(C)]
@@ -53,6 +54,31 @@ impl CubeWireframeMesh {
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Cube Index Buffer"),
             contents: bytemuck::cast_slice(&CUBE_INDICES_LINE_STRIP),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        Self {
+            vertex_buffer,
+            index_buffer,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct CubeSolidMesh {
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+}
+impl CubeSolidMesh {
+    #[profiler::function]
+    pub fn new(device: &wgpu::Device) -> Self {
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Cube Vertex Buffer"),
+            contents: bytemuck::cast_slice(&CUBE_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Cube Index Buffer"),
+            contents: bytemuck::cast_slice(&CUBE_INDICES_TRIANGLE_STRIP),
             usage: wgpu::BufferUsages::INDEX,
         });
         Self {
