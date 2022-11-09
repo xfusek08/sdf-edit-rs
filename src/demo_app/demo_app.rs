@@ -38,9 +38,19 @@ use crate::{
 use super::{
     scene::Scene,
     components::Deleted,
-    line_module::{
-        LineRenderModule,
-        LineMesh
+    modules::{
+        line::{
+            LineRenderModule,
+            LineMesh,
+        },
+        cube::{CubeOutlineRenderModule,
+            CubeOutlineComponent,
+        },
+        tmp_evaluator_config::{
+            VoxelSizeOutlineComponent,
+            TmpEvaluatorConfigProps,
+            TmpEvaluatorConfig,
+        }
     },
 };
 
@@ -49,7 +59,7 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
     
     // load modules
     let line_module = renderer.add_module(LineRenderModule::new);
-    // let cube_outline = renderer.add_module(|c| CubeOutlineRenderModule::new(c));
+    let cube_outline = renderer.add_module(CubeOutlineRenderModule::new);
     // let svo_wireframe_module = renderer.add_module(|c| SVOWireframeRenderModule::new(c));
     // let svo_brick_module = renderer.add_module(|c| SvoSolidBricksRenderModule::new(c));
     // let svo_sdf_brick_module = renderer.add_module(|c| SvoSDFBricksRenderModule::new(c));
@@ -58,7 +68,7 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
     // passes are executed in order of their registration
     renderer.set_render_pass(RenderPassAttachment::base, &[
         line_module,
-        // cube_outline,
+        cube_outline,
         // svo_sdf_brick_module,
         // svo_wireframe_module
     ]);
@@ -70,7 +80,7 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
 pub fn define_updater(context: &Context) -> Updater<Scene> {
     Updater::new()
         .with_module(GuiUpdateModule::new(draw_gui))
-        // .with_module(TmpEvaluatorConfig::default())
+        .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
         // .with_module(SVOUpdater::new(gpu.clone())); // SVO updater needs arc reference to GPU context because it spawns threads sharing the GPU context
 }
@@ -120,8 +130,8 @@ pub fn init_scene(context: &Context) -> Scene {
     let test_model = Model::new(test_geometry_id);
     model_pool.insert(test_model);
     
-    // // Show voxel size instance
-    // world.spawn((VoxelSizeOutlineComponent, CubeOutlineComponent::new(1.5, 0.0, 0.0, min_voxel_size)));
+    // Show voxel size instance
+    world.spawn((VoxelSizeOutlineComponent, CubeOutlineComponent::new(1.5, 0.0, 0.0, min_voxel_size)));
     
     Scene {
         camera: Camera::new(CameraProperties {
@@ -133,10 +143,10 @@ pub fn init_scene(context: &Context) -> Scene {
         model_pool,
         world,
         counters: Default::default(),
-        // tmp_evaluator_config: TmpEvaluatorConfigProps {
-        //     render_level: 0,
-        //     min_voxel_size,
-        // }
+        tmp_evaluator_config: TmpEvaluatorConfigProps {
+            render_level: 0,
+            min_voxel_size,
+        }
     }
 }
 
@@ -165,12 +175,12 @@ pub fn draw_gui(ctx: &egui::Context, scene: &mut Scene) {
                     ui.label("renders:");
                     ui.label(format!("{}", scene.counters.renders));
                     ui.end_row();
-                    // ui.label("Min voxel Size:");
-                    // ui.add(
-                    //     egui::Slider::new(&mut scene.tmp_evaluator_config.min_voxel_size, Geometry::VOXEL_SIZE_RANGE)
-                    //         .step_by(0.001)
-                    //         .clamp_to_range(true)
-                    // );
+                    ui.label("Min voxel Size:");
+                    ui.add(
+                        egui::Slider::new(&mut scene.tmp_evaluator_config.min_voxel_size, Geometry::VOXEL_SIZE_RANGE)
+                            .step_by(0.001)
+                            .clamp_to_range(true)
+                    );
                     
                 });
             
@@ -188,46 +198,46 @@ pub fn draw_gui(ctx: &egui::Context, scene: &mut Scene) {
                     ui.end_row();
             });
             
-            // ui.separator();
+            ui.separator();
             
-            // let mut render_level = scene.tmp_evaluator_config.render_level;
+            let mut render_level = scene.tmp_evaluator_config.render_level;
             
-            // ui.label("TMP SVO Stats");
-            // for (geometry_id, geometry) in scene.geometry_pool.iter() {
-            //     let id = format!("{:?}", geometry_id);
-            //     ui.label(format!("Geometry: {}", id));
-            //     ui.label("SVO:");
-            //     if let Some(svo) = geometry.svo.as_ref() {
-            //         egui::Grid::new(&id).num_columns(2).show(ui, |ui| {
-            //             ui.label("Render Svo Level");
+            ui.label("TMP SVO Stats");
+            for (geometry_id, geometry) in scene.geometry_pool.iter() {
+                let id = format!("{:?}", geometry_id);
+                ui.label(format!("Geometry: {}", id));
+                ui.label("SVO:");
+                if let Some(svo) = geometry.svo.as_ref() {
+                    egui::Grid::new(&id).num_columns(2).show(ui, |ui| {
+                        ui.label("Render Svo Level");
                         
-            //             let levels = svo.levels.len() as u32;
-            //             if levels > 0 {
-            //                 ui.add(egui::Slider::new(
-            //                     &mut render_level,
-            //                     0..=levels - 1,
-            //                 ).step_by(1.0).clamp_to_range(true));
-            //             }
-            //             ui.label(format!("/ {}", levels - 1));
+                        let levels = svo.levels.len() as u32;
+                        if levels > 0 {
+                            ui.add(egui::Slider::new(
+                                &mut render_level,
+                                0..=levels - 1,
+                            ).step_by(1.0).clamp_to_range(true));
+                        }
+                        ui.label(format!("/ {}", levels - 1));
                         
-            //             ui.end_row();
-            //             ui.label("Svo Node Count:");
-            //             ui.label(format!("{:?}", svo.node_pool.count()));
-            //             ui.end_row();
-            //             ui.label("Svo Level Count:");
-            //             ui.label(format!("{}", svo.levels.len()));
-            //             ui.end_row();
-            //             ui.label("Svo Capacity:");
-            //             ui.label(format!("{:?}", svo.node_pool.capacity()));
-            //         });
-            //     } else {
-            //         ui.label("None");
-            //     }
+                        ui.end_row();
+                        ui.label("Svo Node Count:");
+                        ui.label(format!("{:?}", svo.node_pool.count()));
+                        ui.end_row();
+                        ui.label("Svo Level Count:");
+                        ui.label(format!("{}", svo.levels.len()));
+                        ui.end_row();
+                        ui.label("Svo Capacity:");
+                        ui.label(format!("{:?}", svo.node_pool.capacity()));
+                    });
+                } else {
+                    ui.label("None");
+                }
                 
-            //     scene.tmp_evaluator_config.render_level = render_level;
+                scene.tmp_evaluator_config.render_level = render_level;
                 
-            //     ui.spacing();
-            // }
+                ui.spacing();
+            }
         });
 }
 

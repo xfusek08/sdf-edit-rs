@@ -3,12 +3,22 @@
 
 use std::sync::Arc;
 
-use crate::framework::gpu;
-use crate::app::{
-    application::ControlFlowResultAction,
-    objects::cube::CubeOutlineComponent,
-    updating::{InputUpdateResult, UpdateContext, UpdaterModule},
+use crate::{
+    demo_app::scene::Scene,
+    framework::{
+        gpu,
+        updater::{
+            UpdaterModule,
+            UpdateContext,
+            UpdateResultAction,
+            InputUpdateResult,
+            ResizeContext,
+            AfterRenderContext
+        }
+    },
 };
+
+use super::cube::CubeOutlineComponent;
 
 #[derive(Clone)]
 pub struct TmpEvaluatorConfigProps {
@@ -29,10 +39,10 @@ impl TmpEvaluatorConfig {
     }
 }
 
-impl<'a> UpdaterModule for TmpEvaluatorConfig {
+impl<'a> UpdaterModule<Scene> for TmpEvaluatorConfig {
     #[profiler::function]
-    fn update(&mut self, context: &mut UpdateContext) -> ControlFlowResultAction {
-        let scene_props = context.state.scene.tmp_evaluator_config.clone();
+    fn update(&mut self, context: &mut UpdateContext<Scene>) -> UpdateResultAction {
+        let scene_props = context.scene.tmp_evaluator_config.clone();
 
         if let Some(TmpEvaluatorConfigProps {
             render_level,
@@ -41,7 +51,6 @@ impl<'a> UpdaterModule for TmpEvaluatorConfig {
             if scene_props.min_voxel_size != min_voxel_size {
                 // Update all geometries to new voxel size
                 context
-                    .state
                     .scene
                     .geometry_pool
                     .iter_mut()
@@ -52,23 +61,23 @@ impl<'a> UpdaterModule for TmpEvaluatorConfig {
         }
         
         // Update voxel size outline components to new voxel size
-        for (_, (_, cube_component)) in context.state.scene.world.query::<(&VoxelSizeOutlineComponent, &mut CubeOutlineComponent)>().iter() {
+        for (_, (_, cube_component)) in context.scene.world.query::<(&VoxelSizeOutlineComponent, &mut CubeOutlineComponent)>().iter() {
             let half_length = scene_props.min_voxel_size * 0.5;
             cube_component.set_position(glam::Vec3::new(0.6 + half_length, half_length, 0.0));
             cube_component.set_size(scene_props.min_voxel_size);
         }
         
         self.prev_props = Some(scene_props);
-        ControlFlowResultAction::None
+        UpdateResultAction::None
     }
 
-    fn input(&mut self, _: &mut UpdateContext) -> crate::app::updating::InputUpdateResult {
+    fn input(&mut self, _: &mut UpdateContext<Scene>) -> InputUpdateResult {
         InputUpdateResult::default()
     }
 
-    fn resize(&mut self, _: &mut crate::app::updating::ResizeContext) -> ControlFlowResultAction {
-        ControlFlowResultAction::None
+    fn resize(&mut self, context: &mut ResizeContext<Scene>) -> UpdateResultAction {
+        UpdateResultAction::None
     }
 
-    fn after_render(&mut self, state: &mut crate::app::state::State) {}
+    fn after_render(&mut self, state: &mut AfterRenderContext<Scene>) {}
 }

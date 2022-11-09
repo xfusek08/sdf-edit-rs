@@ -11,5 +11,4 @@ pub use render_pass::*;
 mod render_module;
 pub use render_module::*;
 
-mod camera;
-pub use camera::*;
+pub mod camera;

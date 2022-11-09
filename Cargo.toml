@@ -1,3 +1,9 @@
+[workspace]
+members = [
+    ".",
+    "crates/profiler",
+]
+
 [package]
 name = "sdf-edit-rs"
 version = "0.0.1"

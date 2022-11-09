@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use crate::framework::gpu;
 
-use super::Camera;
+use super::camera::Camera;
 
 #[derive(Debug)]
 pub struct RenderContext {

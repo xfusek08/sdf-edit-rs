@@ -272,7 +272,7 @@ fn process_root(in: ShaderInput) {
     let brick_evalutaion_result = evaluate_node_brick(in, node);
     let tile_index = create_tile(in);
     initialize_tile(in, node, tile_index);
-    // No need to write brick location anywhere, for rott it is always (0,0,0)
+    // No need to write brick location anywhere, for root it is always (0,0,0)
 }
 
 @compute

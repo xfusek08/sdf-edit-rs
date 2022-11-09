@@ -12,13 +12,14 @@ use std::{
 
 use hecs::Entity;
 
-use crate::framework::{
-    gui::Gui,
-    gpu::{self, vertices::Vertex},
-    renderer::{RenderContext, RenderModule, RenderPassContext, RenderPassAttachment},
+use crate::{
+    demo_app::scene::Scene,
+    framework::{
+        gui::Gui,
+        gpu::{self, vertices::Vertex},
+        renderer::{RenderContext, RenderModule, RenderPassContext, RenderPassAttachment},
+    },
 };
-
-use super::scene::Scene;
 
 // LineMesh
 // --------
@@ -51,7 +52,7 @@ impl LineRenderResource {
     }
 }
 
-// LinesRenderModuleshader
+// LineRenderModule
 // -----------------
 
 #[derive(Debug)]
@@ -129,7 +130,6 @@ impl LineRenderModule {
     }
     
 }
-
 
 impl RenderModule<Scene> for LineRenderModule {
     

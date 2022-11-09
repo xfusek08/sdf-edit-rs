@@ -8,7 +8,7 @@ use crate::framework::{gpu, gui::Gui, camera::SceneWithCamera};
 use super::{
     RenderPassAttachment,
     RenderModule,
-    Camera,
+    camera::Camera,
     RenderContext,
 };
 
