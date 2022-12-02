@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    info,
     framework::{
         gpu,
         math::AABB
@@ -53,7 +54,7 @@ pub fn evaluate(mut svo: svo::Svo, edits: GeometryEditList, gpu_resources: Evalu
     | -> svo::Level {
         profiler::scope!("Evaluating a SVO level");
         
-        dbg!("Evaluating level: {:?}", level);
+        info!("Evaluating level: {:?}", level);
         
         // Update start index uniform for dispatch
         let (

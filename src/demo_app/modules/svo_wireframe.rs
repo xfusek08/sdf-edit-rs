@@ -12,7 +12,7 @@ use crate::{
             RenderModule,
             RenderContext,
             RenderPassContext,
-            RenderPassAttachment
+            RenderPass
         },
     },
 };
@@ -41,16 +41,11 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         
         // Get all nodes from all valid node pools from all geometries with their node count
         let values: Vec<(u32, &svo::NodePool)> = scene.geometry_pool
-            .iter()
-            .filter_map(|(_, geometry)| {
-                if let Some(svo) = &geometry.svo {
-                    if let Some(cnt) = &svo.node_pool.count() {
-                        return Some((cnt.clone(), &svo.node_pool));
-                    }
-                }
-                None
-            })
-            .collect();
+            .iter().filter_map(|(_, geometry)| {
+                let Some(svo) = &geometry.svo else { return None; };
+                let Some(cnt) = &svo.node_pool.count() else { return None; };
+                Some((cnt.clone(), &svo.node_pool))
+            }).collect();
         
         // Prepare command encoder
         let mut encoder = context.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -58,14 +53,11 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         });
         
         // Lets ensure we have enough space in the buffer for all vertices by summing all node counts
-        let total_count: u32 = values.iter().map(|(cnt, _)| cnt).sum();
-        let total_count = total_count as usize;
+        let total_count = values.iter().map(|(cnt, _)| cnt).sum::<u32>() as usize;
         if total_count > self.pipeline.instance_buffer.capacity {
             profiler::scope!("Resizing node vertex buffer");
-            encoder.push_debug_group("Resizing SVO Node Vertex Buffer");
             encoder.insert_debug_marker("Resizing node vertex buffer");
             self.pipeline.instance_buffer.resize(&context.gpu, total_count);
-            encoder.pop_debug_group();
         }
         
         // Copy all vertices into the buffer from all node pools
@@ -74,15 +66,14 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         { profiler::scope!("Pushing all vertices from SVO to svo wireframe renderer vertex buffer");
             encoder.push_debug_group("Copying vertices from node pool to svo renderer");
             values.iter().for_each(|(cnt, node_pool)| {
-                { profiler::scope!("SVO vertex buffer -> svo renderer vertex buffer");
-                    encoder.copy_buffer_to_buffer(
-                        node_pool.vertex_buffer(),
-                        0,
-                        &self.pipeline.instance_buffer.buffer,
-                        vertices_copied as u64,
-                        (cnt.clone() as usize * std::mem::size_of::<glam::Vec4>()) as u64
-                    );
-                }
+                profiler::scope!("SVO vertex buffer -> svo renderer vertex buffer");
+                encoder.copy_buffer_to_buffer(
+                    node_pool.vertex_buffer(),
+                    0,
+                    &self.pipeline.instance_buffer.buffer,
+                    vertices_copied as u64,
+                    (cnt.clone() as usize * std::mem::size_of::<glam::Vec4>()) as u64
+                );
                 self.pipeline.instance_buffer.size += cnt.clone() as usize;
                 vertices_copied += cnt.clone();
             });
@@ -101,7 +92,7 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
     ) {
         match render_pass_context {
             RenderPassContext {
-                attachment: RenderPassAttachment::Base { .. },
+                attachment: RenderPass::Base { .. },
                 render_pass
             } => {
                 self.pipeline.render_on_pass(render_pass, &context.camera);

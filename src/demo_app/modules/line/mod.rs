@@ -16,8 +16,16 @@ use crate::{
     demo_app::scene::Scene,
     framework::{
         gui::Gui,
-        gpu::{self, vertices::Vertex},
-        renderer::{RenderContext, RenderModule, RenderPassContext, RenderPassAttachment},
+        gpu::{
+            self,
+            vertices::Vertex
+        },
+        renderer::{
+            RenderContext,
+            RenderModule,
+            RenderPassContext,
+            RenderPass
+        },
     },
 };
 
@@ -157,7 +165,7 @@ impl RenderModule<Scene> for LineRenderModule {
         render_pass_context: &mut RenderPassContext<'pass>,
     ) {
         // dbg!(&render_pass_context);
-        if let RenderPassAttachment::Base { .. } = render_pass_context.attachment {
+        if let RenderPass::Base { .. } = render_pass_context.attachment {
             render_pass_context.render_pass.set_pipeline(&self.pipeline);
             render_pass_context.render_pass.set_bind_group(0, &context.camera.bind_group, &[]);
             

@@ -7,7 +7,7 @@ use crate::{
             RenderContext,
             RenderModule,
             RenderPassContext,
-            RenderPassAttachment,
+            RenderPass,
         },
     },
 };
@@ -57,7 +57,7 @@ impl RenderModule<Scene> for CubeOutlineRenderModule {
     ) {
         match render_pass_context {
             RenderPassContext {
-                attachment: RenderPassAttachment::Base { .. },
+                attachment: RenderPass::Base { .. },
                 render_pass,
             } => {
                 self.pipeline.render_on_pass(render_pass, &context.camera);

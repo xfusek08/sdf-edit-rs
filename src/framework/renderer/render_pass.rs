@@ -4,7 +4,7 @@ use crate::framework::gpu;
 use super::RenderContext;
 
 #[derive(Debug)]
-pub enum RenderPassAttachment {
+pub enum RenderPass {
     /// Main render pass drawing color values to the screen, using depth buffer
     Base {
         clear_color: wgpu::Color,
@@ -19,13 +19,12 @@ pub enum RenderPassAttachment {
 
 #[derive(Debug)]
 pub struct RenderPassContext<'pass> {
-    pub attachment:  &'pass RenderPassAttachment,
+    pub attachment:  &'pass RenderPass,
     pub render_pass: wgpu::RenderPass<'pass>,
 }
 
-
 // Construction
-impl RenderPassAttachment {
+impl RenderPass {
     
     pub fn base(context: &RenderContext) -> Self {
         Self::Base {
@@ -47,7 +46,7 @@ impl RenderPassAttachment {
 }
 
 
-impl RenderPassAttachment {
+impl RenderPass {
     pub fn resize(&mut self, context: &RenderContext, scale_factor: f64) {
         match self {
             Self::Base { depth_texture, .. } => {

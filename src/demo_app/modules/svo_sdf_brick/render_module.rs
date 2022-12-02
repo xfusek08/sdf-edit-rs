@@ -12,7 +12,7 @@ use crate::{
             RenderModule,
             RenderContext,
             RenderPassContext,
-            RenderPassAttachment
+            RenderPass
         },
     },
 };
@@ -73,7 +73,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
     ) {
         match render_pass_context {
             RenderPassContext {
-                attachment: RenderPassAttachment::Base { .. },
+                attachment: RenderPass::Base { .. },
                 render_pass,
             } => {
                 self.pipeline.render_on_pass(render_pass, context);

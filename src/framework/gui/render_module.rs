@@ -1,13 +1,13 @@
 ///! This file is inspired by: https://github.com/hasenbanck/egui_example/blob/master/src/main.rs
 
 use egui::ClippedPrimitive;
-use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
+use egui_wgpu::renderer::{RenderPass as EguiRenderPass, ScreenDescriptor};
 
 use crate::framework::renderer::{
     RenderContext,
     RenderModule,
     RenderPassContext,
-    RenderPassAttachment
+    RenderPass
 };
 
 use super::{
@@ -21,7 +21,7 @@ struct RenderData {
 }
 
 pub struct GuiRenderModule {
-    egui_renderer: RenderPass,
+    egui_renderer: EguiRenderPass,
     render_data: Option<RenderData>,
 }
 impl std::fmt::Debug for GuiRenderModule {
@@ -35,7 +35,7 @@ impl GuiRenderModule {
     #[profiler::function]
     pub fn new(context: &RenderContext) -> GuiRenderModule {
         Self {
-            egui_renderer: RenderPass::new(&context.gpu.device, context.surface_config.format, 1),
+            egui_renderer: EguiRenderPass::new(&context.gpu.device, context.surface_config.format, 1),
             render_data: None,
         }
     }
@@ -103,7 +103,7 @@ impl<Scene> RenderModule<Scene> for GuiRenderModule {
     ) {
         match render_pass_context {
             RenderPassContext {
-                attachment: RenderPassAttachment::Gui { .. },
+                attachment: RenderPass::Gui { .. },
                 render_pass,
             } => {
                 if let Some(data) = self.render_data.as_ref() {
