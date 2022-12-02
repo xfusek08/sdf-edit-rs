@@ -29,7 +29,7 @@ impl SvoEvaluatorUpdater {
     }
 }
 
-impl<'a> UpdaterModule<Scene> for SvoEvaluatorUpdater {
+impl UpdaterModule<Scene> for SvoEvaluatorUpdater {
     #[profiler::function]
     fn update(&mut self, context: &mut UpdateContext<Scene>) -> UpdateResultAction {
         let geometry_pool = &mut context.scene.geometry_pool;

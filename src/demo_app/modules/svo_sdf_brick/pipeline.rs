@@ -2,8 +2,12 @@
 use std::borrow::Cow;
 
 use crate::{
-    framework::{gpu::{self, vertices::Vertex}, renderer::RenderContext},
-    sdf::svo::{self, Svo}, demo_app::modules::cube::{CUBE_INDICES_TRIANGLE_STRIP, CubeSolidMesh},
+    sdf::svo::{self, Svo},
+    demo_app::modules::cube::{CUBE_INDICES_TRIANGLE_STRIP, CubeSolidMesh},
+    framework::{
+        renderer::RenderContext,
+        gpu::{self, vertices::Vertex},
+    },
 };
 
 type BrickInstanceBuffer = gpu::Buffer<u32>;

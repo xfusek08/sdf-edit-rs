@@ -39,7 +39,7 @@ impl TmpEvaluatorConfig {
     }
 }
 
-impl<'a> UpdaterModule<Scene> for TmpEvaluatorConfig {
+impl UpdaterModule<Scene> for TmpEvaluatorConfig {
     #[profiler::function]
     fn update(&mut self, context: &mut UpdateContext<Scene>) -> UpdateResultAction {
         let scene_props = context.scene.tmp_evaluator_config.clone();

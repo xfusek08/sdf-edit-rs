@@ -39,7 +39,7 @@ impl<S: SceneWithCamera> Renderer<S> {
             present_mode: wgpu::PresentMode::Fifo,                            // VSynch essentially - capping renders on display frame rate
             width:        window.inner_size().width,
             height:       window.inner_size().height,
-            // alpha_mode:   CompositeAlphaMode::PostMultiplied, // TODO: wgpu 0.14
+            // alpha_mode:   wgpu::CompositeAlphaMode::PostMultiplied, // TODO: wgpu 0.14
         };
         gpu.surface.configure(&gpu.device, &surface_config);
         

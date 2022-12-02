@@ -76,6 +76,7 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
         svo_sdf_brick_module,
         svo_wireframe_module
     ]);
+    
     renderer.set_render_pass(RenderPassAttachment::gui, &[gui_module]);
     
     renderer
