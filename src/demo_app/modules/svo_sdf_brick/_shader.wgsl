@@ -1,12 +1,19 @@
 
 struct PushConstants {
-    view_projection: mat4x4<f32>,
-    camera_position: vec4<f32>,
-    brick_scale: f32,
+    view_projection:    mat4x4<f32>,
+    camera_position:    vec4<f32>,
+    brick_scale:        f32,
     brick_atlas_stride: f32,
-    brick_voxel_size: f32,
+    brick_voxel_size:   f32,
+    show_flags:         u32,
 }
 var<push_constant> pc: PushConstants;
+
+let SHOW_SOLID        = 0x01u; // 0b00000001;
+let SHOW_NORMALS      = 0x02u; // 0b00000010;
+let SHOW_STEP_COUNT   = 0x04u; // 0b00000100;
+let SHOW_DEPTH        = 0x08u; // 0b00001000;
+let SHOW_NO_RAY_MARCH = 0x10u; // 0b00010000;
 
 struct VertexInput {
     @location(0) position: vec3<f32>
@@ -107,6 +114,10 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     return out;
 }
 
+// =================================================================================================
+//                                       FRAGMENT SHADER
+// =================================================================================================
+
 struct Ray {
     origin: vec3<f32>,
     direction: vec3<f32>,
@@ -182,6 +193,59 @@ fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>
 let HIT_DISTANCE: f32 = 0.01;
 let MAX_STEPS: u32 = 50u;
 
+struct HitResult {
+    hit:          bool,
+    color:        vec4<f32>,
+    distance:     f32,
+    max_distance: f32,
+    normal:       vec3<f32>,
+    steps:        u32,
+}
+
+fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4x4<f32>) -> HitResult {
+    var ray: Ray;
+    ray.origin = origin;
+    ray.direction = normalize(origin - in.brick_local_camera_pos.xyz);
+    ray.dist = 0.0;
+    
+    var hit = HitResult(
+        false,
+        vec4<f32>(0.0, 0.0, 0.0, 0.0),
+        0.0,
+        get_distance_to_end_of_brick(ray.origin, ray.direction),
+        vec3<f32>(0.0, 0.0, 0.0),
+        0u
+    );
+    
+    loop {
+        let act_position = ray.dist * ray.direction + ray.origin;
+        let dist_to_volume = sample_volume_distance(in, act_position);
+        
+        if (dist_to_volume < HIT_DISTANCE) {
+            hit.hit = true;
+            hit.normal = get_normal(in, act_position, dist_to_volume);
+            hit.color = get_hit_color(
+                act_position,
+                hit.normal,
+                brick_to_local_transform
+            );
+            break;
+        }
+        
+        ray.dist += dist_to_volume;
+        if ray.dist >= hit.max_distance {
+            break;
+        }
+        
+        hit.steps += 1u;
+        if (hit.steps > MAX_STEPS) {
+            break;
+        }
+    }
+    hit.distance = ray.dist;
+    return hit;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let brick_to_local_transform = mat4x4<f32>(
@@ -193,38 +257,29 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     
     var fragment_pos = (brick_to_local_transform * vec4<f32>(in.frag_pos, 1.0)).xyz;
     
-    var ray: Ray;
-    ray.origin = fragment_pos;
-    ray.direction = normalize(fragment_pos - in.brick_local_camera_pos.xyz);
-    ray.dist = 0.0;
+    let hit = ray_march(in, fragment_pos, brick_to_local_transform);
     
-    let max_distance = get_distance_to_end_of_brick(ray.origin, ray.direction);
-    var step = 0u;
-    loop {
-        
-        let act_position = ray.dist * ray.direction + ray.origin;
-        let dist_to_volume = sample_volume_distance(in, act_position);
-        
-        if (dist_to_volume < HIT_DISTANCE) {
-            return get_hit_color(
-                act_position,
-                get_normal(
-                    in,
-                    act_position,
-                    dist_to_volume
-                ),
-                brick_to_local_transform
-            );
+    if (pc.show_flags == 0u) {
+        if (hit.hit) {
+            return hit.color;
         }
-        
-        ray.dist += dist_to_volume;
-        if ray.dist > max_distance {
-            break;
+    } else {
+        var color = hit.color;
+        if ((pc.show_flags & SHOW_DEPTH) != 0u) {
+            color = mix(color, vec4<f32>(1.0, 0.0, 0.0, 1.0), hit.distance / hit.max_distance);
         }
-        
-        step += 1u;
-        if (step > MAX_STEPS) {
-            break;
+        if ((pc.show_flags & SHOW_NORMALS) != 0u) {
+            color = mix(color, vec4<f32>(hit.normal, 1.0), 0.5);
+        }
+        if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
+            color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
+        }
+        if ((pc.show_flags & SHOW_SOLID) != 0u) {
+            color = mix(color, vec4<f32>(fragment_pos, 1.0), 0.8);
+            return color;
+        }
+        if (hit.hit) {
+            return color;
         }
     }
     discard;

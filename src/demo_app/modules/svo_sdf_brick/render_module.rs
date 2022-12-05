@@ -47,7 +47,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             .filter_map(|(_, geometry)| { geometry.svo.as_ref().cloned() })
             .take(1)
             .last();
-            
+        
         if let Some(svo) = svo {
             let level = svo.levels.get(scene.tmp_evaluator_config.render_level as usize);
             
@@ -61,6 +61,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             }
             
             self.pipeline.set_svo(&context.gpu, svo.deref());
+            self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
             self.svo = Some(svo);
         }
     }

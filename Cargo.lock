@@ -1827,6 +1827,7 @@ dependencies = [
 name = "sdf-edit-rs"
 version = "0.0.1"
 dependencies = [
+ "bitflags",
  "bytemuck",
  "dolly",
  "egui",

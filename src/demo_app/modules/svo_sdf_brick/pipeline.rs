@@ -12,32 +12,50 @@ use crate::{
 
 type BrickInstanceBuffer = gpu::Buffer<u32>;
 
+// bit flags for showing solid brick, normals,  step count and depth
+bitflags::bitflags! {
+    #[repr(C)]
+    #[derive(bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DisplayOptions: u32 {
+        const NONE          = 0;
+        const SOLID         = 0b00000001;
+        const NORMALS       = 0b00000010;
+        const STEP_COUNT    = 0b00000100;
+        const DEPTH         = 0b00001000;
+        const NO_RAY_MARCH  = 0b00010000;
+    }
+}
+
+impl Default for DisplayOptions {
+    fn default() -> Self { Self::NONE }
+}
+
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PushConstants {
-    view_projection: glam::Mat4,
-    camera_position: glam::Vec4,
-    brick_scale: f32,
+    view_projection:    glam::Mat4,
+    camera_position:    glam::Vec4,
+    brick_scale:        f32,
     brick_atlas_stride: f32,
-    brick_voxel_size: f32,
-    padding: f32,
+    brick_voxel_size:   f32,
+    display_options:    DisplayOptions,
 }
 
 #[derive(Debug)]
 struct SvoBindGroups {
-    pub node_pool: wgpu::BindGroup,
+    pub node_pool:  wgpu::BindGroup,
     pub brick_pool: wgpu::BindGroup,
 }
 
 #[derive(Debug)]
 pub struct SvoSDFBrickPipeline {
-    pub brick_instance_buffer: BrickInstanceBuffer, // public, because it is updated from outside
-    pipeline: wgpu::RenderPipeline,
-    node_pool_bind_group_layout: wgpu::BindGroupLayout,
+    pub brick_instance_buffer:    BrickInstanceBuffer, // public, because it is updated from outside
+    pipeline:                     wgpu::RenderPipeline,
+    node_pool_bind_group_layout:  wgpu::BindGroupLayout,
     brick_pool_bind_group_layout: wgpu::BindGroupLayout,
-    cube_solid_mesh: CubeSolidMesh,
-    bind_groups: Option<SvoBindGroups>,
-    push_constants: PushConstants,
+    cube_solid_mesh:              CubeSolidMesh,
+    bind_groups:                  Option<SvoBindGroups>,
+    push_constants:               PushConstants,
 }
 
 impl SvoSDFBrickPipeline {
@@ -144,6 +162,10 @@ impl SvoSDFBrickPipeline {
         self.push_constants.brick_atlas_stride = svo.brick_pool.atlas_stride();
         self.push_constants.brick_voxel_size = svo.brick_pool.atlas_voxel_size();
         self.push_constants.brick_scale = svo.brick_pool.atlas_scale();
+    }
+    
+    pub fn set_display_options(&mut self, options: DisplayOptions) {
+        self.push_constants.display_options = options;
     }
     
     /// Runs this pipeline for given render pass

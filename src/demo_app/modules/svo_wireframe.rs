@@ -21,12 +21,14 @@ use super::cube::CubeOutlinePipeline;
 
 #[derive(Debug)]
 pub struct SvoWireframeRenderModule {
+    visible: bool,
     pipeline: CubeOutlinePipeline,
 }
 
 impl SvoWireframeRenderModule {
     pub fn new(context: &RenderContext) -> Self {
         SvoWireframeRenderModule {
+            visible: true,
             pipeline: CubeOutlinePipeline::new(context)
         }
     }
@@ -38,6 +40,11 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         // NOTE: For now this implementation just copies all SVO vertices from all geometries into a single buffer
         // -------------------------------------------------------------------------------------------------------
+        
+        self.visible = scene.display_toggles.show_wireframe;
+        if !self.visible {
+            return;
+        }
         
         // Get all nodes from all valid node pools from all geometries with their node count
         let values: Vec<(u32, &svo::NodePool)> = scene.geometry_pool
@@ -90,6 +97,10 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         context: &'a RenderContext,
         render_pass_context: &mut RenderPassContext<'pass>,
     ) {
+        if !self.visible {
+            return;
+        }
+        
         match render_pass_context {
             RenderPassContext {
                 attachment: RenderPass::Base { .. },
