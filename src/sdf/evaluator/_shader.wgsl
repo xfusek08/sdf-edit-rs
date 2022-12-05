@@ -20,10 +20,10 @@ struct SVOWorkAssignment {
 // SVO: Node pool bind group and associated node - fuinctions
 // -----------------------------------------------------------------------------------
 
-@group(1) @binding(0) var<storage, read_write> node_count: atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
-@group(1) @binding(1) var<storage, read_write> node_headers: array<u32>;
-@group(1) @binding(2) var<storage, read_write> node_payload: array<u32>;
-@group(1) @binding(3) var<storage, read_write> node_vertices: array<vec4<f32>>;
+@group(1) @binding(0) var<storage, read_write> node_count:         atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
+@group(1) @binding(1) var<storage, read_write> node_headers:       array<u32>;
+@group(1) @binding(2) var<storage, read_write> node_payload:       array<u32>;
+@group(1) @binding(3) var<storage, read_write> node_vertices:      array<vec4<f32>>;
 @group(1) @binding(4) var<uniform>             node_pool_capacity: u32; // maximum number of nodes in tiles buffer
 
 struct Node {
@@ -90,13 +90,20 @@ fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     return abs(dinstance) < voxel_bounding_spehere_radius;
 }
 
+fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
+    let h = clamp(0.5 + 0.5 * (dist1 - dist2) / koeficient, 0.0, 1.0);
+    return mix(dist1, dist2, h) - koeficient * h * (1.0 - h);
+}
+
 fn sample_sdf(position: vec3<f32>) -> f32 {
     // TODO: use max-norm for evaluating this
+    // compute smooth minimum of two spheres
+    let sphere1 = vec4<f32>(0.0, -0.2, 0.0, 0.3);
+    let sphere2 = vec4<f32>(0.0, 0.2, 0.0, 0.2);
+    let d1 = length(position - sphere1.xyz) - sphere1.w;
+    let d2 = length(position - sphere2.xyz) - sphere2.w;
     
-    // tmp - only one sphere
-    var sphere_center = vec3<f32>(0.0, 0.0, 0.0);
-    var sphere_radius = 0.2;
-    return length(position - sphere_center) - sphere_radius;
+    return smooth_min(d1, d2, 0.05);
 }
 
 fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
@@ -218,13 +225,23 @@ fn create_tile(in: ShaderInput) -> u32 {
 /// Initializes a new tile by computing vertices for each node and writing them into node_vertices buffer
 fn initialize_tile(in: ShaderInput, parent_node: Node, tile_index: u32) {
     
+    var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
+        vec3<f32>(-0.25, -0.25, -0.25),
+        vec3<f32>(-0.25, -0.25,  0.25),
+        vec3<f32>(-0.25,  0.25, -0.25),
+        vec3<f32>(-0.25,  0.25,  0.25),
+        vec3<f32>( 0.25,  0.25, -0.25),
+        vec3<f32>( 0.25,  0.25,  0.25),
+        vec3<f32>( 0.25, -0.25, -0.25),
+        vec3<f32>( 0.25, -0.25,  0.25),
+    );
+    
     // Enters 2x2x2 subgroup of threads
-    if (in.local_invocation_id.x < 2u && in.local_invocation_id.y < 2u && in.local_invocation_id.z < 2u) {
+    if (in.local_invocation_id.x < 8u) {
         let start_node_tile = tile_index << 3u;
-        let node_index = start_node_tile + in.local_invocation_id.x + in.local_invocation_id.y * 2u + in.local_invocation_id.z * 4u;
+        let node_index = start_node_tile + in.local_invocation_id.x;
         
-        var child_shift = vec3<f32>(in.local_invocation_id) - 0.5; // (0,0,0) - (1,1,1) => (-0.5,-0.5,-0.5) - (0.5,0.5,0.5)
-        child_shift = child_shift * 0.5;                                           // (-0.5,-0.5,-0.5) - (0.5,0.5,0.5) => (-0.25,-0.25,-0.25) - (0.25,0.25,0.25)
+        var child_shift = shift_vector[in.local_invocation_id.x]; // (0,0,0) - (1,1,1) => (-0.5,-0.5,-0.5) - (0.5,0.5,0.5)
         child_shift = bounding_cube_transform(parent_node.vertex, child_shift);
         
         node_vertices[node_index] = vec4(child_shift, parent_node.vertex.w * 0.5);

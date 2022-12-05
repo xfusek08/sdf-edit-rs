@@ -1,69 +1,70 @@
-use std::{sync::Arc, ops::Deref};
+
+use std::ops::Deref;
 
 use crate::{
     demo_app::scene::Scene,
-    sdf::svo::{
-        self,
-        Svo
-    },
     framework::{
         gui::Gui,
         renderer::{
             RenderModule,
             RenderContext,
             RenderPassContext,
-            RenderPass
+            RenderPass,
         },
-    },
+    }, warn,
 };
 
-use super::SvoSDFBrickPipeline;
+use super::{SvoSDFBrickPipeline, SvoBrickSelectPipeline, BrickInstances};
 
 ///! This is main renderer of evaluated geometries
 
 #[derive(Debug)]
 pub struct SvoSdfBricksRenderModule {
     pipeline: SvoSDFBrickPipeline,
-    svo: Option<Arc<Svo>>,
+    brick_select_compute_pipeline: SvoBrickSelectPipeline,
+    brick_instances: BrickInstances,
 }
 
 impl SvoSdfBricksRenderModule {
     pub fn new(context: &RenderContext) -> Self {
         Self {
             pipeline: SvoSDFBrickPipeline::new(context),
-            svo: None,
+            brick_select_compute_pipeline: SvoBrickSelectPipeline::new(context),
+            brick_instances: BrickInstances::new(&context.gpu, 1024),
         }
     }
 }
 
 impl RenderModule<Scene> for SvoSdfBricksRenderModule {
+    
+    /// Prepares list of nodes to be rendered in this frame.
     #[profiler::function]
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
-        // TODO: Select which nodes will be renderer for given svo
-        
         // NOTE: For now only first geometry is rendered
         let svo = scene.geometry_pool
             .iter()
             .filter_map(|(_, geometry)| { geometry.svo.as_ref().cloned() })
             .take(1)
             .last();
+            
+        let Some(svo) = svo else {
+            return;
+        };
         
-        if let Some(svo) = svo {
-            let level = svo.levels.get(scene.tmp_evaluator_config.render_level as usize);
-            
-            if let Some(svo::Level { node_count, start_index }) = level {
-                let end = start_index + node_count;
-                let new_data: Vec<u32> = (*start_index..end).collect();
-                self.pipeline.brick_instance_buffer.queue_update(
-                    &context.gpu,
-                    &new_data,
-                )
-            }
-            
-            self.pipeline.set_svo(&context.gpu, svo.deref());
-            self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
-            self.svo = Some(svo);
-        }
+        let Some(node_count) = svo.node_pool.count() else {
+            warn!("SvoSdfBricksRenderModule::prepare: SVO node pool is empty on does nto have node count loaded from GPU");
+            return;
+        };
+        
+        self.brick_instances.clear_resize(&context.gpu, node_count as usize);
+        self.brick_select_compute_pipeline.run(context, svo.deref(), &self.brick_instances, scene.camera.fov);
+        
+        // --------------------
+        self.brick_instances.load_count(&context.gpu); // TODO: this will not be needed when we will use indirect draw
+        // --------------------
+        
+        self.pipeline.set_svo(&context.gpu, svo.deref());
+        self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
     }
     
     #[profiler::function]
@@ -77,7 +78,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 attachment: RenderPass::Base { .. },
                 render_pass,
             } => {
-                self.pipeline.render_on_pass(render_pass, context);
+                self.pipeline.render_on_pass(render_pass, context, &self.brick_instances);
             }
             _ => {}
         }

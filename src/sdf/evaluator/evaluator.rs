@@ -159,7 +159,7 @@ impl Evaluator {
             std::thread::spawn(move || {
                 // TODO: use some clever resource management to reuse allocated not used octree.
                 evaluate(
-                    svo::Svo::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(20)),
+                    svo::Svo::new(&gpu_resources.gpu, svo::Capacity::BrickPoolSide(40)),
                     edits,
                     gpu_resources,
                     min_voxel_size

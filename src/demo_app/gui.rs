@@ -119,7 +119,6 @@ pub fn draw_gui(ctx: &egui::Context, scene: &mut Scene) {
                     checkbox!(svo_sdf_brick::DisplayOptions::NORMALS,      "Normals");
                     checkbox!(svo_sdf_brick::DisplayOptions::SOLID,        "Solid");
                     checkbox!(svo_sdf_brick::DisplayOptions::STEP_COUNT,   "Step Count");
-                    checkbox!(svo_sdf_brick::DisplayOptions::NO_RAY_MARCH, "No Ray March");
                 });
             });
         });

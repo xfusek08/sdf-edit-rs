@@ -9,11 +9,11 @@ struct PushConstants {
 }
 var<push_constant> pc: PushConstants;
 
-let SHOW_SOLID        = 0x01u; // 0b00000001;
-let SHOW_NORMALS      = 0x02u; // 0b00000010;
-let SHOW_STEP_COUNT   = 0x04u; // 0b00000100;
-let SHOW_DEPTH        = 0x08u; // 0b00001000;
-let SHOW_NO_RAY_MARCH = 0x10u; // 0b00010000;
+let SHOW_SOLID      = 0x01u; // 0b00000001;
+let SHOW_NORMALS    = 0x02u; // 0b00000010;
+let SHOW_STEP_COUNT = 0x04u; // 0b00000100;
+let SHOW_DEPTH      = 0x08u; // 0b00001000;
+let JUST_ROOT       = 0x10u; // 0b00010000;
 
 struct VertexInput {
     @location(0) position: vec3<f32>
@@ -92,12 +92,16 @@ fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
 fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOutput {
     var out: VertexOutput;
     
-    let node_vertex = node_vertices[instance_input.node_index];
-    let position = (node_vertex.w * vertex_input.position) + node_vertex.xyz;
+    var node_vertex = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    out.brick_shift = vec3<f32>(0.0, 0.0, 0.0);
+    if ((pc.show_flags & JUST_ROOT) == 0u) {
+        node_vertex = node_vertices[instance_input.node_index];
+        out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
+    }
     
+    let position = (node_vertex.w * vertex_input.position) + node_vertex.xyz;
     out.position = pc.view_projection * vec4<f32>(position, 1.0);
     out.frag_pos = position;
-    out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
     
     var brick_inverted_size = 1.0 / node_vertex.w;
     var brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
@@ -275,8 +279,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
         }
         if ((pc.show_flags & SHOW_SOLID) != 0u) {
-            color = mix(color, vec4<f32>(fragment_pos, 1.0), 0.8);
-            return color;
+            return vec4<f32>(fragment_pos, 1.0);
         }
         if (hit.hit) {
             return color;

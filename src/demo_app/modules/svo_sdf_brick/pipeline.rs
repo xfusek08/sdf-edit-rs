@@ -7,22 +7,22 @@ use crate::{
     framework::{
         renderer::RenderContext,
         gpu::{self, vertices::Vertex},
-    },
+    }, warn,
 };
 
-type BrickInstanceBuffer = gpu::Buffer<u32>;
+use super::BrickInstances;
 
 // bit flags for showing solid brick, normals,  step count and depth
 bitflags::bitflags! {
     #[repr(C)]
     #[derive(bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DisplayOptions: u32 {
-        const NONE          = 0;
-        const SOLID         = 0b00000001;
-        const NORMALS       = 0b00000010;
-        const STEP_COUNT    = 0b00000100;
-        const DEPTH         = 0b00001000;
-        const NO_RAY_MARCH  = 0b00010000;
+        const NONE       = 0;
+        const SOLID      = 0b00000001;
+        const NORMALS    = 0b00000010;
+        const STEP_COUNT = 0b00000100;
+        const DEPTH      = 0b00001000;
+        const JUST_ROOT  = 0b00010000;
     }
 }
 
@@ -49,7 +49,6 @@ struct SvoBindGroups {
 
 #[derive(Debug)]
 pub struct SvoSDFBrickPipeline {
-    pub brick_instance_buffer:    BrickInstanceBuffer, // public, because it is updated from outside
     pipeline:                     wgpu::RenderPipeline,
     node_pool_bind_group_layout:  wgpu::BindGroupLayout,
     brick_pool_bind_group_layout: wgpu::BindGroupLayout,
@@ -103,7 +102,7 @@ impl SvoSDFBrickPipeline {
                 entry_point: "vs_main",
                 buffers: &[
                     gpu::vertices::SimpleVertex::vertex_layout(),
-                    BrickInstanceBuffer::vertex_layout(),
+                    gpu::Buffer::<u32>::vertex_layout(),
                 ],
             },
             
@@ -139,12 +138,6 @@ impl SvoSDFBrickPipeline {
             multiview: None,
         });
         Self {
-            brick_instance_buffer: BrickInstanceBuffer::new_empty(
-                &context.gpu,
-                Some("SDF Pipeline brick instance buffer"),
-                100,
-                wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            ),
             cube_solid_mesh: CubeSolidMesh::new(&context.gpu.device),
             pipeline,
             node_pool_bind_group_layout,
@@ -169,34 +162,48 @@ impl SvoSDFBrickPipeline {
     }
     
     /// Runs this pipeline for given render pass
-    pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, context: &RenderContext) {
-        if let Some(bind_groups) = self.bind_groups.as_ref() {
-            pass.set_pipeline(&self.pipeline);
-            
-            let cpc = context.camera.to_push_constant_data();
-            let pc = PushConstants {
-                view_projection: cpc.view,
-                camera_position: cpc.position,
-                ..self.push_constants
-            };
-            
-            pass.set_push_constants(
-                wgpu::ShaderStages::VERTEX_FRAGMENT,
-                0,
-                bytemuck::cast_slice(&[pc]
-            ));
-            
-            pass.set_bind_group(0, &bind_groups.node_pool, &[]);
-            pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
-            
-            pass.set_vertex_buffer(0, self.cube_solid_mesh.vertex_buffer.slice(..));
-            pass.set_vertex_buffer(1, self.brick_instance_buffer.buffer.slice(..));
-            pass.set_index_buffer(self.cube_solid_mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            pass.draw_indexed(
-                0..CUBE_INDICES_TRIANGLE_STRIP.len() as u32,
-                0,
-                0..self.brick_instance_buffer.size as u32
-            );
+    pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, context: &RenderContext, brick_instance_buffer: &'rpass BrickInstances) {
+        let Some(bind_groups) = self.bind_groups.as_ref()  else {
+            return;
+        };
+        
+        let Some(instance_count) = brick_instance_buffer.count() else {
+            warn!("Count for brick instance buffer is not loaded.");
+            return;
+        };
+        
+        pass.set_pipeline(&self.pipeline);
+        
+        let cpc = context.camera.to_push_constant_data();
+        let mut pc = PushConstants {
+            view_projection: cpc.view,
+            camera_position: cpc.position,
+            ..self.push_constants
+        };
+        
+        // if no bricks are in brick instance buffer, render root
+        if instance_count == 0 {
+            pc.display_options |= DisplayOptions::JUST_ROOT;
         }
+        
+        pass.set_push_constants(
+            wgpu::ShaderStages::VERTEX_FRAGMENT,
+            0,
+            bytemuck::cast_slice(&[pc]
+        ));
+        
+        pass.set_bind_group(0, &bind_groups.node_pool, &[]);
+        pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
+        
+        pass.set_vertex_buffer(0, self.cube_solid_mesh.vertex_buffer.slice(..));
+        pass.set_vertex_buffer(1, brick_instance_buffer.buffer.buffer.slice(..));
+        pass.set_index_buffer(self.cube_solid_mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        
+        // TODO: use indirect to avoid pulling instance buffer count from gpu
+        pass.draw_indexed(
+            0..CUBE_INDICES_TRIANGLE_STRIP.len() as u32,
+            0,
+            0..instance_count.max(1)
+        );
     }
 }
