@@ -23,7 +23,6 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
     let line_module = renderer.register_module(LineRenderModule::new);
     let cube_outline = renderer.register_module(CubeOutlineRenderModule::new);
     let svo_wireframe_module = renderer.register_module(SvoWireframeRenderModule::new);
-    // let svo_brick_module = renderer.add_module(|c| SvoSolidBricksRenderModule::new(c));
     let svo_sdf_brick_module = renderer.register_module(SvoSdfBricksRenderModule::new);
     let gui_module = renderer.register_module(GuiRenderModule::new);
     

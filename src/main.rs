@@ -3,6 +3,7 @@
 mod framework;
 mod sdf;
 mod demo_app;
+mod shape_builder;
 
 use crate::framework::application;
 

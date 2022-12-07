@@ -11,13 +11,13 @@ use crate::{
         primitives::Primitive,
         model::{ModelPool, Model},
         geometry::{GeometryPool, Geometry, GeometryEdit, GeometryOperation},
-    },
+    }, shape_builder::Shape,
 };
 
 use super::{
     scene::Scene,
     modules::{line::LineMesh, tmp_evaluator_config::TmpEvaluatorConfigProps},
-    components::Deleted,
+    components::Deleted, bumpy_sphere::bumpy_sphere,
 };
 
 
@@ -53,18 +53,14 @@ pub fn init_scene(context: &Context) -> Scene {
     
     let min_voxel_size = 0.01;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
-    let test_geometry = Geometry::new(min_voxel_size)
-        .with_edits(vec![
-            GeometryEdit {
-                primitive: Primitive::Sphere {
-                    center: glam::Vec3::ZERO,
-                    radius: 1.0
-                },
-                operation: GeometryOperation::Add,
-                transform: Transform::default(),
-                blending: 0.0,
-            }
-        ]);
+    // lets generate a geometry using the shape builder
+    let test_geometry = Geometry::new(min_voxel_size).with_edits(
+        Shape::empty().add(
+            bumpy_sphere(),
+            Transform::from_uniform_scale(0.5),
+            0.0
+        ).build()
+    );
     
     let test_geometry_id = geometry_pool.insert(test_geometry);
     

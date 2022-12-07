@@ -49,9 +49,7 @@ pub fn evaluate(mut svo: svo::Svo, edits: GeometryEditList, gpu_resources: Evalu
     );
     
     // 2. Lambda evaluating one SVO level (root if None given)
-    let evaluate_level = &mut |
-        level: Option<svo::Level> // None -> root
-    | -> svo::Level {
+    let evaluate_level = &mut | level: Option<svo::Level> | -> svo::Level {
         profiler::scope!("Evaluating a SVO level");
         
         info!("Evaluating level: {:?}", level);

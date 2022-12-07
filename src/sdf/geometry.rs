@@ -11,7 +11,7 @@ new_key_type! {
 
 pub type GeometryPool = SlotMap<GeometryID, Geometry>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum GeometryOperation {
     Add,
     Subtract,
@@ -19,7 +19,7 @@ pub enum GeometryOperation {
     // TODO: Paint
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GeometryEdit {
     pub primitive: Primitive,
     pub operation: GeometryOperation,

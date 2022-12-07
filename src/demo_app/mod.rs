@@ -15,3 +15,5 @@ pub use gui::style_gui;
 
 mod init_scene;
 pub use init_scene::init_scene;
+
+pub mod bumpy_sphere;
