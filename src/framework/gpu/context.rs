@@ -54,6 +54,7 @@ impl Context {
                 limits: wgpu::Limits {
                     max_push_constant_size: 128,
                     max_compute_invocations_per_workgroup: 512, // to allow 8x8x8 workgroups
+                    max_bind_groups: 8,
                     ..Default::default()
                 },
             },

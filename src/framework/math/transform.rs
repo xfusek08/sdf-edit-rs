@@ -38,7 +38,6 @@ impl Transform {
 
 // Getters
 impl Transform {
-    #[inline]
     pub fn as_mat(&self)   -> glam::Mat4 { glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.position) }
 }
 
@@ -88,14 +87,6 @@ impl Transform {
             rotation: self.rotation * other.rotation,
             scale: self.scale * other.scale,
         }
-    }
-}
-
-// Operator Overloads
-impl std::ops::Add for Transform {
-    type Output = Self;
-    fn add(self, other: Self) -> Self::Output {
-        self.add(other)
     }
 }
 

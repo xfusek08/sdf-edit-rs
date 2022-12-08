@@ -43,11 +43,13 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         // NOTE: For now only first geometry is rendered
         let svo = scene.geometry_pool
             .iter()
-            .filter_map(|(_, geometry)| { geometry.svo.as_ref().cloned() })
+            .filter_map(|(_, geometry)| { geometry.gpu_resources.as_ref() })
             .take(1)
+            .map(|r| &r.svo)
             .last();
-            
+        
         let Some(svo) = svo else {
+            warn!("SvoSdfBricksRenderModule::prepare: No SVOs to render");
             return;
         };
         
@@ -57,13 +59,13 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         };
         
         self.brick_instances.clear_resize(&context.gpu, node_count as usize);
-        self.brick_select_compute_pipeline.run(context, svo.deref(), &self.brick_instances, scene.camera.fov);
+        self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.camera.fov);
         
         // --------------------
         self.brick_instances.load_count(&context.gpu); // TODO: this will not be needed when we will use indirect draw
         // --------------------
         
-        self.pipeline.set_svo(&context.gpu, svo.deref());
+        self.pipeline.set_svo(&context.gpu, svo);
         self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
     }
     

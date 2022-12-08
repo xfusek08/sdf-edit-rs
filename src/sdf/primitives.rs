@@ -9,3 +9,16 @@ pub enum Primitive {
     Cone    { base_radius: f32 },
     Capsule { top_radius: f32, bottom_radius: f32, height: f32 },
 }
+
+impl Primitive {
+    pub fn get_id(&self) -> u32 {
+        match self {
+            Primitive::Sphere => 0,
+            Primitive::Cube => 1,
+            Primitive::Cylinder => 2,
+            Primitive::Torus { .. } => 3,
+            Primitive::Cone { .. } => 4,
+            Primitive::Capsule { .. } => 5,
+        }
+    }
+}

@@ -8,7 +8,7 @@ use crate::{
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct WorkAssignment {
+pub struct DispatchAssignment {
     // Bounding cube of the SVO evaluation domain. SVO will be fitted into this cube.
     pub svo_bounding_cube: BoundingCube,
     
@@ -25,7 +25,7 @@ pub struct WorkAssignment {
     pub _padding: u32,
 }
 
-impl WorkAssignment {
+impl DispatchAssignment {
     pub fn new_root(svo_bounding_cube: BoundingCube, min_voxel_size: f32) -> Self {
         Self {
             svo_bounding_cube,
@@ -38,19 +38,19 @@ impl WorkAssignment {
 }
 
 /// A work assignment GPU resource
-pub struct WorkAssignmentUniform {
+pub struct DispatchAssignmentUniform {
     
     /// Work assignment Data
-    pub work_assignment: WorkAssignment,
+    pub work_assignment: DispatchAssignment,
     
     /// This structure represented in uniform buffer on GPU
-    pub uniform_buffer: gpu::Buffer<WorkAssignment>,
+    pub uniform_buffer: gpu::Buffer<DispatchAssignment>,
 }
 
 // GPU binding
-impl WorkAssignmentUniform {
+impl DispatchAssignmentUniform {
     #[profiler::function]
-    pub fn new(gpu: &gpu::Context, work_assignment: WorkAssignment) -> Self {
+    pub fn new(gpu: &gpu::Context, work_assignment: DispatchAssignment) -> Self {
         let uniform_buffer = gpu::Buffer::new(
             gpu,
             Some("Work Assignment Uniform Buffer"),
@@ -64,7 +64,7 @@ impl WorkAssignmentUniform {
     }
     
     #[profiler::function]
-    pub fn update(&mut self, gpu: &gpu::Context, work_assignment: WorkAssignment) {
+    pub fn update(&mut self, gpu: &gpu::Context, work_assignment: DispatchAssignment) {
         self.uniform_buffer.queue_update(gpu, &[work_assignment]);
         self.work_assignment = work_assignment;
     }

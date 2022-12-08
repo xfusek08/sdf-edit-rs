@@ -1,6 +1,6 @@
 
 use crate::{
-    sdf::geometry::Geometry,
+    sdf::geometry::{Geometry, self},
     demo_app::modules::svo_sdf_brick,
 };
 
@@ -64,7 +64,7 @@ pub fn draw_gui(ctx: &egui::Context, scene: &mut Scene) {
                 let id = format!("{:?}", geometry_id);
                 ui.label(format!("Geometry: {}", id));
                 ui.label("SVO:");
-                if let Some(svo) = geometry.svo.as_ref() {
+                if let Some(geometry::GPUResources { svo, ..}) = geometry.gpu_resources.as_ref() {
                     egui::Grid::new(&id).num_columns(2).show(ui, |ui| {
                         ui.label("Render Svo Level");
                         

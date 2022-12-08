@@ -1,7 +1,7 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::framework::gpu;
+use crate::{framework::gpu, warn};
 use super::Capacity;
 
 /// A format of one voxel in brick pool texture.
@@ -136,6 +136,7 @@ impl BrickPool {
     #[profiler::function]
     pub fn new(gpu: &gpu::Context, capacity: Capacity, format: BrickPoolFormat) -> Self {
         let side_size = Self::dimension_from_capacity(capacity.nodes());
+        warn!("Brick pool side size: {} makes {} total bricks", side_size, side_size * side_size * side_size);
         let brick_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
                 size: wgpu::Extent3d {

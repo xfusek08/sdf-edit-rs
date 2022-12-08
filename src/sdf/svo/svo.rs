@@ -1,11 +1,5 @@
 
-use crate::{
-    framework::{
-        gpu,
-        math::AABB,
-    },
-};
-
+use crate::framework::gpu;
 use super::{NodePool, BrickPool, BrickPoolFormat, BrickVoxelFormat};
 
 /// A helper struct to express desired octree capacity
@@ -54,11 +48,6 @@ pub struct Level {
 #[derive(Debug)]
 pub struct Svo {
     
-    /// AABB of octree tightly fitting the geometry
-    /// - It might not be computed yet, in which case it will be None.
-    /// - Used for defining the bounding cube which will provide a domain for the evaluation.
-    pub aabb: Option<AABB>,
-    
     /// A node pool of the SVO on GPU.
     pub node_pool: NodePool,
     
@@ -72,9 +61,7 @@ pub struct Svo {
 impl Svo {
     #[profiler::function]
     pub fn new(gpu: &gpu::Context, initial_capacity: Capacity) -> Self {
-        // TODO: Optional BrickPoolFormat?
         Self {
-            aabb: None,
             node_pool: NodePool::new(gpu, initial_capacity.clone()),
             brick_pool: BrickPool::new(
                 gpu,
@@ -87,4 +74,5 @@ impl Svo {
             levels: vec![]
         }
     }
+    
 }

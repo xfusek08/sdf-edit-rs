@@ -6,8 +6,10 @@ struct ShaderInput {
     @builtin(local_invocation_id)    local_invocation_id:    vec3<u32>,
 }
 
-// Work assigment uniform data
-// -----------------------------------------------------------------------------------
+
+// =================================================================================================
+// Bind group 0: Work assigment uniform data
+// =================================================================================================
 
 struct SVOWorkAssignment {
     svo_boundding_cube: vec4<f32>, // bounding cube of the SVO in world space (xzy, distance from center to side)
@@ -17,8 +19,10 @@ struct SVOWorkAssignment {
 }
 @group(0) @binding(0) var<uniform> work_assigment: SVOWorkAssignment;
 
-// SVO: Node pool bind group and associated node - fuinctions
-// -----------------------------------------------------------------------------------
+
+// =================================================================================================
+// Bind group 1: SVO: Node pool
+// =================================================================================================
 
 @group(1) @binding(0) var<storage, read_write> node_count:         atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
 @group(1) @binding(1) var<storage, read_write> node_headers:       array<u32>;
@@ -47,8 +51,8 @@ let HEADER_HAS_BRICK_SHIFT = 30u;
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 
 /// Combines tile index and flags into single node header integer
-/// !!! `is_subdivided` must have value 0 or 1
-/// !!! `is_leaf` must have value 0 or 1
+///   - `is_subdivided` must have value 0 or 1
+///   - `is_leaf` must have value 0 or 1
 fn create_node_header(value: u32, is_subdivided: u32, has_brick: u32) -> u32 {
     return (value & HEADER_TILE_INDEX_MASK) | (is_subdivided << HEADER_IS_SUBDIVIDED_SHIFT) | (has_brick << HEADER_HAS_BRICK_SHIFT);
 }
@@ -58,8 +62,10 @@ fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
     return ((brick_location.x & 0x3FFu) << 20u) | ((brick_location.y & 0x3FFu) << 10u) | (brick_location.z & 0x3FFu);
 }
 
-// SVO: Brick pool bind group and associated functions
-// -----------------------------------------------------------------------------------
+
+// =================================================================================================
+// Bind group 2: SVO: Brick pool
+// =================================================================================================
 
 @group(2) @binding(0) var brick_atlas: texture_storage_3d<r32float, write>;
 @group(2) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
@@ -75,26 +81,66 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
     );
 }
 
+
+// =================================================================================================
+// Bind group 3: Edit List represented SDF which will be sampled
+//      - Will be iterate over and over for each voxel in each node
+//      - NOTE: Maybe use uniform buffer when there are not too many items
+//      - NOTE: Use BVH or Octree representation of edits for faster iteration
+// =================================================================================================
+
+let EDIT_PRIMITIVE_SPHERE = 0u;
+let EDIT_PRIMITIVE_CUBE = 1u;
+let EDIT_PRIMITIVE_CYLINDER = 2u;
+let EDIT_PRIMITIVE_TORUS = 3u;
+let EDIT_PRIMITIVE_CONE = 4u;
+let EDIT_PRIMITIVE_CAPSULE = 5u;
+
+struct Edit {
+    operation: u32,
+    primitive: u32,
+}
+
+struct EditData {
+    blending_level: f32,
+    additional_data: vec3<f32>,
+}
+
+@group(3) @binding(0) var<storage, read> edit_primitives: array<Edit>;
+@group(3) @binding(1) var<storage, read> edit_payload:    array<EditData>;
+@group(3) @binding(2) var<storage, read> edit_transforms: array<mat4x4<f32>>;
+
+
+// =================================================================================================
+// Bind group 4: SVO: Brick padding indices for indexing brick paddings
+//      (TODO: might be replaced by over-extending sampled points and storing into tightly packed 8x8x8 bricks)
+// =================================================================================================
+
 struct BrickPaddingIndices {
     data: array<vec3<u32>, 488>
 }
-@group(3) @binding(0) var<uniform> brick_padding_indices: BrickPaddingIndices;
+@group(4) @binding(0) var<uniform> brick_padding_indices: BrickPaddingIndices;
 
-// Function
-// -----------------------------------------------------------------------------------
 
-fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
-    // TODO: use max-norm for evaluating this
-    let sqrt_3 = 1.7320508075688772935274463415059;
-    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.5;
-    return abs(dinstance) < voxel_bounding_spehere_radius;
+// =================================================================================================
+// General Functions
+// =================================================================================================
+
+fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
+    return bc.w * position + bc.xyz;
 }
+
+
+// =================================================================================================
+//                                              SDF Sampling
+// =================================================================================================
 
 fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
     let h = clamp(0.5 + 0.5 * (dist1 - dist2) / koeficient, 0.0, 1.0);
     return mix(dist1, dist2, h) - koeficient * h * (1.0 - h);
 }
 
+// "Entry point"
 fn sample_sdf(position: vec3<f32>) -> f32 {
     // TODO: use max-norm for evaluating this
     // compute smooth minimum of two spheres
@@ -106,18 +152,28 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
     return smooth_min(d1, d2, 0.05);
 }
 
-fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
-    return bc.w * position + bc.xyz;
-}
+// =================================================================================================
+// Node Evaluation into brick
+// =================================================================================================
 
-fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
-    textureStore(brick_atlas, voxel_coords, vec4<f32>(distance, 0.0, 0.0, 0.0));
+let BRICK_IS_EMPTY = 0u;
+let BRICK_IS_BOUONDARY = 1u;
+let BRICK_IS_FILLED = 2u;
+
+var<workgroup> divide: atomic<u32>;
+var<workgroup> brick_index: u32;
+
+struct BrickEvaluationResult {
+    brick_type: u32,
+    voxel_size: f32,
+    brick_location: vec3<u32>,
 }
 
 struct GlobalVoxelDesc {
     center: vec3<f32>,
     size: f32,
 }
+
 fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> GlobalVoxelDesc {
     let voxel_size = 0.125; // 1.0 / 8.0;
     let half_step = 0.0625; // voxel_size * 0.5;
@@ -129,16 +185,18 @@ fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> Global
     return GlobalVoxelDesc(voxel_center_global, voxel_size_global);
 }
 
-let BRICK_IS_EMPTY = 0u;
-let BRICK_IS_BOUONDARY = 1u;
-let BRICK_IS_FILLED = 2u;
-struct BrickEvaluationResult {
-    brick_type: u32,
-    voxel_size: f32,
-    brick_location: vec3<u32>,
+fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
+    textureStore(brick_atlas, voxel_coords, vec4<f32>(distance, 0.0, 0.0, 0.0));
 }
-var<workgroup> divide: atomic<u32>;
-var<workgroup> brick_index: u32;
+
+fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
+    // TODO: use max-norm for evaluating this
+    let sqrt_3 = 1.7320508075688772935274463415059;
+    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.5;
+    return abs(dinstance) < voxel_bounding_spehere_radius;
+}
+
+// Main function of this section
 fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     var result: BrickEvaluationResult;
     
@@ -202,27 +260,32 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     return result;
 }
 
-/// Allocates a new tile and returns its index
-var<workgroup> tile_index: u32;
+// =================================================================================================
+// Node pool Tile management
+// =================================================================================================
+
+var<workgroup> tile_index_shared: u32;
+
+// Allocates a new tile and returns its index
 fn create_tile(in: ShaderInput) -> u32 {
     if (in.local_invocation_index == 0u) {
         if (atomicLoad(&node_count) < node_pool_capacity - 8u) {
             // tile might still exceed node pool capacity
             let first_tile_node_index = atomicAdd(&node_count, 8u);
             if (node_pool_capacity > (first_tile_node_index + 8u)) {
-                tile_index = first_tile_node_index >> 3u;
+                tile_index_shared = first_tile_node_index >> 3u;
             } else {
                 // Refuse to initialize the tile becauase there is no more capacity node count increment has to be corrected.
-                tile_index = 0u;
+                tile_index_shared = 0u;
                 atomicSub(&node_count, 8u);
             }
         }
     }
     workgroupBarrier(); // synch tile_start_index value
-    return tile_index;
+    return tile_index_shared;
 }
 
-/// Initializes a new tile by computing vertices for each node and writing them into node_vertices buffer
+// Initializes a new tile by computing vertices for each node and writing them into node_vertices buffer
 fn initialize_tile(in: ShaderInput, parent_node: Node, tile_index: u32) {
     
     var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
@@ -250,7 +313,15 @@ fn initialize_tile(in: ShaderInput, parent_node: Node, tile_index: u32) {
     workgroupBarrier(); // synch updateing node_vertices buffer
 }
 
-/// !!! whole workgroup must enter !!!
+
+// =================================================================================================
+// Top level implementation of node processing
+//      - evaluate node into brick
+//      - create tile if needed
+//      - initialize tile if needed
+// =================================================================================================
+
+// !!! whole workgroup must enter !!!
 fn process_node(in: ShaderInput, node: Node) {
     var is_subdivided = 0u;
     var has_brick = 0u;
@@ -283,14 +354,32 @@ fn process_node(in: ShaderInput, node: Node) {
     workgroupBarrier();
 }
 
-/// !!! Enter only with single workgroup !!!
+// !!! Enter only with single workgroup !!!
 fn process_root(in: ShaderInput) {
+    
+    // Clear node pool by resetting node count
+    if (in.local_invocation_index == 0u) {
+        atomicStore(&node_count, 0u);
+        atomicStore(&brick_count, 0u);
+    }
+    workgroupBarrier();
+    
+    // Create root node
     let node = Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    
+    // Evaluate root node
     let brick_evalutaion_result = evaluate_node_brick(in, node);
+    
+    // Prepare first tile (child of root node)
     let tile_index = create_tile(in);
     initialize_tile(in, node, tile_index);
+    
     // No need to write brick location anywhere, for root it is always (0,0,0)
 }
+
+// =================================================================================================
+// Entry point
+// =================================================================================================
 
 @compute
 @workgroup_size(8, 8, 8)
