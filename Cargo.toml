@@ -4,12 +4,16 @@ members = [
     "crates/profiler",
 ]
 
+
 [package]
 name = "sdf-edit-rs"
 version = "0.0.1"
 edition = "2021"
 
+
 [dependencies]
+
+# Local
 profiler = { path = "crates/profiler" }
 
 # Core
@@ -18,7 +22,7 @@ env_logger = "0.10.0"                                      # Logging into consol
 pollster = "0.2.5"                                         # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
 winit = "0.27.5"                                           # Windowing library (event loop namaing, window creation, etc.)
 winit_input_helper = "0.13.0"                              # Helper for winit input handling, storing imput state based on processed events ...
-wgpu = "0.13.1"                                            # A cross platform GPU API, in this applicationVulcan backend is used.
+wgpu = "0.14.2"                                            # A cross platform GPU API, in this applicationVulcan backend is used.
 dolly = "0.4.0"                                            # A camera rig library with smooting and inertia.
 glam = { version = "0.22.0", features = [ "bytemuck" ] }   # Math! Supporing SIMD optimizations
 bytemuck = { version = "1.12.3", features = [ "derive" ] } # Static casting between basic types
@@ -28,11 +32,16 @@ hecs = "0.9.0"                                             # A simple minimal EC
 bitflags = "*"                                             # Bitflags to easily handle bitflags
 
 # GUI
-egui = "0.19.0"       # Immidiate mode gui library
-egui-wgpu = "0.19.0"  # GPU backend for egui
-egui-winit = "0.19.0" # GPU backend for egui
+egui = "0.20.0"        # Immidiate mode gui library
+egui_extras = "0.20.0" # For tables
+egui-wgpu = "0.20.0"   # GPU backend for egui
+egui-winit = "0.20.0"  # GPU backend for egui
+
 
 [features]
-profiling = [
-    "profiler/enabled",
+json_trace = [
+    "profiler/json_trace",
+]
+stats = [
+    "profiler/stats",
 ]

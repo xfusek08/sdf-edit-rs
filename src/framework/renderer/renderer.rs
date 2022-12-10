@@ -46,7 +46,7 @@ impl<S: SceneWithCamera> Renderer<S> {
             present_mode: wgpu::PresentMode::Fifo,                            // VSynch essentially - capping renders on display frame rate
             width:        window.inner_size().width,
             height:       window.inner_size().height,
-            // alpha_mode:   wgpu::CompositeAlphaMode::PostMultiplied, // TODO: wgpu 0.14
+            alpha_mode:   wgpu::CompositeAlphaMode::Auto,
         };
         gpu.surface.configure(&gpu.device, &surface_config);
         
@@ -114,7 +114,7 @@ impl<S: SceneWithCamera> Renderer<S> {
         }
     }
     
-    #[profiler::function]
+    #[profiler::function(pinned)]
     pub fn prepare(&mut self, gui: &Gui, scene: &S) {
         
         // Update shared GPU resource outside of individual render module scopes
@@ -130,7 +130,7 @@ impl<S: SceneWithCamera> Renderer<S> {
             .for_each(|m| m.prepare(gui, scene, &self.context));
     }
     
-    #[profiler::function]
+    #[profiler::function(pinned)]
     pub fn render(&mut self)  {
         
         // ask surface to provide us a texture we will draw into

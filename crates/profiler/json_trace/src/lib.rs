@@ -180,10 +180,10 @@ impl EventGuard {
                     process_id: process::id(),
                     thread_id:  session.current_thread_id().1,
                     arguments:  if let Some(args) = arguments {
-                            Some(Arc::new(args))
-                        } else {
-                            None
-                        },
+                        Some(Arc::new(args))
+                    } else {
+                        None
+                    },
                 };
                 session.events.push(event.clone());
                 Some(EventGuard { event })

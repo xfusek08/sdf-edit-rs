@@ -108,7 +108,7 @@ pub struct GeometryGPUEditData {
 
 pub struct GeometryEditsGPU {
     pub edits:      gpu::Buffer<GeometryGPUEdit>,
-    pub editData:   gpu::Buffer<GeometryGPUEditData>,
+    pub edit_data:  gpu::Buffer<GeometryGPUEditData>,
     pub transforms: gpu::Buffer<glam::Mat4>,
 }
 
@@ -123,7 +123,7 @@ impl GeometryEditsGPU {
         
         Self {
             edits:      gpu::Buffer::new(gpu, Some("Geometry edits"), &edits_gpu, wgpu::BufferUsages::STORAGE),
-            editData:   gpu::Buffer::new(gpu, Some("Geometry edit Data"), &edit_data, wgpu::BufferUsages::STORAGE),
+            edit_data:   gpu::Buffer::new(gpu, Some("Geometry edit Data"), &edit_data, wgpu::BufferUsages::STORAGE),
             transforms: gpu::Buffer::new(gpu, Some("Geometry edit transforms"), &transforms, wgpu::BufferUsages::STORAGE),
         }
     }
@@ -136,7 +136,7 @@ impl GeometryEditsGPU {
         ) = Self::map_data(edits);
         
         self.edits.queue_update(gpu, &edits_gpu);
-        self.editData.queue_update(gpu, &edit_data);
+        self.edit_data.queue_update(gpu, &edit_data);
         self.transforms.queue_update(gpu, &transforms);
     }
     
@@ -219,7 +219,7 @@ impl GeometryEditsGPU {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.editData.buffer.as_entire_binding(),
+                    resource: self.edit_data.buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,

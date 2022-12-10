@@ -57,11 +57,11 @@ pub struct ApplicationDescriptor<A, B, C, D> {
 #[profiler::function]
 pub async fn run<S, DR, DU, IS, STG>(app_desc: ApplicationDescriptor<DR, DU, IS, STG>, params: RunParams)
 where
-    S: SceneWithCamera + Sized,
+    S:          SceneWithCamera + Sized,
     for<'a> DR: FnOnce(&'a Context) -> Renderer<S>, // define_renderer
-    DU: FnOnce(&Context) -> Updater<S>, // define_updater
-    IS: FnOnce(&Context) -> S, // init_scene
-    STG: FnOnce(egui::Style) -> egui::Style, // style_gui
+    DU:         FnOnce(&Context)    -> Updater<S>,  // define_updater
+    IS:         FnOnce(&Context)    -> S,           // init_scene
+    STG:        FnOnce(egui::Style) -> egui::Style, // style_gui
 {
     let mut event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -104,7 +104,7 @@ where
                 // Let gui process window event and when it does not handle it, update scene
                 if let Event::WindowEvent { event, .. } = &event {
                     profiler::scope!("Processing input event by GUI");
-                    event_consumed_by_gui = gui.on_event(&event);
+                    event_consumed_by_gui = gui.on_event(&event).consumed;
                 }
                 
                 // Let input helper process event to somewhat coherent input state and work with that.

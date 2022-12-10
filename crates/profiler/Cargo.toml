@@ -4,11 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-instrumentation-code  = { path = "instrumentation-code", optional = true }
-instrumentation-macro = { path = "instrumentation-macro" }
+json_trace            = { path = "./json_trace", optional = true }
+runtime_stats         = { path = "./runtime_stats", optional = true }
+instrumentation_macro = { path = "./instrumentation_macro" }
 
 [features]
-enabled = [
-    "instrumentation-macro/enabled", # will bass enabled feature to instrumentation-macro crate
-    "dep:instrumentation-code", # will not build and link instrumentation-code when not enabled
+json_trace=[
+    "instrumentation_macro/json_trace",
+    "dep:json_trace",
+]
+stats=[
+    "instrumentation_macro/stats",
+    "dep:runtime_stats",
 ]

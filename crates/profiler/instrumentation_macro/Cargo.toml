@@ -1,0 +1,18 @@
+[package]
+name = "instrumentation_macro"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro=true
+
+[dependencies]
+quote         = { version = "1.0", default-features = false }
+syn           = { version = "1.0", features = ["full", "extra-traits"] }
+json_trace    = { path = "../json_trace", optional = true }
+runtime_stats = { path = "../runtime_stats", optional = true }
+
+
+[features]
+json_trace=[ "dep:json_trace" ]
+stats=[ "dep:runtime_stats" ]

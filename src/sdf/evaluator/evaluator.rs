@@ -108,7 +108,7 @@ impl Evaluator {
         // TODO: look for evaluation results in evaluator and update geometry when it has result for it ready
     }
     
-    #[profiler::function]
+    #[profiler::function(pinned)]
     fn evaluate_geometry(&mut self, geometry: &mut Geometry) {
 
         // TODO: create a evaluator object which handles its own input and output queue and single thread which evaluates the queue.

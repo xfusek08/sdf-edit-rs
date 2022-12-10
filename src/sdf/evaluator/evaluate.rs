@@ -87,7 +87,7 @@ pub fn evaluate(
     // ----------------------------------------------------
     
     let evaluate_level = &mut | level: Option<svo::Level> | -> svo::Level {
-        profiler::scope!("Evaluating a SVO level");
+        profiler::scope!("Evaluating a SVO level", pinned);
         
         // Prepare variables for this level dependent on whether it is root or not
         let (

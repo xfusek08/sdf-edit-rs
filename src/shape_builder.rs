@@ -57,8 +57,6 @@ impl Shape {
             GeometryOperation::Add,
             0.0
         );
-        dbg!(&self);
-        dbg!(&result);
         result
     }
 }

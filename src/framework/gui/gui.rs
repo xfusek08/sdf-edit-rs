@@ -1,4 +1,5 @@
 
+use egui_winit::EventResponse;
 use winit::event_loop::EventLoopWindowTarget;
 
 pub struct Gui {
@@ -32,7 +33,7 @@ impl Gui {
     }
     
     #[profiler::function]
-    pub fn on_event(&mut self, event: &winit::event::WindowEvent<'_>) -> bool {
+    pub fn on_event(&mut self, event: &winit::event::WindowEvent<'_>) -> EventResponse {
         self.egui_winit.on_event(&self.egui_ctx, event)
     }
     

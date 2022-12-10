@@ -88,7 +88,6 @@ pub struct BrickPool {
     /// A bind group of this particular node pool.
     /// - When accessed through a `bind_group` method it will bew created.
     bind_group: Option<wgpu::BindGroup>,
-    
 }
 
 // getters
