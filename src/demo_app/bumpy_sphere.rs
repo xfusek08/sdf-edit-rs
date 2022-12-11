@@ -12,9 +12,8 @@ fn spiral_bumps_on_sphere(number_of_bumps: u32, number_of_wraps: u32, bump_radiu
         let theta = i as f32 / f_number_of_bumps;
         let phi = theta * f_number_of_wraps;
         shape = shape.add(
-            Shape::sphere(),
-            Transform::from_polar(radius, theta, phi)
-                .with_scale(glam::Vec3::splat(bump_radius)),
+            Shape::sphere(bump_radius),
+            Transform::from_polar(radius, theta, phi),
             0.0
         );
     }
@@ -22,7 +21,7 @@ fn spiral_bumps_on_sphere(number_of_bumps: u32, number_of_wraps: u32, bump_radiu
 }
 
 pub fn bumpy_sphere() -> Shape {
-    let result = Shape::sphere()
+    let result = Shape::sphere(1.0)
         .subtract(
             spiral_bumps_on_sphere(3, 1, 0.1, 1.0),
             Transform::IDENTITY,

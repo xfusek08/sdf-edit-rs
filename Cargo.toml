@@ -2,6 +2,7 @@
 members = [
     ".",
     "crates/profiler",
+    "crates/enum_utils",
 ]
 
 
@@ -15,6 +16,7 @@ edition = "2021"
 
 # Local
 profiler = { path = "crates/profiler" }
+enum_utils = { path = "crates/enum_utils" }
 
 # Core
 log = "0.4.17"                                             # Generic logging API without backend (env_logger)
@@ -29,7 +31,8 @@ bytemuck = { version = "1.12.3", features = [ "derive" ] } # Static casting betw
 image = { version = "0.24.5", features = ["jpeg", "png"] } # Handeling images for texture loading
 slotmap = "1.0.6"                                          # Efficient storage of entities
 hecs = "0.9.0"                                             # A simple minimal ECS for scene object management
-bitflags = "*"                                             # Bitflags to easily handle bitflags
+bitflags = "1.3.2"                                         # Bitflags to easily handle bitflags
+lazy_static = "1.4.0"                                      # To implement static values that are to be created only once or never when not used
 
 # GUI
 egui = "0.20.0"        # Immidiate mode gui library

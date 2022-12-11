@@ -13,9 +13,9 @@ pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> 
     pub label: Option<&'static str>,
     /// Vertex buffer on GPU.
     pub buffer: wgpu::Buffer,
-    /// The number of vertices in the buffer.
+    /// The number of items in the buffer.
     pub size: usize,
-    /// Capacity of the buffer (how many vertices it can hold).
+    /// Capacity of the buffer (how many items it can hold).
     pub capacity: usize,
     
     /// TODO: delete after wgpu 0.14
@@ -50,7 +50,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
                 mapped_at_creation: false,
             }
         );
-        Buffer { label, buffer, size, capacity: size, usage, _phantom: PhantomData }
+        Buffer { label, buffer, size, capacity, usage, _phantom: PhantomData }
     }
     
     /// Helper function to compute how many bytes will occupy given number of items in this buffer
@@ -93,6 +93,8 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     #[profiler::function]
     pub fn queue_update(&mut self, gpu: &Context, new_data: &[I]) {
         if new_data.len() > self.capacity {
+            // TODO: For some reason this might not work ... Assignment buffer is empty when first update went through this branch
+            profiler::scope!("Updating Buffer with reallocation");
             self.buffer = gpu.device.create_buffer_init(
                 &wgpu::util::BufferInitDescriptor {
                     label: self.label,
@@ -101,14 +103,10 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
                 }
             );
             self.capacity = new_data.len();
+            self.size     = new_data.len();
         } else {
-            profiler::call!(
-                gpu.queue.write_buffer(
-                    &self.buffer,
-                    0,
-                    bytemuck::cast_slice(new_data)
-                )
-            );
+            profiler::scope!("Updating Buffer without reallocation");
+            gpu.queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(new_data));
         }
         self.size = new_data.len();
     }

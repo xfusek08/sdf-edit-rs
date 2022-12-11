@@ -8,9 +8,8 @@ use crate::{
         camera::{Camera, CameraProperties},
     },
     sdf::{
-        primitives::Primitive,
         model::{ModelPool, Model},
-        geometry::{GeometryPool, Geometry, GeometryEdit, GeometryOperation},
+        geometry::{GeometryPool, Geometry},
     }, shape_builder::Shape,
 };
 

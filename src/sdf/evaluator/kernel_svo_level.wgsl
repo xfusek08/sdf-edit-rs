@@ -8,27 +8,14 @@ struct ShaderInput {
 
 
 // =================================================================================================
-// Bind group 0: Work assigment uniform data
+// Bind group 0: SVO: Node pool
 // =================================================================================================
 
-struct SVOWorkAssignment {
-    svo_boundding_cube: vec4<f32>, // bounding cube of the SVO in world space (xzy, distance from center to side)
-    voxel_size: f32,               // minimum voxel size in world space - divide node if its voxels are bigger then this value
-    is_root: u32,                  // is this the root node? [0/1]
-    start_index: u32,              // node index from which to start the evaluation
-}
-@group(0) @binding(0) var<uniform> work_assigment: SVOWorkAssignment;
-
-
-// =================================================================================================
-// Bind group 1: SVO: Node pool
-// =================================================================================================
-
-@group(1) @binding(0) var<storage, read_write> node_count:         atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
-@group(1) @binding(1) var<storage, read_write> node_headers:       array<u32>;
-@group(1) @binding(2) var<storage, read_write> node_payload:       array<u32>;
-@group(1) @binding(3) var<storage, read_write> node_vertices:      array<vec4<f32>>;
-@group(1) @binding(4) var<uniform>             node_pool_capacity: u32; // maximum number of nodes in tiles buffer
+@group(0) @binding(0) var<storage, read_write> node_count:         atomic<u32>; // number of nodes in tiles buffer, use to atomically add new nodes
+@group(0) @binding(1) var<storage, read_write> node_headers:       array<u32>;
+@group(0) @binding(2) var<storage, read_write> node_payload:       array<u32>;
+@group(0) @binding(3) var<storage, read_write> node_vertices:      array<vec4<f32>>;
+@group(0) @binding(4) var<uniform>             node_pool_capacity: u32; // maximum number of nodes in tiles buffer
 
 struct Node {
     index:   u32,
@@ -64,12 +51,12 @@ fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
 
 
 // =================================================================================================
-// Bind group 2: SVO: Brick pool
+// Bind group 1: SVO: Brick pool
 // =================================================================================================
 
-@group(2) @binding(0) var brick_atlas: texture_storage_3d<r32float, write>;
-@group(2) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
-@group(2) @binding(2) var<uniform> brick_pool_side_size: u32;            // Number of bricks in one side of the brick atlas texture
+@group(1) @binding(0) var brick_atlas: texture_storage_3d<r32float, write>;
+@group(1) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
+@group(1) @binding(2) var<uniform> brick_pool_side_size: u32;            // Number of bricks in one side of the brick atlas texture
 
 /// Converts brick index to brick location in brick atlas texture
 fn brick_index_to_coords(index: u32) -> vec3<u32> {
@@ -83,7 +70,7 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
 
 
 // =================================================================================================
-// Bind group 3: Edit List represented SDF which will be sampled
+// Bind group 2: Edit List represented SDF which will be sampled
 //      - Will be iterate over and over for each voxel in each node
 //      - NOTE: Maybe use uniform buffer when there are not too many items
 //      - NOTE: Use BVH or Octree representation of edits for faster iteration
@@ -106,9 +93,22 @@ struct EditData {
     additional_data: vec3<f32>,
 }
 
-@group(3) @binding(0) var<storage, read> edit_primitives: array<Edit>;
-@group(3) @binding(1) var<storage, read> edit_payload:    array<EditData>;
-@group(3) @binding(2) var<storage, read> edit_transforms: array<mat4x4<f32>>;
+@group(2) @binding(0) var<storage, read> edit_primitives: array<Edit>;
+@group(2) @binding(1) var<storage, read> edit_payload:    array<EditData>;
+@group(2) @binding(2) var<storage, read> edit_transforms: array<mat4x4<f32>>;
+
+
+// =================================================================================================
+// Bind group 3: Assigment uniform data
+// =================================================================================================
+
+struct Assigment {
+    svo_boundding_cube: vec4<f32>, // bounding cube of the SVO in world space (xzy, distance from center to side)
+    minium_voxel_size:  f32,       // minimum voxel size in world space - divide node if its voxels are bigger then this value
+    is_root:            u32,       // is this the root node? [0/1]
+    start_index:        u32,       // node index from which to start the evaluation
+}
+@group(3) @binding(0) var<uniform> assigment: Assigment;
 
 
 // =================================================================================================
@@ -152,6 +152,7 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
     return smooth_min(d1, d2, 0.05);
 }
 
+
 // =================================================================================================
 // Node Evaluation into brick
 // =================================================================================================
@@ -179,9 +180,9 @@ fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> Global
     let half_step = 0.0625; // voxel_size * 0.5;
     let shift_vector = voxel_size * vec3<f32>(centered_voxel_index) + half_step;
     let voxel_center_local = bounding_cube_transform(node.vertex, shift_vector);
-    let voxel_center_global = bounding_cube_transform(work_assigment.svo_boundding_cube, voxel_center_local);
+    let voxel_center_global = bounding_cube_transform(assigment.svo_boundding_cube, voxel_center_local);
     let voxel_size_local = voxel_size * node.vertex.w;
-    let voxel_size_global = voxel_size_local * work_assigment.svo_boundding_cube.w;
+    let voxel_size_global = voxel_size_local * assigment.svo_boundding_cube.w;
     return GlobalVoxelDesc(voxel_center_global, voxel_size_global);
 }
 
@@ -260,6 +261,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     return result;
 }
 
+
 // =================================================================================================
 // Node pool Tile management
 // =================================================================================================
@@ -330,7 +332,7 @@ fn process_node(in: ShaderInput, node: Node) {
     let brick_evalutaion_result = evaluate_node_brick(in, node);
     if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY) {
         has_brick = 1u;
-        if (brick_evalutaion_result.voxel_size > work_assigment.voxel_size) {
+        if (brick_evalutaion_result.voxel_size > assigment.minium_voxel_size) {
             is_subdivided = 1u;
             tile_index = create_tile(in);
             if (tile_index != 0u) {
@@ -377,6 +379,7 @@ fn process_root(in: ShaderInput) {
     // No need to write brick location anywhere, for root it is always (0,0,0)
 }
 
+
 // =================================================================================================
 // Entry point
 // =================================================================================================
@@ -386,9 +389,9 @@ fn process_root(in: ShaderInput) {
 fn main(in: ShaderInput) {
     let workgroup_index = in.workgroup_id.x + in.workgroup_id.y * in.num_workgroups.x + in.workgroup_id.z * in.num_workgroups.x * in.num_workgroups.y;
     let thread_zero = workgroup_index == 0u && in.local_invocation_index == 0u;
-    let start_index = work_assigment.start_index;
+    let start_index = assigment.start_index;
     
-    if (work_assigment.is_root == 1u) {
+    if (assigment.is_root == 1u) {
         if (workgroup_index == 0u) {
             process_root(in);
         }

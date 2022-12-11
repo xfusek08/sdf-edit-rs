@@ -4,7 +4,7 @@ pub use wgpu::PushConstantRange;
 pub use wgpu::util::DeviceExt;
 
 use crate::{
-    sdf::{svo, geometry},
+    sdf::svo,
     demo_app::scene::Scene,
     framework::{
         gui::Gui,
@@ -48,11 +48,13 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         
         // Get all nodes from all valid node pools from all geometries with their node count
         let values: Vec<(u32, &svo::NodePool)> = scene.geometry_pool
-            .iter().filter_map(|(_, geometry)| {
-                let Some(geometry::GPUResources { svo, ..}) = &geometry.gpu_resources else { return None; };
+            .iter()
+            .filter_map(|(_, geometry)| {
+                let Some(svo) = &geometry.svo else { return None; };
                 let Some(cnt) = &svo.node_pool.count() else { return None; };
                 Some((cnt.clone(), &svo.node_pool))
-            }).collect();
+            })
+            .collect();
         
         // Prepare command encoder
         let mut encoder = context.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

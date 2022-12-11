@@ -1,6 +1,4 @@
 
-use std::ops::Deref;
-
 use crate::{
     demo_app::scene::Scene,
     framework::{
@@ -43,9 +41,8 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         // NOTE: For now only first geometry is rendered
         let svo = scene.geometry_pool
             .iter()
-            .filter_map(|(_, geometry)| { geometry.gpu_resources.as_ref() })
+            .filter_map(|(_, geometry)| { geometry.svo.as_ref() })
             .take(1)
-            .map(|r| &r.svo)
             .last();
         
         let Some(svo) = svo else {

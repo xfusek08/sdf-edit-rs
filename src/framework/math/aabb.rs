@@ -1,5 +1,5 @@
 
-use super::BoundingCube;
+use super::{BoundingCube, Transform};
 
 #[derive(Debug)]
 pub struct AABB {
@@ -26,4 +26,118 @@ impl AABB {
         BoundingCube { pos, size }
     }
     
+    #[inline]
+    pub fn add(&self, other: &Self) -> Self {
+        Self {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
+    }
+    
+    #[inline]
+    pub fn rotate(&mut self, rotation: &glam::Quat) {
+        if rotation.is_near_identity() {
+            return;
+        }
+        
+        // create 8 vertices of an aabb and rotate them, then create a new aabb from the rotated vertices
+        let vertices = [
+            self.min,
+            glam::Vec3::new(self.min.x, self.min.y, self.max.z),
+            glam::Vec3::new(self.min.x, self.max.y, self.min.z),
+            glam::Vec3::new(self.min.x, self.max.y, self.max.z),
+            glam::Vec3::new(self.max.x, self.min.y, self.min.z),
+            glam::Vec3::new(self.max.x, self.min.y, self.max.z),
+            glam::Vec3::new(self.max.x, self.max.y, self.min.z),
+            self.max,
+        ];
+        let mut min = glam::Vec3::splat(f32::MAX);
+        let mut max = glam::Vec3::splat(f32::MIN);
+        for vertex in vertices.iter() {
+            let rotated_vertex = *rotation * *vertex;
+            min = min.min(rotated_vertex);
+            max = max.max(rotated_vertex);
+        }
+        self.min = min;
+        self.max = max;
+    }
+    
+    #[inline]
+    pub fn translate(&mut self, translation: &glam::Vec3) {
+        self.min += *translation;
+        self.max += *translation;
+    }
+    
+    #[inline]
+    pub fn scale(&mut self, scale: &glam::Vec3) {
+        self.min *= *scale;
+        self.max *= *scale;
+    }
+    
+    #[inline]
+    pub fn transform(&mut self, transform: &Transform) {
+        self.rotate(&transform.rotation);
+        self.translate(&transform.position);
+        self.scale(&transform.scale);
+    }
+}
+
+// GPU aligned version
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct AABBAligned {
+    pub min: glam::Vec4,
+    pub max: glam::Vec4,
+}
+
+// implement only from AABB and to AABB
+impl AABBAligned {
+    pub fn new(min: glam::Vec3, max: glam::Vec3) -> Self {
+        Self {
+            min: glam::Vec4::new(min.x, min.y, min.z, 0.0),
+            max: glam::Vec4::new(max.x, max.y, max.z, 0.0),
+        }
+    }
+    
+    pub fn from_aabb(aabb: &AABB) -> Self {
+        Self::new(
+            glam::Vec3::new(aabb.min.x, aabb.min.y, aabb.min.z),
+            glam::Vec3::new(aabb.max.x, aabb.max.y, aabb.max.z),
+        )
+    }
+    
+    pub fn to_aabb(&self) -> AABB {
+        AABB::new(
+            glam::Vec3::new(self.min.x, self.min.y, self.min.z),
+            glam::Vec3::new(self.max.x, self.max.y, self.max.z),
+        )
+    }
+    
+    pub fn bounding_cube(&self) -> BoundingCube {
+        self.to_aabb().bounding_cube()
+    }
+    
+    pub fn from_bounding_cube(bounding_cube: &BoundingCube) -> Self {
+        Self::from_aabb(&AABB::from_bounding_cube(bounding_cube))
+    }
+    
+    pub fn add(&self, other: &Self) -> Self {
+        Self::from_aabb(&self.to_aabb().add(&other.to_aabb()))
+    }
+    
+    pub fn rotate(&mut self, rotation: &glam::Quat) {
+        self.to_aabb().rotate(rotation);
+    }
+    
+    pub fn translate(&mut self, translation: &glam::Vec3) {
+        self.to_aabb().translate(translation);
+    }
+    
+    pub fn scale(&mut self, scale: &glam::Vec3) {
+        self.to_aabb().scale(scale);
+    }
+    
+    pub fn transform(&mut self, transform: &Transform) {
+        self.to_aabb().transform(transform);
+    }
 }

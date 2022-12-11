@@ -605,6 +605,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum_utils"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1779,10 +1787,12 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_extras",
+ "enum_utils",
  "env_logger",
  "glam",
  "hecs",
  "image",
+ "lazy_static",
  "log",
  "pollster",
  "profiler",

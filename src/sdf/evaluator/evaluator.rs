@@ -1,103 +1,44 @@
 //! evaluator is meant to run asynchronously, and is responsible for computing a geometry octree from its edit list
 
-use std::{sync::Arc, borrow::Cow};
+use std::sync::Arc;
+
+use lazy_static::__Deref;
 
 use crate::{
-    framework::gpu,
+    framework::{gpu, math::AABB},
     sdf::{
         svo,
         geometry::{
             self,
             GeometryPool,
-            GeometryEvaluationStatus,
+            EvaluationStatus,
             Geometry,
-            GeometryEditsGPU,
         },
     },
 };
 
-use super::{
-    brick_padding_indices_uniform::BrickPaddingIndicesUniform,
-    dispatch_assignment::DispatchAssignmentUniform,
-    evaluate::{
-        EvaluationGPUResources,
-        evaluate
-    },
-};
+use super::{KernelSVOLevel, EvaluationContext};
 
 pub struct Evaluator {
-    gpu_resources: EvaluationGPUResources,
+    gpu: Arc<gpu::Context>, // this is and Arc because in the future evaluator will run on a separate thread asynchronously
+    level_evaluation_kernel: KernelSVOLevel,
 }
 
-// Construction
 impl Evaluator {
-    
     #[profiler::function]
-    pub fn new(gpu: Arc<gpu::Context>) -> Evaluator {
-        let dispatch_assignment_layout = Arc::new(
-            DispatchAssignmentUniform::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
-        );
-        let node_pool_bind_group_layout = Arc::new(
-            svo::NodePool::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE, false)
-        );
-        let brick_pool_bind_group_layout = Arc::new(
-            svo::BrickPool::create_write_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
-        );
-        let geometry_edits_bing_group_layout = Arc::new(
-            GeometryEditsGPU::create_bind_group_layout(gpu.as_ref(), wgpu::ShaderStages::COMPUTE)
-        );
-        let brick_padding_indices_uniform = Arc::new(
-            BrickPaddingIndicesUniform::new(gpu.as_ref())
-        );
-        
-        let pipeline_layout = { profiler::scope!("Create evaluator pipeline layout");
-            gpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Line Render Pipeline Layout"),
-                bind_group_layouts: &[
-                    dispatch_assignment_layout.as_ref(),                  // 0 - Work Assignment
-                    node_pool_bind_group_layout.as_ref(),             // 1 - Node Pool
-                    brick_pool_bind_group_layout.as_ref(),            // 2 - Brick Pool
-                    geometry_edits_bing_group_layout.as_ref(),        // 3 - Geometry Edits
-                    &brick_padding_indices_uniform.bind_group_layout, // 4 - Brick Padding Indices
-                ],
-                push_constant_ranges: &[],
-            })
-        };
-        
-        let pipeline = { profiler::scope!("Create evaluator pipeline");
-            Arc::new(gpu.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("SDF Evaluator"),
-                layout: Some(&pipeline_layout),
-                entry_point: "main",
-                module: &gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("SVO Evaluator Compute Shader Module"),
-                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("_shader.wgsl"))),
-                }),
-            }))
-        };
-        
-        Self {
-            gpu_resources: EvaluationGPUResources {
-                gpu,
-                pipeline,
-                dispatch_assignment_layout,
-                node_pool_bind_group_layout,
-                brick_pool_bind_group_layout,
-                geometry_edits_bing_group_layout,
-                brick_padding_indices_uniform,
-            },
-        }
+    pub fn new(gpu: Arc<gpu::Context>) -> Self {
+        let level_evaluation_kernel = KernelSVOLevel::new(gpu.deref());
+        Self { gpu, level_evaluation_kernel }
     }
 }
 
-// Geometry evaluation job management (public interface)
 impl Evaluator {
     
     #[profiler::function]
     pub fn evaluate_geometries(&mut self, geometry_pool: &mut GeometryPool) {
         for (_, geometry) in geometry_pool.iter_mut() {
-            if let GeometryEvaluationStatus::NeedsEvaluation = geometry.evaluation_status {
-                geometry.evaluation_status = GeometryEvaluationStatus::Evaluating;
+            if let EvaluationStatus::NeedsEvaluation = geometry.evaluation_status {
+                geometry.evaluation_status = EvaluationStatus::Evaluating;
                 self.evaluate_geometry(geometry);
             }
         }
@@ -110,20 +51,58 @@ impl Evaluator {
     
     #[profiler::function(pinned)]
     fn evaluate_geometry(&mut self, geometry: &mut Geometry) {
-
-        // TODO: create a evaluator object which handles its own input and output queue and single thread which evaluates the queue.
         
-        let gpu_resources = self.gpu_resources.clone();
-        let geometry_resources = match geometry.gpu_resources.take() {
-            Some(resources) => resources,
-            None => {
-                let edits = GeometryEditsGPU::from_edit_list(&gpu_resources.gpu, &geometry.edits);
-                let svo = svo::Svo::new(&gpu_resources.gpu, svo::Capacity::Depth(5));
-                geometry::GPUResources { edits, svo }
+        // Get minimum voxel size for this evaluation run.
+        let minium_voxel_size = geometry.min_voxel_size();
+        
+        // Compute Domain - An AABB in which the geometry is guaranteed to be fully contained
+        let domain = AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE).bounding_cube();
+        
+        // Construct edit list in gpu memory
+        let edits = geometry::GPUEdits::from_edit_list(&self.gpu, &geometry.edits);
+        
+        // Extract svo from geometry
+        let svo = geometry.svo.take().unwrap_or_else(|| {
+            svo::Svo::new(&self.gpu, svo::Capacity::Depth(5))
+        });
+        
+        // Prepare leven evaluation kernel for this run
+        let level_kernel = &mut self.level_evaluation_kernel;
+        level_kernel.set_context(
+            EvaluationContext::new(&self.gpu, svo, edits),
+            domain,
+            minium_voxel_size
+        );
+        
+        // Clean svo level list - we will rebuild it
+        let mut levels: Vec<svo::Level> = Vec::with_capacity(5);
+        
+        // Evaluation algorithm - evaluate levels in top-down manner until no more nodes are created
+        let mut level = level_kernel.evaluate_root(&self.gpu);
+        loop {
+            // Register level into octree
+            levels.push(level);
+            
+            // Evaluate next level
+            level = level_kernel.evaluate_level(&self.gpu, &level);
+            
+            // If returned level is empty - no mo nodes were created so it is not a valid level and evaluation is done
+            if level.node_count == 0 {
+                break;
             }
-        };
-        geometry.gpu_resources = Some(evaluate(gpu_resources, geometry_resources, geometry.min_voxel_size()));
-        geometry.evaluation_status = GeometryEvaluationStatus::Evaluated;
+        }
+        
+        // Retrieve svo from kernel
+        let EvaluationContext  { mut svo, .. } = level_kernel.take_context().expect("Fatal error: KernelSVOLevel did not return an svo");
+        
+        // Update SVO to reflect changes
+        svo.levels = levels;
+        svo.node_pool.buffers_changed();
+        svo.node_pool.load_count(&self.gpu);
+        
+        // Store svo back in geometry
+        geometry.svo = Some(svo);
+        geometry.evaluation_status = EvaluationStatus::Evaluated;
     }
     
 }
