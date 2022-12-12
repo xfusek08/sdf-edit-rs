@@ -36,7 +36,7 @@ pub struct Scene {
     // tmp stuff
     pub world: World,
     pub counters: SceneCounters,
-    pub tmp_evaluator_config: super::modules::tmp_evaluator_config::TmpEvaluatorConfigProps,
+    pub tmp_evaluator_config: super::modules::TmpEvaluatorConfigProps,
 }
 
 impl SceneWithCamera for Scene {

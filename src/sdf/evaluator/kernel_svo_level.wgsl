@@ -33,6 +33,7 @@ fn load_node(node_index: u32) -> Node {
     return node;
 }
 
+// TODO: Use preprocessor for constatns
 let HEADER_IS_SUBDIVIDED_SHIFT = 31u;
 let HEADER_HAS_BRICK_SHIFT = 30u;
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
@@ -76,6 +77,7 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
 //      - NOTE: Use BVH or Octree representation of edits for faster iteration
 // =================================================================================================
 
+// TODO: Use preprocessor for constatns
 let EDIT_PRIMITIVE_SPHERE = 0u;
 let EDIT_PRIMITIVE_CUBE = 1u;
 let EDIT_PRIMITIVE_CYLINDER = 2u;
@@ -83,19 +85,51 @@ let EDIT_PRIMITIVE_TORUS = 3u;
 let EDIT_PRIMITIVE_CONE = 4u;
 let EDIT_PRIMITIVE_CAPSULE = 5u;
 
+// TODO: Use preprocessor for constatns
+let EDIT_OPERATION_ADD = 0u;
+let EDIT_OPERATION_SUBTRACT = 1u;
+let EDIT_OPERATION_INTERSECT = 2u;
+// ...
+
+struct EditPacked {
+    operation_primitive: u32,
+    blending: f32,
+}
+
 struct Edit {
     operation: u32,
     primitive: u32,
+    blending: f32,
+}
+
+fn unpack_edit(packed_edit: EditPacked) -> Edit {
+    return Edit(
+        packed_edit.operation_primitive >> 16u,
+        packed_edit.operation_primitive & 0xFFFFu,
+        packed_edit.blending
+    );
 }
 
 struct EditData {
-    blending_level: f32,
-    additional_data: vec3<f32>,
+    transform: mat4x4<f32>,
+    dimensions: vec4<f32>,
 }
 
-@group(2) @binding(0) var<storage, read> edit_primitives: array<Edit>;
-@group(2) @binding(1) var<storage, read> edit_payload:    array<EditData>;
-@group(2) @binding(2) var<storage, read> edit_transforms: array<mat4x4<f32>>;
+struct AABB {
+    min: vec3<f32>,
+    padding1: f32,
+    max: vec3<f32>,
+    padding2: f32,
+}
+
+fn in_aabb(position: vec3<f32>, aabb: AABB) -> bool {
+    return all(position >= aabb.min) && all(position <= aabb.max);
+}
+
+@group(2) @binding(0) var<storage, read> edits:      array<EditPacked>;
+@group(2) @binding(1) var<storage, read> edit_data:  array<EditData>;
+@group(2) @binding(2) var<storage, read> edit_aabbs: array<AABB>;
+@group(2) @binding(3) var<uniform>       edit_count: u32;
 
 
 // =================================================================================================
@@ -135,21 +169,86 @@ fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
 //                                              SDF Sampling
 // =================================================================================================
 
-fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
-    let h = clamp(0.5 + 0.5 * (dist1 - dist2) / koeficient, 0.0, 1.0);
-    return mix(dist1, dist2, h) - koeficient * h * (1.0 - h);
+fn transform_pos(edit: EditData, position: vec3<f32>) -> vec3<f32> {
+    return (edit.transform * vec4<f32>(position, 1.0)).xyz;
 }
 
-// "Entry point"
-fn sample_sdf(position: vec3<f32>) -> f32 {
-    // TODO: use max-norm for evaluating this
-    // compute smooth minimum of two spheres
-    let sphere1 = vec4<f32>(0.0, -0.2, 0.0, 0.3);
-    let sphere2 = vec4<f32>(0.0, 0.2, 0.0, 0.2);
-    let d1 = length(position - sphere1.xyz) - sphere1.w;
-    let d2 = length(position - sphere2.xyz) - sphere2.w;
+fn sd_shpere(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position);
+    // let p = position;
+    return length(p) - edit_data.dimensions.x;
+}
+
+fn sd_cube(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position);
+    let d = abs(p) - edit_data.dimensions.xyz + edit.blending;
+    let e = length(max(d, vec3(0.0)));
+    let i = min(max(d.x, max(d.y, d.z)), 0.0);
+    return e + i - edit.blending;
+}
+
+fn sd_cylinder(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position);
+    let w = edit_data.dimensions[0] - edit_data.dimensions[2];
+    let h = edit_data.dimensions[1] - edit_data.dimensions[2];
+    let d = abs(vec2(length(p.xz), p.y)) - vec2(w, h);
+    return min(max(d.x, d.y), 0.0) + length(max(d, vec2(0.0))) - edit_data.dimensions[2];
+}
+
+fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
+    let h = clamp(0.5 + 0.5 * (dist2 - dist1) / koeficient, 0.0, 1.0);
+    return mix(dist2, dist1, h) - koeficient * h * (1.0 - h);
+}
+
+fn smooth_max(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
+    let h = clamp(0.5 - 0.5 * (dist1 - dist2) / koeficient, 0.0, 1.0);
+    return mix(dist1, dist2, h) + koeficient * h * (1.0 - h);
+}
+
+fn distance_to_edit(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     
-    return smooth_min(d1, d2, 0.05);
+    // TODO Use preprocessor because constant are not yet supported in naga
+    switch (edit.primitive) {
+        // EDIT_PRIMITIVE_SPHERE
+        case 0u: { return sd_shpere(position, edit, edit_data); }
+        // EDIT_PRIMITIVE_CUBE
+        case 1u: { return sd_cube(position, edit, edit_data); }
+         // EDIT_PRIMITIVE_CYLINDER
+        case 2u: { return sd_cylinder(position, edit, edit_data); }
+        
+        // Default to make the compiler happy
+        default: {
+            return 1000000.0;
+        }
+    }
+}
+
+fn sample_sdf(position: vec3<f32>) -> f32 {
+    // var was_in_aabb = false;
+    var sdf_value = 1000000.0;
+    for (var i = 0u; i < edit_count; i = i + 1u) {
+        let aabb = edit_aabbs[i];
+        // let is_in_aabb = in_aabb(position, aabb);
+        // was_in_aabb = was_in_aabb || is_in_aabb;
+        // if (was_in_aabb && !is_in_aabb) {
+        //     continue;
+        // }
+        let edit = unpack_edit(edits[i]);
+        let distance_to_primitive = distance_to_edit(position, edit, edit_data[i]);
+        
+        // TODO Use preprocessor because constant are not yet supported in naga
+        switch (edit.operation) {
+            // EDIT_OPERATION_ADD
+            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, edit.blending * 0.2); } // 0.2 is empirically bes maximum smoothink coefficient for adding
+            // EDIT_OPERATION_SUBTRACT
+            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, edit.blending); }
+            // EDIT_OPERATION_INTERSECT
+            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
+            
+            default: {} // to make naga happy
+        }
+    }
+    return sdf_value;
 }
 
 
@@ -157,6 +256,7 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
 // Node Evaluation into brick
 // =================================================================================================
 
+// TODO: Use preprocessor for constatns
 let BRICK_IS_EMPTY = 0u;
 let BRICK_IS_BOUONDARY = 1u;
 let BRICK_IS_FILLED = 2u;

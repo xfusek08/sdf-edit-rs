@@ -15,8 +15,8 @@ use crate::{
 
 use super::{
     scene::Scene,
-    modules::{line::LineMesh, tmp_evaluator_config::TmpEvaluatorConfigProps},
-    components::Deleted, bumpy_sphere::bumpy_sphere,
+    components::Deleted,
+    modules::{line::LineMesh, TmpEvaluatorConfigProps},
 };
 
 
@@ -54,11 +54,22 @@ pub fn init_scene(context: &Context) -> Scene {
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     // lets generate a geometry using the shape builder
     let test_geometry = Geometry::new(min_voxel_size).with_edits(
-        Shape::empty().add(
-            bumpy_sphere(),
-            Transform::from_uniform_scale(0.5),
-            0.0
-        ).build()
+        // Shape::empty().add(
+        //     bumpy_sphere(),
+        //     Transform::from_uniform_scale(0.5),
+        //     0.0
+        // ).build()
+        
+        Shape::empty()
+            .add(Shape::sphere(0.2), Transform::from_xyz(-0.15, 0.0, 0.0), 0.0)
+            .subtract(Shape::sphere(0.2), Transform::from_xyz(0.15, 0.0, 0.0), 0.1)
+            .build()
+        
+        // Shape::sphere(0.2).build()
+        
+        // Shape::empty()
+        //     .add(Shape::sphere(0.2), Transform::IDENTITY, 0.5)
+        //     .build()
     );
     
     let test_geometry_id = geometry_pool.insert(test_geometry);

@@ -8,33 +8,22 @@ use crate::framework::updater::{
     AfterRenderContext
 };
 
-use super::GuiDataToRender;
+use super::{GuiDataToRender, GuiModule};
 
-pub struct GuiUpdateModule<F, Scene>
-where
-    F: Fn(&egui::Context, &mut Scene) -> (),
-{
-    draw_gui: F,
-    _phantom: std::marker::PhantomData<Scene>,
+pub struct GuiUpdateModule<Scene> {
+    modules: Vec<Box<dyn GuiModule<Scene>>>,
 }
 
-impl<F, Scene> GuiUpdateModule<F, Scene>
-where
-    F: Fn(&egui::Context, &mut Scene) -> (),
-{
-    pub fn new(draw_gui: F) -> Self {
+impl<Scene> GuiUpdateModule<Scene> {
+    pub fn new(modules: Vec<Box<dyn GuiModule<Scene>>>) -> Self {
         Self {
-            draw_gui,
-            _phantom: std::marker::PhantomData,
+            modules,
         }
     }
 }
 
-impl<F, Scene> UpdaterModule<Scene> for GuiUpdateModule<F, Scene>
-where
-    F: Fn(&egui::Context, &mut Scene) -> (),
+impl<Scene> UpdaterModule<Scene> for GuiUpdateModule<Scene>
 {
-    
     fn input(&mut self, context: &mut UpdateContext<Scene>) -> InputUpdateResult {
         InputUpdateResult::default()
     }
@@ -55,7 +44,16 @@ where
             textures_delta,
             shapes,
         } = profiler::call!(
-            gui.egui_ctx.run(raw_input, |egui_ctx| (self.draw_gui)(egui_ctx, scene))
+            gui.egui_ctx.run(raw_input, |egui_ctx| {
+                // egui Window
+                egui::Window::new("GUI Modules")
+                    .default_pos(egui::Pos2::new(0.0, 0.0))
+                    .show(egui_ctx, |ui| {
+                        for module in self.modules.iter_mut() {
+                            module.gui(scene, ui);
+                        }
+                    });
+            })
         );
         
         // Update window state (mainly to change cursors)

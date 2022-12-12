@@ -1,5 +1,5 @@
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Transform {
     pub position: glam::Vec3,
     pub rotation: glam::Quat,
@@ -31,6 +31,13 @@ impl Transform {
                 radius * theta.cos(),
                 radius * theta.sin() * phi.cos(),
             ),
+            ..Self::IDENTITY
+        }
+    }
+    
+    pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
+        Self {
+            position: glam::Vec3::new(x, y, z),
             ..Self::IDENTITY
         }
     }

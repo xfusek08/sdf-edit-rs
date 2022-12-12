@@ -1,4 +1,4 @@
-use crate::framework::{math::AABBAligned, gpu};
+use crate::framework::{math::{AABBAligned, Transform}, gpu};
 
 use super::{Operation, Primitive, Edit};
 
@@ -12,16 +12,18 @@ use super::{Operation, Primitive, Edit};
 pub struct GPUEdit {
     /// Top 16 bits are the operation type and bottom 16 bits are the primitive type
     operation_primitive: u32,
+    blending: f32,
 }
 
 impl GPUEdit {
-    pub fn new(operation: Operation, primitive: Primitive) -> Self {
+    pub fn new(operation: Operation, primitive: Primitive, blending: f32) -> Self {
         Self {
             operation_primitive: (operation.to_index()) << 16 | (primitive.to_index()),
+            blending,
         }
     }
     pub fn from_edit(edit: &Edit) -> Self {
-        Self::new(edit.operation.clone(), edit.primitive.clone())
+        Self::new(edit.operation.clone(), edit.primitive.clone(), edit.blending)
     }
 }
 
@@ -33,33 +35,26 @@ impl GPUEdit {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUEditData {
-    // Position and xyz position ans blending value in vec4
-    position_blending: glam::Vec4,
-    // Rotation quaternion
-    rotation: glam::Quat,
-    // A variable data required by primitive
+    /// Inverted transform for position ray sample the primitive - no scaling is supported
+    transform_inverse: glam::Mat4,
+    /// A variable data required by primitive
     dimensions: [f32; 4],
 }
 
 impl GPUEditData {
     pub fn new(
-        position: glam::Vec3,
-        rotation: glam::Quat,
-        blending: f32,
+        transform_inverse: glam::Mat4,
         dimensions: [f32; 4],
     ) -> Self {
         Self {
-            position_blending: glam::Vec4::new(position.x, position.y, position.z, blending),
-            rotation,
+            transform_inverse,
             dimensions,
         }
     }
     
     pub fn from_edit(edit: &Edit) -> Self {
         Self::new(
-            edit.transform.position.clone(),
-            edit.transform.rotation.clone(),
-            edit.blending.clone(),
+            edit.transform.as_mat().inverse(),
             edit.primitive.dimensions()
         )
     }
@@ -74,6 +69,7 @@ pub struct GPUEdits {
     pub edits:     gpu::Buffer<GPUEdit>,
     pub edit_data: gpu::Buffer<GPUEditData>,
     pub aabbs:     gpu::Buffer<AABBAligned>,
+    pub count:     gpu::Buffer<u32>,
 }
 
 // Constructors
@@ -90,6 +86,7 @@ impl GPUEdits {
             edits:     gpu::Buffer::new(gpu, Some("Geometry edits"), &gpu_edits, wgpu::BufferUsages::STORAGE),
             edit_data: gpu::Buffer::new(gpu, Some("Geometry edit Data"), &gpu_edit_data, wgpu::BufferUsages::STORAGE),
             aabbs:     gpu::Buffer::new(gpu, Some("Geometry edit AABBs"), &aabbs, wgpu::BufferUsages::STORAGE),
+            count:     gpu::Buffer::new(gpu, Some("Geometry edit count"), &[edits.len() as u32], wgpu::BufferUsages::UNIFORM),
         }
     }
 }
@@ -134,7 +131,17 @@ impl GPUEdits {
                     },
                     count: None,
                 },
-                
+                // Buffer with edits count
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         })
     }
@@ -157,6 +164,10 @@ impl GPUEdits {
                     binding: 2,
                     resource: self.aabbs.buffer.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.count.buffer.as_entire_binding(),
+                },
             ],
         })
     }
@@ -169,7 +180,6 @@ impl GPUEdits {
         let mut gpu_edits = vec![];
         let mut gpu_edit_data = vec![];
         let mut aabbs = vec![];
-        
         
         for edit in edits {
             gpu_edits.push(GPUEdit::from_edit(edit));

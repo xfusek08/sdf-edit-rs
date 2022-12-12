@@ -10,8 +10,8 @@ use super::{
     modules::{
         line::LineRenderModule,
         cube::CubeOutlineRenderModule,
-        svo_wireframe::SvoWireframeRenderModule,
         svo_sdf_brick::SvoSdfBricksRenderModule,
+        SvoWireframeRenderModule,
     },
 };
 

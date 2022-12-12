@@ -5,18 +5,26 @@ use crate::framework::{
 
 use super::{
     scene::Scene,
-    draw_gui,
     modules::{
-        tmp_evaluator_config::TmpEvaluatorConfig,
-        voxel_size_reference_displayer::VoxelSizeReferenceDisplayer,
-        svo_evaluator::SvoEvaluatorUpdater
+        LegacyAppsGui,
+        DynamicTestGeometry,
+        TmpEvaluatorConfig,
+        VoxelSizeReferenceDisplayer,
+        SvoEvaluatorUpdater,
     },
 };
 
+#[cfg(feature = "stats")]
+use super::modules::stats_gui::StatsGui;
 
 pub fn define_updater(context: &Context) -> Updater<Scene> {
     Updater::new()
-        .with_module(GuiUpdateModule::new(draw_gui))
+        .with_module(GuiUpdateModule::new(vec![
+            Box::new(LegacyAppsGui),
+            Box::new(DynamicTestGeometry::new()),
+            #[cfg(feature = "stats")]
+            Box::new(StatsGui),
+        ]))
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
         .with_module(VoxelSizeReferenceDisplayer { visible: false })
