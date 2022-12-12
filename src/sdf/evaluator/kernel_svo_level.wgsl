@@ -236,14 +236,17 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
         let edit = unpack_edit(edits[i]);
         let distance_to_primitive = distance_to_edit(position, edit, edit_data[i]);
         
+        // 0.007 - 0.2 is empirically bes maximum smoothink coefficient for adding
+        let koefitient = clamp(edit.blending * 0.2, 0.007, 0.2) ;
+        
         // TODO Use preprocessor because constant are not yet supported in naga
         switch (edit.operation) {
             // EDIT_OPERATION_ADD
-            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, edit.blending * 0.2); } // 0.2 is empirically bes maximum smoothink coefficient for adding
+            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, koefitient); }
             // EDIT_OPERATION_SUBTRACT
-            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, edit.blending); }
+            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, koefitient); }
             // EDIT_OPERATION_INTERSECT
-            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
+            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, koefitient); }
             
             default: {} // to make naga happy
         }
