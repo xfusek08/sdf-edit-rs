@@ -3,6 +3,7 @@ use std::borrow::Cow;
 
 use crate::{
     framework::{
+        math,
         renderer::{
             self,
             RenderContext,
@@ -20,6 +21,14 @@ use super::{
     CUBE_INDICES_LINE_STRIP
 };
 
+#[repr(C)]
+#[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct PushConstants {
+    view_projection: glam::Mat4,
+    camera_position: glam::Vec4,
+    domain:          math::BoundingCube,
+}
+
 type CubeInstanceBuffer = gpu::Buffer<CubeOutlineComponent>;
 impl CubeInstanceBuffer {
     pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
@@ -36,6 +45,7 @@ pub struct CubeOutlinePipeline {
     pub instance_buffer: CubeInstanceBuffer,
     cube_wireframe_mesh: CubeWireframeMesh,
     pipeline: wgpu::RenderPipeline,
+    push_constants: PushConstants,
 }
 
 impl CubeOutlinePipeline {
@@ -58,8 +68,7 @@ impl CubeOutlinePipeline {
                     // set camera transform matrix as shader push constant
                     push_constant_ranges: &[wgpu::PushConstantRange {
                         stages: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                        // set to size of push constant camera data
-                        range: 0..std::mem::size_of::<renderer::camera::PushConstantData>() as u32,
+                        range: 0..std::mem::size_of::<PushConstants>() as u32,
                     }],
                 })
             ),
@@ -114,16 +123,28 @@ impl CubeOutlinePipeline {
             ),
             cube_wireframe_mesh: CubeWireframeMesh::new(&context.gpu.device),
             pipeline,
+            push_constants: PushConstants::default(),
         }
+    }
+    
+    pub fn set_domain(&mut self, domain: math::BoundingCube) {
+        self.push_constants.domain = domain;
     }
     
     /// Runs this pipeline for given render pass
     pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, camera: &renderer::camera::Camera) {
         pass.set_pipeline(&self.pipeline);
+        
+        let cpc = camera.to_push_constant_data();
+        let pc = PushConstants {
+            view_projection: cpc.view,
+            camera_position: cpc.position,
+            ..self.push_constants
+        };
         pass.set_push_constants(
             wgpu::ShaderStages::VERTEX_FRAGMENT,
             0,
-            bytemuck::cast_slice(&[camera.to_push_constant_data()]
+            bytemuck::cast_slice(&[pc]
         ));
         
         pass.set_vertex_buffer(0, self.cube_wireframe_mesh.vertex_buffer.slice(..));

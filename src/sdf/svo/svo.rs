@@ -1,5 +1,5 @@
 
-use crate::framework::gpu;
+use crate::framework::{gpu, math::BoundingCube};
 use super::{NodePool, BrickPool, BrickPoolFormat, BrickVoxelFormat};
 
 /// A helper struct to express desired octree capacity
@@ -56,6 +56,9 @@ pub struct Svo {
     
     /// A list of SVO levels.
     pub levels: Vec<Level>,
+    
+    // A bounding cube of the SVO.
+    pub domain: BoundingCube,
 }
 
 impl Svo {
@@ -71,6 +74,7 @@ impl Svo {
                     padding: 1,
                 }
             ),
+            domain: BoundingCube::UNIT,
             levels: vec![]
         }
     }

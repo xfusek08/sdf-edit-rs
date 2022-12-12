@@ -9,6 +9,11 @@ pub struct AABB {
 
 impl AABB {
     
+    pub const ZERO: Self = Self {
+        min: glam::Vec3::ZERO,
+        max: glam::Vec3::ZERO,
+    };
+    
     pub fn new(min: glam::Vec3, max: glam::Vec3) -> Self {
         Self { min, max }
     }

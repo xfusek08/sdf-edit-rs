@@ -2,6 +2,7 @@
 struct PushConstants {
     view_projection:    mat4x4<f32>,
     camera_position:    vec4<f32>,
+    domain:             vec4<f32>, // bounding cube
     brick_scale:        f32,
     brick_atlas_stride: f32,
     brick_voxel_size:   f32,
@@ -88,6 +89,10 @@ fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
     return (pc.brick_atlas_stride * brick_coord) + vec3<f32>(pc.brick_voxel_size);
 }
 
+fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
+    return bc.w * position + bc.xyz;
+}
+
 @vertex
 fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOutput {
     var out: VertexOutput;
@@ -100,7 +105,7 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     }
     
     let position = (node_vertex.w * vertex_input.position) + node_vertex.xyz;
-    out.position = pc.view_projection * vec4<f32>(position, 1.0);
+    out.position = pc.view_projection * vec4<f32>(bounding_cube_transform(pc.domain, position), 1.0);
     out.frag_pos = position;
     
     var brick_inverted_size = 1.0 / node_vertex.w;

@@ -38,7 +38,8 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
     /// Prepares list of nodes to be rendered in this frame.
     #[profiler::function]
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
-        // NOTE: For now only first geometry is rendered
+        
+        // TODO: Render all SVOs
         let svo = scene.geometry_pool
             .iter()
             .filter_map(|(_, geometry)| { geometry.svo.as_ref() })
@@ -64,6 +65,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         self.pipeline.set_svo(&context.gpu, svo);
         self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
+        
     }
     
     #[profiler::function]

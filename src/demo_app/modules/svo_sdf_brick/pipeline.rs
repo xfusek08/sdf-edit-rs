@@ -6,7 +6,7 @@ use crate::{
     demo_app::modules::cube::{CUBE_INDICES_TRIANGLE_STRIP, CubeSolidMesh},
     framework::{
         renderer::RenderContext,
-        gpu::{self, vertices::Vertex},
+        gpu::{self, vertices::Vertex}, math,
     }, warn,
 };
 
@@ -35,6 +35,7 @@ impl Default for DisplayOptions {
 struct PushConstants {
     view_projection:    glam::Mat4,
     camera_position:    glam::Vec4,
+    domain:             math::BoundingCube,
     brick_scale:        f32,
     brick_atlas_stride: f32,
     brick_voxel_size:   f32,
@@ -90,7 +91,6 @@ impl SvoSDFBrickPipeline {
                     // set camera transform matrix as shader push constant
                     push_constant_ranges: &[wgpu::PushConstantRange {
                         stages: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                        // set to size of push constant camera data
                         range: 0..std::mem::size_of::<PushConstants>() as u32,
                     }],
                 })
@@ -152,6 +152,7 @@ impl SvoSDFBrickPipeline {
             node_pool: svo.node_pool.create_bind_group(&gpu, &self.node_pool_bind_group_layout),
             brick_pool: svo.brick_pool.create_read_bind_group(&gpu, &self.brick_pool_bind_group_layout),
         });
+        self.push_constants.domain = svo.domain;
         self.push_constants.brick_atlas_stride = svo.brick_pool.atlas_stride();
         self.push_constants.brick_voxel_size = svo.brick_pool.atlas_voxel_size();
         self.push_constants.brick_scale = svo.brick_pool.atlas_scale();

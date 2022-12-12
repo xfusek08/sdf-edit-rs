@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use slotmap::{new_key_type, SlotMap};
 
-use crate::sdf::svo::Svo;
+use crate::{sdf::svo::Svo, framework::math::AABB};
 
 use super::Edit;
 
@@ -79,6 +79,18 @@ impl Geometry {
     pub fn set_min_voxel_size(&mut self, min_voxel_size: f32) {
         self.min_voxel_size = min_voxel_size.clamp(*Self::VOXEL_SIZE_RANGE.start(), *Self::VOXEL_SIZE_RANGE.end());
         self.evaluation_status = EvaluationStatus::NeedsEvaluation;
+    }
+    
+    pub fn total_aabb(&self) -> AABB {
+        let mut edit_iter = self.edits.iter();
+        let Some(first_edit) = edit_iter.next() else {
+            return AABB::ZERO;
+        };
+        let mut aabb = first_edit.aabb();
+        for edit in edit_iter {
+            aabb = aabb.add(&edit.aabb());
+        }
+        aabb
     }
     
 }

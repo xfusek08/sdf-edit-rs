@@ -56,7 +56,7 @@ impl Evaluator {
         let minium_voxel_size = geometry.min_voxel_size();
         
         // Compute Domain - An AABB in which the geometry is guaranteed to be fully contained
-        let domain = AABB::new(0.5 * glam::Vec3::NEG_ONE, 0.5 * glam::Vec3::ONE).bounding_cube();
+        let domain = geometry.total_aabb().bounding_cube();
         
         // Construct edit list in gpu memory
         let edits = geometry::GPUEdits::from_edit_list(&self.gpu, &geometry.edits);
@@ -97,6 +97,7 @@ impl Evaluator {
         
         // Update SVO to reflect changes
         svo.levels = levels;
+        svo.domain = domain;
         svo.node_pool.buffers_changed();
         svo.node_pool.load_count(&self.gpu);
         
