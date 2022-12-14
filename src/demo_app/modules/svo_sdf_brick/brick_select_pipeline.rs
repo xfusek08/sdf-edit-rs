@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use crate::{
     warn,
-    framework::renderer::RenderContext,
+    framework::{renderer::RenderContext, math},
     sdf::svo::{self, Svo},
 };
 
@@ -13,6 +13,7 @@ use super::BrickInstances;
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PushConstants {
     camera_position: glam::Vec4,
+    domain:          math::BoundingCube,
     cot_fov:         f32,
     node_count:      u32,
     _padding:        [u32; 2], // TODO: level select distance
@@ -108,6 +109,7 @@ impl SvoBrickSelectPipeline {
                 camera_position: cpc.position,
                 cot_fov: (fov * 0.5).to_radians().cos() / (fov * 0.5).to_radians().sin(),
                 node_count,
+                domain: svo.domain,
                 ..Default::default()
             }]));
             

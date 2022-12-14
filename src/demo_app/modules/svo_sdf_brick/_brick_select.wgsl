@@ -1,6 +1,7 @@
 
 struct PushConstants {
     camera_position: vec4<f32>,
+    domain:          vec4<f32>,
     cot_fov:         f32,
     node_count:      u32,
 }
@@ -77,11 +78,11 @@ fn main(in: ShaderInput) {
         let header = deconstruct_node_header(node_headers[node_id]);
         let vertex = node_vertices[node_id];
         
-        let position = vertex.xyz;
-        let diameter = vertex.w;
+        let position = vertex.xyz + pc.domain.xyz;
+        let diameter = vertex.w * pc.domain.w;
         let project_sphere = phere_view_size(position, diameter);
         
-        let parent_position = compute_parent_position(node_id, vertex.xyz, vertex.w);
+        let parent_position = compute_parent_position(node_id, position, diameter);
         let parent_diameter = diameter * 2.0;
         
         let projected_parent = phere_view_size(parent_position, parent_diameter);

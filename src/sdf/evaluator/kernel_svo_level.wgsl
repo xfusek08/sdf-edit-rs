@@ -250,6 +250,18 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
             
             default: {} // to make naga happy
         }
+        
+        // // TODO Use preprocessor because constant are not yet supported in naga
+        // switch (edit.operation) {
+        //     // EDIT_OPERATION_ADD
+        //     case 0u: { sdf_value = min(sdf_value, distance_to_primitive); }
+        //     // EDIT_OPERATION_SUBTRACT
+        //     case 1u: { sdf_value = max(sdf_value, -distance_to_primitive); }
+        //     // EDIT_OPERATION_INTERSECT
+        //     case 2u: { sdf_value = max(sdf_value, distance_to_primitive); }
+            
+        //     default: {} // to make naga happy
+        // }
     }
     return sdf_value;
 }
@@ -296,7 +308,8 @@ fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     // TODO: use max-norm for evaluating this
     let sqrt_3 = 1.7320508075688772935274463415059;
-    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.5;
+    // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.6;
+    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3);
     return abs(dinstance) < voxel_bounding_spehere_radius;
 }
 

@@ -99,13 +99,21 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     
     var node_vertex = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     out.brick_shift = vec3<f32>(0.0, 0.0, 0.0);
+    
+    // TODO maybe make a directive in preprocessor and make two versions of the shader
     if ((pc.show_flags & JUST_ROOT) == 0u) {
         node_vertex = node_vertices[instance_input.node_index];
+        
+        node_vertex = vec4<f32>(
+            (node_vertex.xyz * pc.domain.w) + pc.domain.xyz,
+            node_vertex.w * pc.domain.w,
+        );
+        
         out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
     }
     
     let position = (node_vertex.w * vertex_input.position) + node_vertex.xyz;
-    out.position = pc.view_projection * vec4<f32>(bounding_cube_transform(pc.domain, position), 1.0);
+    out.position = pc.view_projection * vec4<f32>(position, 1.0);
     out.frag_pos = position;
     
     var brick_inverted_size = 1.0 / node_vertex.w;
