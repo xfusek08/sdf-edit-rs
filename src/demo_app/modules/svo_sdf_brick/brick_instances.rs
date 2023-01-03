@@ -27,7 +27,7 @@ impl BrickInstances {
                 &[0],
                 wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_DST
-                    | wgpu::BufferUsages::MAP_READ, // TODO: this is needed for load_count to work. Will not be needed, when we will have indie draw.
+                    | wgpu::BufferUsages::MAP_READ, // TODO: this is needed for load_count to work. Will not be needed, when we will have indirect draws.
             ),
         }
     }

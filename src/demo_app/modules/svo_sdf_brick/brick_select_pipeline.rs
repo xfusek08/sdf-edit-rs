@@ -12,11 +12,12 @@ use super::BrickInstances;
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PushConstants {
-    camera_position: glam::Vec4,
-    domain:          math::BoundingCube,
-    cot_fov:         f32,
-    node_count:      u32,
-    _padding:        [u32; 2], // TODO: level select distance
+    domain:                   math::BoundingCube,
+    camera_projection_matrix: glam::Mat4,
+    camera_focal_length:      f32,
+    node_count:               u32,
+    level_break_size:         f32,
+    _padding:                 [u32; 1], // TODO: level select distance
 }
 
 
@@ -78,7 +79,7 @@ impl SvoBrickSelectPipeline {
     }
     
     #[profiler::function]
-    pub fn run(&mut self, context: &RenderContext, svo: &Svo, brick_instances: &BrickInstances, fov: f32) {
+    pub fn run(&mut self, context: &RenderContext, svo: &Svo, brick_instances: &BrickInstances, level_break_size: f32) {
         
         let Some(node_count) = svo.node_pool.count() else {
             warn!("SvoBrickSelectPipeline::run: Svo node pool is empty or node count is not loaded back from the gpu");
@@ -104,12 +105,12 @@ impl SvoBrickSelectPipeline {
             compute_pass.set_bind_group(0, &node_bind_group, &[]);
             compute_pass.set_bind_group(1, &brick_instances_bind_group, &[]);
             
-            let cpc = context.camera.to_push_constant_data();
             compute_pass.set_push_constants(0, bytemuck::cast_slice(&[PushConstants {
-                camera_position: cpc.position,
-                cot_fov: (fov * 0.5).to_radians().cos() / (fov * 0.5).to_radians().sin(),
+                camera_projection_matrix: context.camera.projection_matrix,
+                camera_focal_length: context.camera.focal_length,
                 node_count,
                 domain: svo.domain,
+                level_break_size,
                 ..Default::default()
             }]));
             

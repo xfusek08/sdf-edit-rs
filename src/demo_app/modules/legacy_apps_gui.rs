@@ -37,6 +37,12 @@ impl GuiModule<Scene> for LegacyAppsGui {
                                 .clamp_to_range(true)
                         );
                         ui.end_row();
+                        ui.label("Brick Level Break Size:");
+                        ui.add(
+                            egui::Slider::new(&mut scene.brick_level_break_size, 0.0..=5.0)
+                                .step_by(0.001)
+                                .clamp_to_range(true)
+                        );
                 });
                 
                 ui.separator();

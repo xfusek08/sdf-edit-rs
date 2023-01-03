@@ -10,7 +10,8 @@ use crate::{
 #[derive(Debug)]
 pub struct Camera {
     pub binding: u32,
-    pub view: glam::Mat4,
+    pub projection_matrix: glam::Mat4,
+    pub focal_length: f32,
     pub transform: Transform,
     pub uniform_buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
@@ -20,8 +21,8 @@ pub struct Camera {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PushConstantData {
-    pub view:     glam::Mat4,
-    pub position: glam::Vec4,
+    pub projection_matrix: glam::Mat4,
+    pub position:          glam::Vec4,
 }
 
 impl Camera {
@@ -65,7 +66,8 @@ impl Camera {
         });
         
         Self {
-            view: glam::Mat4::IDENTITY,
+            projection_matrix: glam::Mat4::IDENTITY,
+            focal_length: 1.0,
             transform: Transform::default(),
             binding,
             bind_group_layout,
@@ -77,16 +79,17 @@ impl Camera {
     #[profiler::function]
     pub fn update(&mut self, queue: &wgpu::Queue, camera: &framework::camera::Camera) {
         self.transform = camera.transform();
-        self.view = camera.view_projection_matrix();
+        self.projection_matrix = camera.view_projection_matrix();
+        self.focal_length = camera.focal_length();
         profiler::call!(
-            queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.view]))
+            queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.projection_matrix]))
         );
     }
     
     #[profiler::function]
     pub fn to_push_constant_data(&self) -> PushConstantData {
         PushConstantData {
-            view: self.view,
+            projection_matrix: self.projection_matrix,
             position: glam::Vec4::from((self.transform.position, 1.0)),
         }
     }

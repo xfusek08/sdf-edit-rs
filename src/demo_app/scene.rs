@@ -32,6 +32,7 @@ pub struct Scene {
     pub geometry_pool: GeometryPool,
     pub model_pool: ModelPool,
     pub display_toggles: DisplayToggles,
+    pub brick_level_break_size: f32,
     
     // tmp stuff
     pub world: World,

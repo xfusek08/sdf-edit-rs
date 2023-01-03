@@ -1,9 +1,10 @@
 
 struct PushConstants {
-    camera_position: vec4<f32>,
-    domain:          vec4<f32>,
-    cot_fov:         f32,
-    node_count:      u32,
+    domain:                   vec4<f32>,
+    camera_projection_matrix: mat4x4<f32>,
+    camera_focal_length:      f32,
+    node_count:               u32,
+    level_break_size:         f32,
 }
 var<push_constant> pc: PushConstants;
 
@@ -48,11 +49,35 @@ fn deconstruct_node_header(node_header: u32) -> NodeHeader {
     );
 }
 
-fn phere_view_size(position: vec3<f32>, diameter: f32) -> f32 {
-    let distance = length(position - pc.camera_position.xyz);
-    return diameter / distance * pc.cot_fov;
-}
+/// Compute the screen size of a bounding cube
+/// Based on: https://iquilezles.org/articles/sphereproj/
+fn bounding_cube_screen_size(center: vec3<f32>, side_size: f32) -> f32 {
     
+    // Boundign sphere radius computed from cube size length
+    let radius = 0.866025 * side_size; // sqrt(3)/2 * side_size
+    
+    // vec3  o = (cam*vec4(sph.xyz,1.0)).xyz;
+    let o = (pc.camera_projection_matrix * vec4<f32>(center, 1.0)).xyz;
+    
+    // float r2 = sph.w*sph.w;
+    let r2 = radius * radius;
+    
+    // float z2 = o.z*o.z;
+    let z2 = o.z * o.z;
+    
+    // float l2 = dot(o,o);
+    let l2 = dot(o, o);
+    
+    // return -3.14159*fl*fl*r2*sqrt(abs((l2-r2)/(r2-z2)))/(r2-z2);
+    return -3.14159 * pc.camera_focal_length * pc.camera_focal_length * r2 * sqrt(abs((l2 - r2) / (r2 - z2))) / (r2 - z2);
+}
+
+fn distance_adjustment(position: vec3<f32>, size: f32) -> f32 {
+    return 1.0;
+    // let distance = length(position - pc.camera_projection_matrix[3].xyz);
+    // return 1.0 / (distance + pc.camera_focal_length);
+}
+
 // Compute a parent boundign sphere
 fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter: f32) -> vec3<f32> {
     var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
@@ -78,25 +103,28 @@ fn main(in: ShaderInput) {
         let header = deconstruct_node_header(node_headers[node_id]);
         let vertex = node_vertices[node_id];
         
-        let position = vertex.xyz + pc.domain.xyz;
-        let diameter = vertex.w * pc.domain.w;
-        let project_sphere = phere_view_size(position, diameter);
+        let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
+        let me_size = vertex.w * pc.domain.w;
+        let project_me_size = bounding_cube_screen_size(me_position, me_size);
+        let project_me_size = project_me_size * distance_adjustment(me_position, me_size);
         
-        let parent_position = compute_parent_position(node_id, position, diameter);
-        let parent_diameter = diameter * 2.0;
+        let parent_position = compute_parent_position(node_id, me_position, me_size);
+        let parent_size = me_size * 2.0;
+        let projected_parent_size = bounding_cube_screen_size(parent_position, parent_size);
+        let projected_parent_size = projected_parent_size * distance_adjustment(parent_position, parent_size);
         
-        let projected_parent = phere_view_size(parent_position, parent_diameter);
+        let treshhold = 0.1 * pc.level_break_size;
         
         if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
             return; // brick is empty
         }
-        if (projected_parent <=0.0 || project_sphere <= 0.0) {
+        if (projected_parent_size <=0.0 || project_me_size <= 0.0) {
             return; // not possible
         }
-        if (projected_parent < 0.05) {
+        if (projected_parent_size < treshhold) {
             return; // parent will be rendered
         }
-        if (project_sphere >= 0.05 && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
+        if (project_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
             return; // Node is too big to be rendered and has children
         }
         let index = atomicAdd(&brick_count, 1u);

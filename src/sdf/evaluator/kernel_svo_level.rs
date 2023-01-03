@@ -173,7 +173,7 @@ impl KernelSVOLevel {
         
         // Create command encoder
         let mut encoder = {
-            profiler::scope!("Creating command encoder");
+            profiler::scope!("Level Evaluator: Creating command encoder");
             gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("KernelSVOLevel: Command Encoder"),
             })
@@ -181,17 +181,17 @@ impl KernelSVOLevel {
         
         // Create compute pass
         let mut compute_pass = {
-            profiler::scope!("Creating Compute Pass");
+            profiler::scope!("Level Evaluator: Creating Compute Pass");
             encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("KernelSVOLevel: Compute Pass"),
             })
         };
         
-        { profiler::scope!("Setting pipeline");
+        { profiler::scope!("Level Evaluator: Setting pipeline");
             compute_pass.set_pipeline(&self.pipeline);
         }
         
-        { profiler::scope!("Settings bind groups");
+        { profiler::scope!("Level Evaluator: Settings bind groups");
             compute_pass.set_bind_group(0, &bind_groups.node_pool, &[]);
             compute_pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
             compute_pass.set_bind_group(2, &bind_groups.edits, &[]);
@@ -199,19 +199,19 @@ impl KernelSVOLevel {
             compute_pass.set_bind_group(4, &self.brick_padding_indices_uniform.bind_group, &[]);
         }
         
-        { profiler::scope!("Dispatch");
+        { profiler::scope!("Level Evaluator: Dispatch");
             compute_pass.dispatch_workgroups(to_evaluate_node_count, 1, 1);
         }
         
-        { profiler::scope!("Drop Compute Pass");
+        { profiler::scope!("Level Evaluator: Drop Compute Pass");
            drop(compute_pass);
         }
         
-        { profiler::scope!("Submit command encoder to queue");
+        { profiler::scope!("Level Evaluator: Submit command encoder to queue");
             gpu.queue.submit(Some(encoder.finish()));
         }
         
-        { profiler::scope!("Wait for queue to finish computation");
+        { profiler::scope!("Level Evaluator: Wait for queue to finish computation");
             gpu.device.poll(wgpu::Maintain::Wait);
         }
         

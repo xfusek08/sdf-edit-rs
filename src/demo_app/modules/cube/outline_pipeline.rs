@@ -137,7 +137,7 @@ impl CubeOutlinePipeline {
         
         let cpc = camera.to_push_constant_data();
         let pc = PushConstants {
-            view_projection: cpc.view,
+            view_projection: cpc.projection_matrix,
             camera_position: cpc.position,
             ..self.push_constants
         };

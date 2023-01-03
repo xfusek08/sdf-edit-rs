@@ -16,7 +16,7 @@ use crate::{
 use super::{
     scene::Scene,
     components::Deleted,
-    modules::{line::LineMesh, TmpEvaluatorConfigProps},
+    modules::{line::LineMesh, TmpEvaluatorConfigProps}, bumpy_sphere::bumpy_sphere,
 };
 
 
@@ -52,24 +52,14 @@ pub fn init_scene(context: &Context) -> Scene {
     
     let min_voxel_size = 0.01;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
+        
     // lets generate a geometry using the shape builder
     let test_geometry = Geometry::new(min_voxel_size).with_edits(
-        // Shape::empty().add(
-        //     bumpy_sphere(),
-        //     Transform::from_uniform_scale(0.5),
-        //     0.0
-        // ).build()
-        
-        Shape::empty()
-            .add(Shape::sphere(0.2), Transform::from_xyz(-0.15, 0.0, 0.0), 0.0)
-            .subtract(Shape::sphere(0.2), Transform::from_xyz(0.15, 0.0, 0.0), 0.1)
-            .build()
-        
-        // Shape::sphere(0.2).build()
-        
-        // Shape::empty()
-        //     .add(Shape::sphere(0.2), Transform::IDENTITY, 0.5)
-        //     .build()
+        Shape::empty().add(
+            bumpy_sphere(),
+            Transform::IDENTITY,
+            0.0
+        ).build()
     );
     
     let test_geometry_id = geometry_pool.insert(test_geometry);
@@ -84,9 +74,9 @@ pub fn init_scene(context: &Context) -> Scene {
     Scene {
         camera: Camera::new(CameraProperties {
             aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
-            fov: 10.0,
+            fov: 60.0,
             ..Default::default()
-        }).orbit(glam::Vec3::ZERO, 10.0),
+        }).orbit(glam::Vec3::ZERO, 4.0),
         geometry_pool,
         model_pool,
         world,
@@ -96,5 +86,6 @@ pub fn init_scene(context: &Context) -> Scene {
             min_voxel_size,
         },
         display_toggles: Default::default(),
+        brick_level_break_size: 0.1,
     }
 }

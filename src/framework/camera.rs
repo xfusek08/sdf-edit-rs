@@ -102,6 +102,11 @@ impl Camera {
         self.projection_matrix() * self.view_matrix()
     }
     
+    #[profiler::function]
+    pub fn focal_length(&self) -> f32 {
+        1.0 / (self.fov.to_radians() * 0.5).tan()
+    }
+    
     pub fn transform(&self) -> Transform {
         Transform {
             position: self.rig.final_transform.position,

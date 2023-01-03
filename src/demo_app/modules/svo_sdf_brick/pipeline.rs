@@ -36,10 +36,12 @@ struct PushConstants {
     view_projection:    glam::Mat4,
     camera_position:    glam::Vec4,
     domain:             math::BoundingCube,
+    focal_length:       f32,
     brick_scale:        f32,
     brick_atlas_stride: f32,
     brick_voxel_size:   f32,
     display_options:    DisplayOptions,
+    _padding:           [u32; 3],
 }
 
 #[derive(Debug)]
@@ -175,10 +177,10 @@ impl SvoSDFBrickPipeline {
         
         pass.set_pipeline(&self.pipeline);
         
-        let cpc = context.camera.to_push_constant_data();
         let mut pc = PushConstants {
-            view_projection: cpc.view,
-            camera_position: cpc.position,
+            view_projection: context.camera.projection_matrix,
+            camera_position: glam::Vec4::from((context.camera.transform.position, 1.0)),
+            focal_length:    context.camera.focal_length,
             ..self.push_constants
         };
         

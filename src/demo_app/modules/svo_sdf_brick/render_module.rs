@@ -57,7 +57,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         };
         
         self.brick_instances.clear_resize(&context.gpu, node_count as usize);
-        self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.camera.fov);
+        self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.brick_level_break_size);
         
         // --------------------
         self.brick_instances.load_count(&context.gpu); // TODO: this will not be needed when we will use indirect draw

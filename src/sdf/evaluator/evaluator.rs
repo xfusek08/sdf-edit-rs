@@ -58,6 +58,8 @@ impl Evaluator {
         // Compute Domain - An AABB in which the geometry is guaranteed to be fully contained
         let domain = geometry.total_aabb().bounding_cube();
         
+        // TODO: Dispatch a kernel to compute the domain of the geometry (tightly fitted AABB)
+        
         // Construct edit list in gpu memory
         let edits = geometry::GPUEdits::from_edit_list(&self.gpu, &geometry.edits);
         

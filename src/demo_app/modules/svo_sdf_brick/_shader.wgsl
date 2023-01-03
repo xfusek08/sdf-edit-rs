@@ -1,12 +1,13 @@
 
 struct PushConstants {
-    view_projection:    mat4x4<f32>,
-    camera_position:    vec4<f32>,
-    domain:             vec4<f32>, // bounding cube
-    brick_scale:        f32,
-    brick_atlas_stride: f32,
-    brick_voxel_size:   f32,
-    show_flags:         u32,
+    view_projection:     mat4x4<f32>,
+    camera_position:     vec4<f32>,
+    domain:              vec4<f32>, // bounding cube
+    camera_focal_length: f32,
+    brick_scale:         f32,
+    brick_atlas_stride:  f32,
+    brick_voxel_size:    f32,
+    show_flags:          u32,
 }
 var<push_constant> pc: PushConstants;
 
@@ -67,7 +68,6 @@ fn scale(scaling: f32) -> mat4x4<f32> {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    
     
     @location(0) frag_pos: vec3<f32>,
     
@@ -169,7 +169,7 @@ fn sample_volume_distance(in: VertexOutput, act_position: vec3<f32>,) -> f32 {
     ).r;
 }
 
-let NORMAL_OFFSET = 0.01;
+let NORMAL_OFFSET = 0.05;
 
 /// Compute normal (gradient of sdf) for given point in volume
 /// see: https://iquilezles.org/articles/normalsSDF/

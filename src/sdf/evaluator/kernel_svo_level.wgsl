@@ -250,18 +250,6 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
             
             default: {} // to make naga happy
         }
-        
-        // // TODO Use preprocessor because constant are not yet supported in naga
-        // switch (edit.operation) {
-        //     // EDIT_OPERATION_ADD
-        //     case 0u: { sdf_value = min(sdf_value, distance_to_primitive); }
-        //     // EDIT_OPERATION_SUBTRACT
-        //     case 1u: { sdf_value = max(sdf_value, -distance_to_primitive); }
-        //     // EDIT_OPERATION_INTERSECT
-        //     case 2u: { sdf_value = max(sdf_value, distance_to_primitive); }
-            
-        //     default: {} // to make naga happy
-        // }
     }
     return sdf_value;
 }
