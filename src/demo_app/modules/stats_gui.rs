@@ -1,13 +1,17 @@
 use egui::{Layout, Align};
 use egui_extras::{TableBuilder, Column};
 
-use crate::{framework::gui::GuiModule, demo_app::scene::Scene};
+use crate::{
+    framework::gui::GuiModule,
+    demo_app::scene::Scene
+};
 
 pub struct StatsGui;
 
 impl GuiModule<Scene> for StatsGui {
-    fn gui(&mut self, scene: &mut Scene, ui: &mut egui::Ui) {
-        let mut statistics_guard = profiler::STATISTICS.lock();
+    fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
+        egui::Window::new("Statistics").show(egui_ctx, |ui| {
+            let mut statistics_guard = profiler::STATISTICS.lock();
             let Some(statistics) = statistics_guard.as_mut() else { return; };
             
             // searchbar
@@ -52,7 +56,7 @@ impl GuiModule<Scene> for StatsGui {
                                 if ui.button("★").clicked() {
                                     to_unpin = Some(name);
                                 }
-                             });
+                                });
                             row.col(|ui| { ui.label(name); });
                             row.col(|ui| { ui.label(format!("{:?}", stats.latest())); });
                             row.col(|ui| { ui.label(format!("{:?}", stats.average())); });
@@ -74,7 +78,7 @@ impl GuiModule<Scene> for StatsGui {
                                 if ui.button("☆").clicked() {
                                     to_pin = Some(name);
                                 }
-                             });
+                                });
                             row.col(|ui| { ui.label(name); });
                             row.col(|ui| { ui.label(format!("{:?}", stats.latest())); });
                             row.col(|ui| { ui.label(format!("{:?}", stats.average())); });
@@ -90,5 +94,6 @@ impl GuiModule<Scene> for StatsGui {
             if let Some(name) = to_unpin {
                 statistics.unpin(name);
             }
+        });
     }
 }

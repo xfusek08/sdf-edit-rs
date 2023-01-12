@@ -76,21 +76,6 @@ impl Shape {
         }
     }
     
-    fn generate_flat_edits_recursive(shape: &Shape, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
-        match shape {
-            Shape::Primitive(primitive) => {
-                Self::add_primitive_to_list(primitive, target_list, transform, operation, blending);
-            },
-            Shape::Composite(children) => {
-                Self::add_children_to_list(children, target_list, transform, operation, blending);
-            },
-            Shape::PrimitiveComposite((primitive, children)) => {
-                Self::add_primitive_to_list(primitive, target_list, transform.clone(), operation.clone(), blending);
-                Self::add_children_to_list(children, target_list, transform.clone(), operation.clone(), blending);
-            },
-        }
-    }
-    
     fn add_primitive_to_list(primitive: &Primitive, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
         target_list.push(Edit { primitive: primitive.clone(), operation, transform, blending });
     }
@@ -106,4 +91,20 @@ impl Shape {
             );
         }
     }
+    
+    fn generate_flat_edits_recursive(shape: &Shape, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
+        match shape {
+            Shape::Primitive(primitive) => {
+                Self::add_primitive_to_list(primitive, target_list, transform, operation, blending);
+            },
+            Shape::Composite(children) => {
+                Self::add_children_to_list(children, target_list, transform, operation, blending);
+            },
+            Shape::PrimitiveComposite((primitive, children)) => {
+                Self::add_primitive_to_list(primitive, target_list, transform.clone(), operation.clone(), blending);
+                Self::add_children_to_list(children, target_list, transform.clone(), operation.clone(), blending);
+            },
+        }
+    }
+    
 }

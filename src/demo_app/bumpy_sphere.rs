@@ -25,7 +25,7 @@ fn spiral_bumps_on_sphere(number_of_bumps: u32, number_of_wraps: u32, bump_radiu
 pub fn bumpy_sphere() -> Shape {
     let result = Shape::sphere(1.0)
         .subtract(
-            spiral_bumps_on_sphere(600, 20, 0.1, 1.0),
+            spiral_bumps_on_sphere(300, 10, 0.1, 1.0),
             Transform::IDENTITY,
             0.3
         );

@@ -8,17 +8,22 @@ use crate::framework::updater::{
     AfterRenderContext
 };
 
-use super::{GuiDataToRender, GuiModule};
+use super::{GuiDataToRender};
 
+/// Module that runs GUI
+
+pub trait GuiModule<Scene> {
+    fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context);
+}
+
+/// Updater module for GUI running gui modules passed to constructor.
 pub struct GuiUpdateModule<Scene> {
     modules: Vec<Box<dyn GuiModule<Scene>>>,
 }
 
 impl<Scene> GuiUpdateModule<Scene> {
     pub fn new(modules: Vec<Box<dyn GuiModule<Scene>>>) -> Self {
-        Self {
-            modules,
-        }
+        Self { modules }
     }
 }
 
@@ -45,14 +50,9 @@ impl<Scene> UpdaterModule<Scene> for GuiUpdateModule<Scene>
             shapes,
         } = profiler::call!(
             gui.egui_ctx.run(raw_input, |egui_ctx| {
-                // egui Window
-                egui::Window::new("GUI Modules")
-                    .default_pos(egui::Pos2::new(0.0, 0.0))
-                    .show(egui_ctx, |ui| {
-                        for module in self.modules.iter_mut() {
-                            module.gui(scene, ui);
-                        }
-                    });
+                for module in self.modules.iter_mut() {
+                    module.gui(scene, egui_ctx);
+                }
             })
         );
         
