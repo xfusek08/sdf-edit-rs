@@ -12,13 +12,13 @@ pub enum Shape {
 
 #[derive(Debug)]
 pub struct ShapeRecord {
-    shape:     Shape,
-    operation: Operation,
-    transform: Transform,
-    blending:  f32,
+    pub shape:     Shape,
+    pub operation: Operation,
+    pub transform: Transform,
+    pub blending:  f32,
 }
 
-// factories
+// API - Factories shortcuts
 impl Shape {
     pub fn empty() -> Self                                                   { Shape::Composite(vec![]) }
     pub fn sphere(radius: f32) -> Self                                       { Shape::Primitive(Primitive::Sphere { radius }) }
@@ -27,6 +27,13 @@ impl Shape {
     pub fn torus(inner_radius: f32, outer_radius: f32) -> Self               { Shape::Primitive(Primitive::Torus { inner_radius, outer_radius }) }
     pub fn cone(base_radius: f32) -> Self                                    { Shape::Primitive(Primitive::Cone { base_radius }) }
     pub fn capsule(top_radius: f32, bottom_radius: f32, height: f32) -> Self { Shape::Primitive(Primitive::Capsule { top_radius, bottom_radius, height }) }
+}
+
+// API - Default
+impl Default for Shape {
+    fn default() -> Self {
+        Self::empty()
+    }
 }
 
 // API - Construction Geometry
@@ -57,7 +64,7 @@ impl Shape {
     }
 }
 
-// private
+// Private
 impl Shape {
     #[inline]
     fn add_child_operation(mut self, operation: Operation, shape: Shape, transform: Transform, blending: f32) -> Self {

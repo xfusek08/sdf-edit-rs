@@ -43,6 +43,24 @@ struct InstanceInput {
 @group(1) @binding(2) var<storage, read> brick_count:          atomic<u32>; // Number of bricks in brick texture, use to atomically add new bricks
 @group(1) @binding(3) var<uniform>       brick_pool_side_size: u32;         // Number of bricks in one side of the brick atlas texture
 
+let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
+let HEADER_HAS_BRICK_FLAG = 0x40000000u;
+
+struct NodeHeader {
+    has_brick: u32,
+    is_subdivided: u32,
+    tile_index: u32,
+}
+
+fn deconstruct_node_header(node_header: u32) -> NodeHeader {
+    return NodeHeader(
+        node_header & HEADER_HAS_BRICK_FLAG,
+        node_header & HEADER_SUBDIVIDED_FLAG,
+        node_header & HEADER_TILE_INDEX_MASK,
+    );
+}
+
 let M4_IDENTITY = mat4x4<f32>(
     vec4<f32>(1.0, 0.0, 0.0, 0.0),
     vec4<f32>(0.0, 1.0, 0.0, 0.0),
@@ -78,6 +96,11 @@ struct VertexOutput {
     @location(4) @interpolate(flat) brick_to_local_transform_2: vec4<f32>,
     @location(5) @interpolate(flat) brick_to_local_transform_3: vec4<f32>,
     @location(6) @interpolate(flat) brick_to_local_transform_4: vec4<f32>,
+    
+    // tmp
+    
+    @location(7) @interpolate(flat) has_brick: u32,
+    @location(8) @interpolate(flat) subdivided: u32,
 };
 
 fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
@@ -128,6 +151,21 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     out.brick_to_local_transform_2 = brick_to_local_transform[1];
     out.brick_to_local_transform_3 = brick_to_local_transform[2];
     out.brick_to_local_transform_4 = brick_to_local_transform[3];
+    
+    let header_data = deconstruct_node_header(node_headers[instance_input.node_index]);
+    
+    if header_data.has_brick != 0u {
+        out.has_brick = 1u;
+    } else {
+        out.has_brick = 0u;
+    }
+    
+    if header_data.is_subdivided != 0u {
+        out.subdivided = 1u;
+    } else {
+        out.subdivided = 0u;
+    }
+    
     return out;
 }
 
@@ -274,6 +312,20 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     
     var fragment_pos = (brick_to_local_transform * vec4<f32>(in.frag_pos, 1.0)).xyz;
     
+    if ((pc.show_flags & SHOW_SOLID) != 0u) {
+        var col = vec4<f32>(fragment_pos, 1.0);
+        if in.has_brick == 1u || in.subdivided == 1u {
+            var mix_in_color = vec4<f32>(
+                f32(in.has_brick),
+                f32(in.subdivided),
+                0.0,
+                1.0
+            );
+            col = mix(col, mix_in_color, 0.5);
+        }
+        return col;
+    }
+    
     let hit = ray_march(in, fragment_pos, brick_to_local_transform);
     
     if (pc.show_flags == 0u) {
@@ -290,9 +342,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
         if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
             color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
-        }
-        if ((pc.show_flags & SHOW_SOLID) != 0u) {
-            return vec4<f32>(fragment_pos, 1.0);
         }
         if (hit.hit) {
             return color;

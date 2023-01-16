@@ -77,6 +77,8 @@ impl KernelSVOLevel {
         self.context.is_some()
     }
     
+    
+    /// Returns next unevaluated level.
     #[profiler::function]
     pub fn evaluate_root(&mut self, gpu: &gpu::Context) -> svo::Level {
         let context = self.context.as_ref().expect("Kernel context is not set");
@@ -90,6 +92,7 @@ impl KernelSVOLevel {
         self.evaluate(gpu, 1, 0, assignment)
     }
     
+    /// Returns next unevaluated level.
     #[profiler::function]
     pub fn evaluate_level(&mut self, gpu: &gpu::Context, level: &svo::Level) -> svo::Level{
         let context = self.context.as_mut().expect("Kernel context is not set");
@@ -150,6 +153,7 @@ impl KernelSVOLevel {
         }
     }
     
+    /// Returns the next unevaluated level.
     fn evaluate(
         &mut self,
         gpu: &gpu::Context,
@@ -203,13 +207,11 @@ impl KernelSVOLevel {
             compute_pass.dispatch_workgroups(to_evaluate_node_count, 1, 1);
         }
         
-        { profiler::scope!("Level Evaluator: Drop Compute Pass");
-           drop(compute_pass);
-        }
+        // End compute pass to allow command encoder to be submitted
+        drop(compute_pass);
         
-        { profiler::scope!("Level Evaluator: Submit command encoder to queue");
-            gpu.queue.submit(Some(encoder.finish()));
-        }
+        // Submit command encoder to queue
+        gpu.queue.submit(Some(encoder.finish()));
         
         { profiler::scope!("Level Evaluator: Wait for queue to finish computation");
             gpu.device.poll(wgpu::Maintain::Wait);

@@ -1,47 +1,40 @@
 
-use crate::{
-    shape_builder::Shape,
-    demo_app::scene::Scene,
-    sdf::geometry::{EvaluationStatus, self},
-    framework::{math::Transform, gui::GuiModule},
-};
+use egui::{Layout, Align};
+use egui_extras::{TableBuilder, Column};
+use strum::IntoEnumIterator;
 
-#[derive(Clone, PartialEq)]
-struct GeometryDynamicData {
-    operation: geometry::Operation,
-    transform: Transform,
-    radius: f32,
-    blending: f32,
-}
+use crate::{
+    shape_builder::{Shape, ShapeRecord},
+    demo_app::scene::Scene,
+    sdf::geometry::{EvaluationStatus, Primitive, PrimitiveType, Operation},
+    framework::{math::Transform, gui::GuiModule}, warn,
+};
 
 /// This module controls first geometry in geometry pool
 /// It allow to add and control spheres in the geometry
+#[derive(Default)]
 pub struct DynamicTestGeometry {
-    geometry_dynamic_data: Vec<GeometryDynamicData>,
+    shape: Option<Shape>,
 }
 
 impl DynamicTestGeometry {
+    
     pub fn new() -> Self {
         Self {
-            geometry_dynamic_data: vec![],
+            shape: Some(Shape::default())
         }
     }
-
+    
     fn update_geometry(&self, scene: &mut Scene) {
+        // Replace first unit geometry in scene
         let Some((_, geometry)) = scene.geometry_pool.iter_mut().next() else {
+            warn!("DynamicTestGeometry::update_geometry called with no geometry");
             return;
         };
-        
-        let mut shape = Shape::empty();
-        
-        for geometry_dynamic_data in self.geometry_dynamic_data.iter() {
-            shape = match geometry_dynamic_data.operation {
-                geometry::Operation::Add      => shape.add(Shape::sphere(geometry_dynamic_data.radius), geometry_dynamic_data.transform.clone(), geometry_dynamic_data.blending),
-                geometry::Operation::Subtract => shape.subtract(Shape::sphere(geometry_dynamic_data.radius), geometry_dynamic_data.transform.clone(), geometry_dynamic_data.blending),
-                _ => shape,
-            }
-        }
-        
+        let Some(shape) = self.shape.as_ref() else {
+            warn!("DynamicTestGeometry::update_geometry called with no shape");
+            return;
+        };
         geometry.edits = shape.build();
         geometry.evaluation_status = EvaluationStatus::NeedsEvaluation;
     }
@@ -49,81 +42,209 @@ impl DynamicTestGeometry {
 
 impl GuiModule<Scene> for DynamicTestGeometry {
     fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
+        
+        let Some(mut shape) = self.shape.take() else {
+            return;
+        };
+        
+        // Obtain list of shapes
+        let shapes = match &mut shape {
+            Shape::Composite(a) => a,
+            _ => {
+                warn!("shape_composite_window_gui called on non-composite shape");
+                return;
+            },
+        };
+        
+        let mut changed = false;
+        let mut to_delete_indices: Vec<usize> = vec![];
+        let mut to_add: Vec<Shape> = vec![];
+        
+        // Open window for this shape composite
         egui::Window::new("Dynamic geometry").show(egui_ctx, |ui| {
-            let mut changed = false;
-            let mut to_delete_indices: Vec<usize> = vec![];
-            let mut to_add: Vec<GeometryDynamicData> = vec![];
-            
-            egui::CollapsingHeader::new("Dynamic Test Geometry")
-                .default_open(true)
-                .show(ui, |ui| {
-                    for (i, geometry_dynamic_data) in self.geometry_dynamic_data.iter_mut().enumerate() {
-                        let mut new_data = geometry_dynamic_data.clone();
+            TableBuilder::new(ui)
+                .cell_layout(Layout::left_to_right(Align::Center))
+                .column(Column::auto()) // Primitive
+                .column(Column::auto()) // Operation
+                .column(Column::auto()) // Position
+                .column(Column::auto()) // Rotation
+                .column(Column::auto()) // Blending
+                .column(Column::auto())// Dimensions
+                .column(Column::auto())// delete action
+                .header(20.0, |mut header| {
+                    header.col(|ui| { ui.strong("Primitive"); });
+                    header.col(|ui| { ui.strong("Operation"); });
+                    header.col(|ui| { ui.strong("Position"); });
+                    header.col(|ui| { ui.strong("Rotation"); });
+                    header.col(|ui| { ui.strong("Blending"); });
+                    header.col(|ui| { ui.strong("Dimensions"); });
+                })
+                .body(|mut body| {
+                    for (i, shape_record) in shapes.iter_mut().enumerate() {
                         
-                        ui.horizontal(|ui| {
-                            // operation
-                            ui.label("op:");
-                            egui::ComboBox::from_id_source(format!("{i}_op"))
-                                .width(20.0)
-                                .selected_text(match new_data.operation {
-                                    geometry::Operation::Add => "+".to_owned(),
-                                    geometry::Operation::Subtract => "-".to_owned(),
-                                    _ => "??".to_owned(),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(&mut new_data.operation, geometry::Operation::Add, "+");
-                                    ui.selectable_value(&mut new_data.operation, geometry::Operation::Subtract, "-");
-                                });
+                        // Deconstruct shape record
+                        let (
+                            primitive,
+                            operation,
+                            transform,
+                            blending,
+                        ) = match shape_record {
+                            ShapeRecord {
+                                shape: Shape::Primitive(p),
+                                operation: o,
+                                transform: t,
+                                blending: b,
+                                ..
+                            } => (p, o, t, b),
+                            _ => continue,
+                        };
+                        
+                        body.row(20.0, |mut row| {
+                        
+                            // Primitive selector
+                            row.col(|ui| {
+                                let mut p_type = primitive.as_type();
+                                primitive_type_sector_ui(format!("{i}_prim"), ui, &mut p_type);
+                                if p_type != primitive.as_type() {
+                                    *primitive = Primitive::from_type(p_type);
+                                    changed = true;
+                                }
+                            });
                             
-                            // x integer input
-                            ui.label("position:");
-                            ui.add(egui::DragValue::new(&mut new_data.transform.position.x).speed(0.01));
-                            ui.add(egui::DragValue::new(&mut new_data.transform.position.y).speed(0.01));
-                            ui.add(egui::DragValue::new(&mut new_data.transform.position.z).speed(0.01));
+                            // Operation selector
+                            row.col(|ui| {
+                                let mut op = operation.clone();
+                                operation_sector_ui(format!("{i}_op"), ui, &mut op);
+                                if op != *operation {
+                                    *operation = op;
+                                    changed = true;
+                                }
+                            });
                             
-                            // radius
-                            ui.label("radius:");
-                            ui.add(egui::DragValue::new(&mut new_data.radius).speed(0.01).clamp_range(0.01..=1.0));
+                            // Position
+                            row.col(|ui| {
+                                let pos = transform.position.clone();
+                                ui.add(egui::DragValue::new(&mut transform.position.x).speed(0.01).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut transform.position.y).speed(0.01).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut transform.position.z).speed(0.01).max_decimals(3).min_decimals(3));
+                                changed = changed || pos != transform.position;
+                            });
                             
-                            // blending
-                            ui.label("blending:");
-                            ui.add(egui::DragValue::new(&mut new_data.blending).speed(0.01).clamp_range(0.0..=1.0));
+                            // Rotation
+                            row.col(|ui| {
+                                let mut rot = transform.rotation.to_euler(glam::EulerRot::XYZ);
+                                ui.add(egui::DragValue::new(&mut rot.0).speed(0.01).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut rot.1).speed(0.01).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut rot.2).speed(0.01).max_decimals(3).min_decimals(3));
+                                if rot != transform.rotation.to_euler(glam::EulerRot::XYZ) {
+                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, rot.0, rot.1, rot.2);
+                                    changed = true;
+                                }
+                            });
+                            
+                            // Blending
+                            row.col(|ui| {
+                                let b = *blending;
+                                ui.add(egui::DragValue::new(blending).speed(0.01).max_decimals(3).min_decimals(3).clamp_range(0.0..=1.0));
+                                changed = changed || b != *blending;
+                            });
+                            
+                            // Dimensions
+                            row.col(|ui| {
+                                let dimensions: glam::Vec4 = primitive.dimensions().into();
+                                match primitive {
+                                    Primitive::Sphere { radius } => {
+                                        ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                    Primitive::Cube { width, height, depth } => {
+                                        ui.add(egui::DragValue::new(width).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(depth).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                    Primitive::Cylinder { radius, height } => {
+                                        ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                    Primitive::Torus { inner_radius, outer_radius } => {
+                                        ui.add(egui::DragValue::new(inner_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(outer_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                    Primitive::Cone { base_radius } => {
+                                        ui.add(egui::DragValue::new(base_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                    Primitive::Capsule { top_radius, bottom_radius, height } => {
+                                        ui.add(egui::DragValue::new(top_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(bottom_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
+                                    },
+                                }
+                                changed = changed || dimensions != primitive.dimensions().into();
+                            });
                             
                             // delete button with gray x emoji
-                            if ui.button("✖").clicked() {
-                                to_delete_indices.push(i);
-                            }
-                        });
-                        
-                        if new_data != *geometry_dynamic_data {
-                            *geometry_dynamic_data = new_data;
-                            changed = true;
-                        }
-                    }
-                    // add button with plus emoji
-                    if ui.button("➕").clicked() {
-                        to_add.push(GeometryDynamicData {
-                            operation: geometry::Operation::Add,
-                            transform: Transform::default(),
-                            radius: 0.2,
-                            blending: 0.0,
-                        });
-                    }
-                });
-            
-            for i in to_delete_indices.drain(..) {
-                self.geometry_dynamic_data.remove(i);
-                changed = true;
-            }
-            
-            for geometry_dynamic_data in to_add.drain(..) {
-                self.geometry_dynamic_data.push(geometry_dynamic_data);
-                changed = true;
-            }
-            
-            if changed {
-                self.update_geometry(scene);
+                            row.col(|ui| {
+                                if ui.button("✖").clicked() {
+                                    to_delete_indices.push(i);
+                                }
+                            });
+                            
+                        }); // row
+                    } // for shape record
+                }); // table builder body
+                
+                // Add button
+                if ui.button("➕").clicked() {
+                    to_add.push(Shape::sphere(0.5));
+                }
+        }); // window end
+        
+        for i in to_delete_indices.drain(..) {
+            shapes.remove(i);
+            changed = true;
+        }
+        
+        for new_child in to_add.drain(..) {
+            shape = shape.add(new_child, Transform::default(), 0.0);
+            changed = true;
+        }
+        
+        self.shape = Some(shape);
+        
+        if changed {
+            self.update_geometry(scene);
+        }
+    }
+}
+
+/// A simple combo box for selecting a primitive type.
+/// - `id` is used to uniquely identify the combo box.
+/// - `ui` is the ui to draw the combo box in.
+/// - `p_type` is the primitive type to select and might be changed after the function returns.
+fn primitive_type_sector_ui(id: impl std::hash::Hash, ui: &mut egui::Ui, p_type: &mut PrimitiveType) {
+    egui::ComboBox::from_id_source(id)
+        .width(20.0)
+        .selected_text(p_type.as_ref())
+        .show_ui(ui, |ui| {
+            for t in PrimitiveType::iter() {
+                ui.selectable_value(p_type, t.clone(), t.as_ref());
             }
         });
-    }
+}
+
+/// A simple combo box for selecting an operation.
+/// - `id` is used to uniquely identify the combo box.
+/// - `ui` is the ui to draw the combo box in.
+/// - `operation` is the operation to select and might be changed after the function returns.
+fn operation_sector_ui(id: impl std::hash::Hash, ui: &mut egui::Ui, operation: &mut Operation) {
+    egui::ComboBox::from_id_source(id)
+        .width(20.0)
+        .selected_text(match operation {
+            Operation::Add => "+".to_owned(),
+            Operation::Subtract => "-".to_owned(),
+            _ => "??".to_owned(),
+        })
+        .show_ui(ui, |ui| {
+            ui.selectable_value(operation, Operation::Add, "+");
+            ui.selectable_value(operation, Operation::Subtract, "-");
+        });
 }

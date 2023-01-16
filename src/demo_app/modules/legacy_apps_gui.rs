@@ -45,25 +45,45 @@ impl GuiModule<Scene> for LegacyAppsGui {
                 ui.label("TMP SVO Stats");
                 for (geometry_id, geometry) in scene.geometry_pool.iter() {
                     let id = format!("{:?}", geometry_id);
-                    ui.label(format!("Geometry: {}", id));
-                    ui.label("SVO:");
-                    if let Some(svo) = geometry.svo.as_ref() {
-                        egui::Grid::new(&id)
-                            .num_columns(2)
-                            .show(ui, |ui| {
-                                let levels = svo.levels.len() as u32;
-                                ui.label(format!("/ {}", levels - 1));
-                                ui.end_row();
-                                ui.label("Svo Node Count:");
-                                ui.label(format!("{:?}", svo.node_pool.count()));
-                                ui.end_row();
-                                ui.label("Svo Level Count:");
-                                ui.label(format!("{}", svo.levels.len()));
-                                ui.end_row();
-                                ui.label("Svo Capacity:");
-                                ui.label(format!("{:?}", svo.node_pool.capacity()));
+                    egui::CollapsingHeader::new(format!("Geometry: {}", id)).show(ui, |ui| {
+                        if let Some(svo) = geometry.svo.as_ref() {
+                            egui::Grid::new(&id)
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    ui.label(format!("Levels:"));
+                                    ui.label(format!("{}", svo.levels.len()));
+                                    ui.end_row();
+                                    ui.label(format!("Node Count:"));
+                                    ui.label(format!("{}", svo.node_pool.count().unwrap_or(0)));
+                                    ui.end_row();
+                                    ui.label(format!("Level Count:"));
+                                    ui.label(format!("{}", svo.levels.len()));
+                                    ui.end_row();
+                                    ui.label(format!("Capacity:"));
+                                    ui.label(format!("{}", svo.node_pool.capacity()));
+                                    ui.end_row();
+                                });
+                            
+                            egui::CollapsingHeader::new("Levels").show(ui, |ui| {
+                                egui::Grid::new(&id)
+                                    .num_columns(4)
+                                    .show(ui, |ui| {
+                                        ui.label(format!("Level"));
+                                        ui.label(format!("Start"));
+                                        ui.label(format!("Count"));
+                                        ui.label(format!("Total count"));
+                                        ui.end_row();
+                                        for (level_index, level) in svo.levels.iter().enumerate() {
+                                            ui.label(format!("{}", level_index));
+                                            ui.label(format!("{}", level.start_index));
+                                            ui.label(format!("{}", level.node_count));
+                                            ui.label(format!("{}", level.start_index + level.node_count));
+                                            ui.end_row();
+                                        }
+                                    });
                             });
-                    }
+                        }
+                    });
                 }
                 
                 egui::CollapsingHeader::new("Display Toggles").show(ui, |ui| {

@@ -68,7 +68,7 @@ impl Evaluator {
             svo::Svo::new(&self.gpu, svo::Capacity::Depth(5))
         });
         
-        // Prepare leven evaluation kernel for this run
+        // Prepare level evaluation kernel for this run
         let level_kernel = &mut self.level_evaluation_kernel;
         level_kernel.set_context(
             EvaluationContext::new(&self.gpu, svo, edits),
@@ -96,12 +96,13 @@ impl Evaluator {
         
         // Retrieve svo from kernel
         let EvaluationContext  { mut svo, .. } = level_kernel.take_context().expect("Fatal error: KernelSVOLevel did not return an svo");
-        
+                
         // Update SVO to reflect changes
         svo.levels = levels;
         svo.domain = domain;
         svo.node_pool.buffers_changed();
         svo.node_pool.load_count(&self.gpu);
+        // svo.node_pool.trim_overflowing_levels(&self.gpu);
         
         // Store svo back in geometry
         geometry.svo = Some(svo);

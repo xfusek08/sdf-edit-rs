@@ -4,7 +4,7 @@ use slotmap::{new_key_type, SlotMap};
 
 use crate::{sdf::svo::Svo, framework::math::AABB};
 
-use super::Edit;
+use super::{Edit, Operation};
 
 
 // ============================================================================================
@@ -87,9 +87,9 @@ impl Geometry {
             return AABB::ZERO;
         };
         let mut aabb = first_edit.aabb();
-        for edit in edit_iter {
-            aabb = aabb.add(&edit.aabb());
-        }
+        edit_iter
+            .filter(|e| e.operation == Operation::Add)
+            .for_each(|e| aabb = aabb.add(&e.aabb()));
         aabb
     }
     

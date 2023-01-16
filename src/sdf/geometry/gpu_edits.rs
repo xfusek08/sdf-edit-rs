@@ -1,4 +1,4 @@
-use crate::framework::{math::{AABBAligned, Transform}, gpu};
+use crate::framework::{math::AABBAligned, gpu};
 
 use super::{Operation, Primitive, Edit};
 

@@ -181,10 +181,10 @@ fn sd_shpere(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 
 fn sd_cube(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     let p = transform_pos(edit_data, position);
-    let d = abs(p) - edit_data.dimensions.xyz + edit.blending;
+    let d = abs(p) - edit_data.dimensions.xyz + edit_data.dimensions.w;
     let e = length(max(d, vec3(0.0)));
     let i = min(max(d.x, max(d.y, d.z)), 0.0);
-    return e + i - edit.blending;
+    return e + i - edit_data.dimensions.w;
 }
 
 fn sd_cylinder(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
@@ -228,25 +228,18 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
     var sdf_value = 1000000.0;
     for (var i = 0u; i < edit_count; i = i + 1u) {
         let aabb = edit_aabbs[i];
-        // let is_in_aabb = in_aabb(position, aabb);
-        // was_in_aabb = was_in_aabb || is_in_aabb;
-        // if (was_in_aabb && !is_in_aabb) {
-        //     continue;
-        // }
+        
         let edit = unpack_edit(edits[i]);
         let distance_to_primitive = distance_to_edit(position, edit, edit_data[i]);
-        
-        // 0.007 - 0.2 is empirically bes maximum smoothink coefficient for adding
-        let koefitient = clamp(edit.blending * 0.2, 0.007, 0.2) ;
         
         // TODO Use preprocessor because constant are not yet supported in naga
         switch (edit.operation) {
             // EDIT_OPERATION_ADD
-            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, koefitient); }
+            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, edit.blending); }
             // EDIT_OPERATION_SUBTRACT
-            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, koefitient); }
+            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, edit.blending); }
             // EDIT_OPERATION_INTERSECT
-            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, koefitient); }
+            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
             
             default: {} // to make naga happy
         }
@@ -370,11 +363,11 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
 // Node pool Tile management
 // =================================================================================================
 
-var<workgroup> tile_index_shared: u32;
-
 // Allocates a new tile and returns its index
+var<workgroup> tile_index_shared: u32;
 fn create_tile(in: ShaderInput) -> u32 {
     if (in.local_invocation_index == 0u) {
+        tile_index_shared = 0u;
         if (atomicLoad(&node_count) < node_pool_capacity - 8u) {
             // tile might still exceed node pool capacity
             let first_tile_node_index = atomicAdd(&node_count, 8u);
@@ -382,8 +375,7 @@ fn create_tile(in: ShaderInput) -> u32 {
                 tile_index_shared = first_tile_node_index >> 3u;
             } else {
                 // Refuse to initialize the tile becauase there is no more capacity node count increment has to be corrected.
-                tile_index_shared = 0u;
-                atomicSub(&node_count, 8u);
+                atomicSub(&node_count, 8u); // TODO: This will not be needed when trimming incomplete levels
             }
         }
     }
@@ -437,9 +429,9 @@ fn process_node(in: ShaderInput, node: Node) {
     if (brick_evalutaion_result.brick_type == BRICK_IS_BOUONDARY) {
         has_brick = 1u;
         if (brick_evalutaion_result.voxel_size > assigment.minium_voxel_size) {
-            is_subdivided = 1u;
             tile_index = create_tile(in);
             if (tile_index != 0u) {
+                is_subdivided = 1u;
                 initialize_tile(in, node, tile_index);
             }
         }

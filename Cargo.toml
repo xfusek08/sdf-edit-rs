@@ -34,6 +34,10 @@ hecs = "0.9.0"                                             # A simple minimal EC
 bitflags = "1.3.2"                                         # Bitflags to easily handle bitflags
 lazy_static = "1.4.0"                                      # To implement static values that are to be created only once or never when not used
 
+# Easily convert enums to strings
+strum = "0.24"
+strum_macros = "0.24"
+
 # GUI
 egui = "0.20.0"        # Immidiate mode gui library
 egui_extras = "0.20.0" # For tables

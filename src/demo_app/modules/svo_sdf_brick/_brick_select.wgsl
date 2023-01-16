@@ -116,16 +116,16 @@ fn main(in: ShaderInput) {
         let treshhold = 0.1 * pc.level_break_size;
         
         if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
-            return; // brick is empty
+            return; // No brick
         }
         if (projected_parent_size <=0.0 || project_me_size <= 0.0) {
-            return; // not possible
+            return; // Not possible
         }
         if (projected_parent_size < treshhold) {
-            return; // parent will be rendered
+            return; // Parent of this node will be rendered instead
         }
         if (project_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
-            return; // Node is too big to be rendered and has children
+            return; // Node is too big to be rendered and has children which will be rendered instead
         }
         let index = atomicAdd(&brick_count, 1u);
         brick_index_buffer[index] = node_id;
