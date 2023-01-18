@@ -195,6 +195,29 @@ fn sd_cylinder(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     return min(max(d.x, d.y), 0.0) + length(max(d, vec2(0.0))) - edit_data.dimensions[2];
 }
 
+fn sd_torus(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position);
+    let x = length(p.xz) - edit_data.dimensions[0];
+    return length(vec2(x, p.y)) - edit_data.dimensions[1];
+}
+
+fn sd_cone(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position) - vec3(0.0, edit_data.dimensions[1], 0.0);
+    let c = vec2(edit_data.dimensions[1], edit_data.dimensions[0]);
+    let h = edit_data.dimensions[1] * 2.0;
+    let q = length(p.xz);
+    return max(dot(c, vec2(q, p.y)), -h - p.y);
+}
+
+fn sd_capsule(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
+    let p = transform_pos(edit_data, position);
+    let h = edit_data.dimensions[1];
+    let r = edit_data.dimensions[0];
+    let p = p + vec3(0.0, h * 0.5, 0.0);
+    let p = p - vec3(0.0, clamp(p.y, 0.0, h), 0.0);
+    return length(p) - r;
+}
+
 fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
     let h = clamp(0.5 + 0.5 * (dist2 - dist1) / koeficient, 0.0, 1.0);
     return mix(dist2, dist1, h) - koeficient * h * (1.0 - h);
@@ -215,7 +238,12 @@ fn distance_to_edit(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32
         case 1u: { return sd_cube(position, edit, edit_data); }
          // EDIT_PRIMITIVE_CYLINDER
         case 2u: { return sd_cylinder(position, edit, edit_data); }
-        
+        // EDIT_PRIMITIVE_TORUS
+        case 3u: { return sd_torus(position, edit, edit_data); }
+        // EDIT_PRIMITIVE_CONE
+        case 4u: { return sd_cone(position, edit, edit_data); }
+        // EDIT_PRIMITIVE_CAPSULE
+        case 5u: { return sd_capsule(position, edit, edit_data); }
         // Default to make the compiler happy
         default: {
             return 1000000.0;
@@ -290,7 +318,7 @@ fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     // TODO: use max-norm for evaluating this
     let sqrt_3 = 1.7320508075688772935274463415059;
     // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.6;
-    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3);
+    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 1.5;
     return abs(dinstance) < voxel_bounding_spehere_radius;
 }
 

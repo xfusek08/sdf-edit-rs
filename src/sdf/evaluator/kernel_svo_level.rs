@@ -147,7 +147,7 @@ impl KernelSVOLevel {
                 entry_point: "main",
                 module: &gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("SVO Evaluator Compute Shader Module"),
-                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("kernel_svo_level.wgsl"))),
+                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("_kernel_svo_level.wgsl"))),
                 }),
             })
         }

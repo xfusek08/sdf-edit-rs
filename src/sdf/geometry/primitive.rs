@@ -21,8 +21,8 @@ pub enum Primitive {
     Cube     { width: f32, height: f32, depth: f32 },
     Cylinder { radius: f32, height: f32 },
     Torus    { inner_radius: f32, outer_radius: f32 },
-    Cone     { base_radius: f32 },
-    Capsule  { top_radius: f32, bottom_radius: f32, height: f32 },
+    Cone     { base_radius: f32, height: f32 },
+    Capsule  { radius: f32, height: f32 },
 }
 
 
@@ -31,9 +31,9 @@ impl Primitive {
     pub fn default_sphere()   -> Self { Primitive::Sphere   { radius: 1.0 } }
     pub fn default_cube()     -> Self { Primitive::Cube     { width: 1.0, height: 1.0, depth: 1.0 } }
     pub fn default_cylinder() -> Self { Primitive::Cylinder { radius: 1.0, height: 1.0 } }
-    pub fn default_torus()    -> Self { Primitive::Torus    { inner_radius: 0.5, outer_radius: 1.0 } }
-    pub fn default_cone()     -> Self { Primitive::Cone     { base_radius: 1.0 } }
-    pub fn default_capsule()  -> Self { Primitive::Capsule  { top_radius: 1.0, bottom_radius: 1.0, height: 1.0 } }
+    pub fn default_torus()    -> Self { Primitive::Torus    { inner_radius: 0.8, outer_radius: 0.2 } }
+    pub fn default_cone()     -> Self { Primitive::Cone     { base_radius: 0.5, height: 1.0 } }
+    pub fn default_capsule()  -> Self { Primitive::Capsule  { radius: 0.5, height: 1.0 } }
     
     pub fn from_type(p_type: PrimitiveType) -> Primitive {
         match p_type {
@@ -63,8 +63,8 @@ impl Primitive {
             Primitive::Cube     { width, height, depth } => [*width, *height, *depth, 0.0],
             Primitive::Cylinder { radius, height } => [*radius, *height, 0.0, 0.0],
             Primitive::Torus    { inner_radius, outer_radius } => [*inner_radius, *outer_radius, 0.0, 0.0],
-            Primitive::Cone     { base_radius } => [*base_radius, 0.0, 0.0, 0.0],
-            Primitive::Capsule  { top_radius, bottom_radius, height } => [*top_radius, *bottom_radius, *height, 0.0],
+            Primitive::Cone     { base_radius, height } => [*base_radius, *height, 0.0, 0.0],
+            Primitive::Capsule  { radius, height } => [*radius, *height, 0.0, 0.0],
         }
     }
     
@@ -72,28 +72,28 @@ impl Primitive {
     pub fn aabb(&self) -> AABB {
         match self {
             Primitive::Sphere { radius } => AABB::new(
-                glam::Vec3::splat(-radius.clone()),
-                glam::Vec3::splat(radius.clone())
+                glam::Vec3::splat(-radius),
+                glam::Vec3::splat(*radius)
             ),
             Primitive::Cube { width, height, depth } => AABB::new(
-                glam::Vec3::new(-width.clone(), -height.clone(), -depth.clone()),
-                glam::Vec3::new(width.clone(), height.clone(), depth.clone())
+                glam::Vec3::new(-width, -height, -depth),
+                glam::Vec3::new(*width, *height, *depth)
             ),
             Primitive::Cylinder { radius, height } => AABB::new(
-                glam::Vec3::new(-radius.clone(), -height.clone(), -radius.clone()),
-                glam::Vec3::new(radius.clone(), height.clone(), radius.clone())
+                glam::Vec3::new(-radius, -height, -radius),
+                glam::Vec3::new(*radius, *height, *radius)
             ),
             Primitive::Torus { inner_radius, outer_radius } => AABB::new(
-                glam::Vec3::new(-outer_radius.clone(), -outer_radius.clone(), -inner_radius.clone()),
-                glam::Vec3::new(outer_radius.clone(), outer_radius.clone(), inner_radius.clone())
+                glam::Vec3::new(-inner_radius -outer_radius, -outer_radius, -inner_radius - outer_radius),
+                glam::Vec3::new(inner_radius + outer_radius, *outer_radius, inner_radius + outer_radius)
             ),
-            Primitive::Cone { base_radius } => AABB::new(
-                glam::Vec3::new(-base_radius.clone(), 0.0, -base_radius.clone()),
-                glam::Vec3::new(base_radius.clone(), 1.0, base_radius.clone())
+            Primitive::Cone { base_radius, height } => AABB::new(
+                glam::Vec3::new(-base_radius * 2.0, -height, -base_radius * 2.0),
+                glam::Vec3::new(base_radius * 2.0, *height, base_radius * 2.0)
             ),
-            Primitive::Capsule { top_radius, bottom_radius, height } => AABB::new(
-                glam::Vec3::new(-top_radius.clone(), -height.clone(), -bottom_radius.clone()),
-                glam::Vec3::new(top_radius.clone(), height.clone(), bottom_radius.clone())
+            Primitive::Capsule { radius, height } => AABB::new(
+                glam::Vec3::new(-radius, -height - radius, -radius),
+                glam::Vec3::new(*radius, height + radius, *radius)
             ),
         }
     }

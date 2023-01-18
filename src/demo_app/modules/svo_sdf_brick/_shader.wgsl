@@ -98,9 +98,8 @@ struct VertexOutput {
     @location(6) @interpolate(flat) brick_to_local_transform_4: vec4<f32>,
     
     // tmp
-    
-    @location(7) @interpolate(flat) has_brick: u32,
-    @location(8) @interpolate(flat) subdivided: u32,
+    @location(7) @interpolate(flat) subdivided: u32,
+    // end tmp
 };
 
 fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
@@ -120,18 +119,18 @@ fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
 fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOutput {
     var out: VertexOutput;
     
-    var node_vertex = vec4<f32>(0.0, 0.0, 0.0, 1.0);
-    out.brick_shift = vec3<f32>(0.0, 0.0, 0.0);
+    // values for root node display
+    var node_vertex = pc.domain;
+    out.brick_shift = vec3<f32>(pc.brick_voxel_size);
     
+    // Set values for non-root nodes
     // TODO maybe make a directive in preprocessor and make two versions of the shader
     if ((pc.show_flags & JUST_ROOT) == 0u) {
         node_vertex = node_vertices[instance_input.node_index];
-        
         node_vertex = vec4<f32>(
             (node_vertex.xyz * pc.domain.w) + pc.domain.xyz,
             node_vertex.w * pc.domain.w,
         );
-        
         out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
     }
     
@@ -154,17 +153,13 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     
     let header_data = deconstruct_node_header(node_headers[instance_input.node_index]);
     
-    if header_data.has_brick != 0u {
-        out.has_brick = 1u;
-    } else {
-        out.has_brick = 0u;
-    }
-    
+    // tmp
     if header_data.is_subdivided != 0u {
         out.subdivided = 1u;
     } else {
         out.subdivided = 0u;
     }
+    // end tmp
     
     return out;
 }
@@ -312,27 +307,20 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     
     var fragment_pos = (brick_to_local_transform * vec4<f32>(in.frag_pos, 1.0)).xyz;
     
+    // Solid brick rendering
     if ((pc.show_flags & SHOW_SOLID) != 0u) {
         var col = vec4<f32>(fragment_pos, 1.0);
-        if in.has_brick == 1u || in.subdivided == 1u {
-            var mix_in_color = vec4<f32>(
-                f32(in.has_brick),
-                f32(in.subdivided),
-                0.0,
-                1.0
-            );
-            col = mix(col, mix_in_color, 0.5);
+        if in.subdivided == 1u {
+            col = mix(col, vec4<f32>(1.0, 1.0, 0.0, 1.0), 0.5);
         }
         return col;
     }
     
+    // Run interior brick raymarching
     let hit = ray_march(in, fragment_pos, brick_to_local_transform);
     
-    if (pc.show_flags == 0u) {
-        if (hit.hit) {
-            return hit.color;
-        }
-    } else {
+    // calculate color on hit
+    if (hit.hit) {
         var color = hit.color;
         if ((pc.show_flags & SHOW_DEPTH) != 0u) {
             color = mix(color, vec4<f32>(1.0, 0.0, 0.0, 1.0), hit.distance / hit.max_distance);
@@ -343,9 +331,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
             color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
         }
-        if (hit.hit) {
-            return color;
-        }
+        return color;
     }
+    
     discard;
 }

@@ -169,12 +169,12 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                         ui.add(egui::DragValue::new(inner_radius).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(outer_radius).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
-                                    Primitive::Cone { base_radius } => {
+                                    Primitive::Cone { base_radius, height } => {
                                         ui.add(egui::DragValue::new(base_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
-                                    Primitive::Capsule { top_radius, bottom_radius, height } => {
-                                        ui.add(egui::DragValue::new(top_radius).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(bottom_radius).speed(0.01).max_decimals(3).min_decimals(3));
+                                    Primitive::Capsule { radius, height } => {
+                                        ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
                                 }

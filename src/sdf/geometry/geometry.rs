@@ -90,6 +90,7 @@ impl Geometry {
         edit_iter
             .filter(|e| e.operation == Operation::Add)
             .for_each(|e| aabb = aabb.add(&e.aabb()));
+        // dbg!(&aabb);
         aabb
     }
     

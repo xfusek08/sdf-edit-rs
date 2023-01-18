@@ -1,9 +1,7 @@
 
-use crate::warn;
-
 use super::{BoundingCube, Transform};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AABB {
     pub min: glam::Vec3,
     pub max: glam::Vec3,
@@ -42,9 +40,9 @@ impl AABB {
     }
     
     #[inline]
-    pub fn rotate(&mut self, rotation: &glam::Quat) {
+    pub fn rotate(&self, rotation: &glam::Quat) -> Self {
         if rotation.is_near_identity() {
-            return;
+            return self.clone();
         }
         
         // create 8 vertices of an aabb and rotate them, then create a new aabb from the rotated vertices
@@ -65,27 +63,39 @@ impl AABB {
             min = min.min(rotated_vertex);
             max = max.max(rotated_vertex);
         }
-        self.min = min;
-        self.max = max;
+        Self { min, max }
     }
     
     #[inline]
-    pub fn translate(&mut self, translation: &glam::Vec3) {
-        self.min += *translation;
-        self.max += *translation;
+    pub fn translate(&self, translation: &glam::Vec3) -> Self {
+        Self {
+            min: self.min + *translation,
+            max: self.max + *translation,
+        }
     }
     
     #[inline]
-    pub fn scale(&mut self, scale: &glam::Vec3) {
-        self.min *= *scale;
-        self.max *= *scale;
+    pub fn scale(&self, scale: &glam::Vec3) -> Self {
+        Self {
+            min: self.min * *scale,
+            max: self.max * *scale,
+        }
     }
     
     #[inline]
-    pub fn transform(&mut self, transform: &Transform) {
-        self.rotate(&transform.rotation);
-        self.translate(&transform.position);
-        self.scale(&transform.scale);
+    pub fn transform(&self, transform: &Transform) -> Self {
+        self
+            .rotate(&transform.rotation)
+            .translate(&transform.position)
+            .scale(&transform.scale)
+    }
+    
+    #[inline]
+    pub fn inflate(&self, amount: f32) -> Self {
+        Self {
+            min: self.min - glam::Vec3::splat(amount),
+            max: self.max + glam::Vec3::splat(amount),
+        }
     }
 }
 

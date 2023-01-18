@@ -13,8 +13,9 @@ pub struct Edit {
 
 impl Edit {
     pub fn aabb(&self) -> AABB {
-        let mut aabb = self.primitive.aabb();
-        aabb.transform(&self.transform);
-        aabb
+        self.primitive
+            .aabb()
+            .transform(&self.transform)
+            .inflate(0.05)
     }
 }

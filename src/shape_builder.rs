@@ -25,8 +25,8 @@ impl Shape {
     pub fn cube(width: f32, height: f32, depth: f32) -> Self                 { Shape::Primitive(Primitive::Cube { width, height, depth }) }
     pub fn cylinder(radius: f32, height: f32) -> Self                        { Shape::Primitive(Primitive::Cylinder { radius, height }) }
     pub fn torus(inner_radius: f32, outer_radius: f32) -> Self               { Shape::Primitive(Primitive::Torus { inner_radius, outer_radius }) }
-    pub fn cone(base_radius: f32) -> Self                                    { Shape::Primitive(Primitive::Cone { base_radius }) }
-    pub fn capsule(top_radius: f32, bottom_radius: f32, height: f32) -> Self { Shape::Primitive(Primitive::Capsule { top_radius, bottom_radius, height }) }
+    pub fn cone(base_radius: f32, height: f32) -> Self                       { Shape::Primitive(Primitive::Cone { base_radius, height }) }
+    pub fn capsule(radius: f32, height: f32) -> Self                         { Shape::Primitive(Primitive::Capsule { radius, height }) }
 }
 
 // API - Default

@@ -60,7 +60,11 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.brick_level_break_size);
         
         // --------------------
-        self.brick_instances.load_count(&context.gpu); // TODO: this will not be needed when we will use indirect draw
+        let cnt = {
+            profiler::scope!("BrickInstances::load_count", pinned);
+            self.brick_instances.load_count(&context.gpu) // TODO: (SLOW) this will not be needed when we will use indirect draw
+        };
+        dbg!(cnt);
         // --------------------
         
         self.pipeline.set_svo(&context.gpu, svo);

@@ -184,8 +184,8 @@ impl SvoSDFBrickPipeline {
             ..self.push_constants
         };
         
-        // if no bricks are in brick instance buffer, render root
-        if instance_count == 0 {
+        // if there are less than 8 instances, we can just render the root node
+        if instance_count < 8 {
             pc.display_options |= DisplayOptions::JUST_ROOT;
         }
         
