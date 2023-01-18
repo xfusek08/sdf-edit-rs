@@ -181,7 +181,7 @@ fn sd_shpere(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 
 fn sd_cube(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     let p = transform_pos(edit_data, position);
-    let d = abs(p) - edit_data.dimensions.xyz + edit_data.dimensions.w;
+    let d = abs(p) - edit_data.dimensions.xyz * 0.5 + edit_data.dimensions.w;
     let e = length(max(d, vec3(0.0)));
     let i = min(max(d.x, max(d.y, d.z)), 0.0);
     return e + i - edit_data.dimensions.w;
@@ -189,8 +189,8 @@ fn sd_cube(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 
 fn sd_cylinder(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     let p = transform_pos(edit_data, position);
-    let w = edit_data.dimensions[0] - edit_data.dimensions[2];
-    let h = edit_data.dimensions[1] - edit_data.dimensions[2];
+    let w = edit_data.dimensions[0] * 0.5 - edit_data.dimensions[2];
+    let h = edit_data.dimensions[1] * 0.5 - edit_data.dimensions[2];
     let d = abs(vec2(length(p.xz), p.y)) - vec2(w, h);
     return min(max(d.x, d.y), 0.0) + length(max(d, vec2(0.0))) - edit_data.dimensions[2];
 }
@@ -202,9 +202,9 @@ fn sd_torus(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 }
 
 fn sd_cone(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
-    let p = transform_pos(edit_data, position) - vec3(0.0, edit_data.dimensions[1], 0.0);
-    let c = vec2(edit_data.dimensions[1], edit_data.dimensions[0]);
-    let h = edit_data.dimensions[1] * 2.0;
+    let h = edit_data.dimensions[1];
+    let p = transform_pos(edit_data, position) - vec3(0.0, h * 0.5, 0.0);
+    let c = vec2(h, edit_data.dimensions[0] * 0.5);
     let q = length(p.xz);
     return max(dot(c, vec2(q, p.y)), -h - p.y);
 }
