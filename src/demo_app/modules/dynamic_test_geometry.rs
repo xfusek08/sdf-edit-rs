@@ -43,27 +43,51 @@ impl DynamicTestGeometry {
 impl GuiModule<Scene> for DynamicTestGeometry {
     fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
         
-        let Some(mut shape) = self.shape.take() else {
-            return;
-        };
-        
-        // Obtain list of shapes
-        let shapes = match &mut shape {
-            Shape::Composite(a) => a,
-            _ => {
-                warn!("shape_composite_window_gui called on non-composite shape");
-                return;
-            },
-        };
-        
         let mut changed = false;
         let mut to_delete_indices: Vec<usize> = vec![];
         let mut to_add: Vec<Shape> = vec![];
         
         // Open window for this shape composite
         egui::Window::new("Dynamic geometry").show(egui_ctx, |ui| {
+            let Some(mut shape) = self.shape.take() else {
+                return;
+            };
+            
+            ui.horizontal(|ui| {
+                let fd = rfd::FileDialog::new().add_filter("json", &["json", "JSON"]);
+                    
+                if ui.button("Import").clicked() {
+                    if let Some(file_name) = fd.clone().pick_file() {
+                            if let Ok(new_shape) = Shape::load_store_edits(file_name) {
+                                shape = new_shape;
+                                changed = true;
+                            } else {
+                                warn!("Failed to load shape");
+                            }
+                        }
+                }
+                
+                if ui.button("Export").clicked() {
+                    if let Some(file_name) = fd.save_file() {
+                            if let Err(e) = shape.store_flat_edits(file_name) {
+                                warn!("Failed to save shape: {}", e);
+                            }
+                        }
+                }
+            });
+            
+            // Obtain list of shapes
+            let shapes = match &mut shape {
+                Shape::Composite(a) => a,
+                _ => {
+                    warn!("shape_composite_window_gui called on non-composite shape");
+                    return;
+                },
+            };
+            
             TableBuilder::new(ui)
                 .cell_layout(Layout::left_to_right(Align::Center))
+                .min_scrolled_height(0.0)
                 .column(Column::auto()) // Primitive
                 .column(Column::auto()) // Operation
                 .column(Column::auto()) // Position
@@ -132,12 +156,14 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             
                             // Rotation
                             row.col(|ui| {
-                                let mut rot = transform.rotation.to_euler(glam::EulerRot::XYZ);
-                                ui.add(egui::DragValue::new(&mut rot.0).speed(0.01).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut rot.1).speed(0.01).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut rot.2).speed(0.01).max_decimals(3).min_decimals(3));
-                                if rot != transform.rotation.to_euler(glam::EulerRot::XYZ) {
-                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, rot.0, rot.1, rot.2);
+                                let rot_euler = transform.rotation.to_euler(glam::EulerRot::XYZ);
+                                let mut rot_degrees = (rot_euler.0.to_degrees(), rot_euler.1.to_degrees(), rot_euler.2.to_degrees());
+                                ui.add(egui::DragValue::new(&mut rot_degrees.0).speed(0.1).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut rot_degrees.1).speed(0.1).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut rot_degrees.2).speed(0.1).max_decimals(3).min_decimals(3));
+                                let rot_euler = (rot_degrees.0.to_radians(), rot_degrees.1.to_radians(), rot_degrees.2.to_radians());
+                                if rot_euler != transform.rotation.to_euler(glam::EulerRot::XYZ) {
+                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, rot_euler.0, rot_euler.1, rot_euler.2);
                                     changed = true;
                                 }
                             });
@@ -196,19 +222,23 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                 if ui.button("➕").clicked() {
                     to_add.push(Shape::sphere(0.5));
                 }
+                
+                for i in to_delete_indices.drain(..) {
+                    shapes.remove(i);
+                    changed = true;
+                    if shapes.len() == 0 {
+                        to_add.push(Shape::sphere(0.5));
+                    }
+                }
+                
+                for new_child in to_add.drain(..) {
+                    shape = shape.add(new_child, Transform::default(), 0.0);
+                    changed = true;
+                }
+                
+                self.shape = Some(shape);
+                
         }); // window end
-        
-        for i in to_delete_indices.drain(..) {
-            shapes.remove(i);
-            changed = true;
-        }
-        
-        for new_child in to_add.drain(..) {
-            shape = shape.add(new_child, Transform::default(), 0.0);
-            changed = true;
-        }
-        
-        self.shape = Some(shape);
         
         if changed {
             self.update_geometry(scene);

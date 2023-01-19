@@ -1,4 +1,6 @@
 
+use std::{io::{Write, Read}, path::Path};
+
 use crate::{
     framework::math::Transform, sdf::geometry::{Primitive, Operation, Edit},
 };
@@ -61,6 +63,67 @@ impl Shape {
             0.0
         );
         result
+    }
+    
+    pub fn composite_from_edits(edits: Vec<Edit>) -> Self {
+        Shape::Composite(edits.into_iter().map(|edit| ShapeRecord {
+            shape:     Shape::Primitive(edit.primitive),
+            operation: edit.operation,
+            transform: edit.transform,
+            blending:  edit.blending
+        }).collect())
+    }
+    
+    pub fn store_flat_edits<P>(&self, file_name: P) -> Result<(), String>
+        where
+            P: AsRef<Path>
+    {
+        
+        // Serialize edits
+        let edits = self.build();
+        let str = match serde_json::to_string(&edits) {
+            Ok(str) => str,
+            Err(err) => return Err(format!("Failed to serialize edits: {}", err))
+        };
+        
+        // Create file
+        let mut file = match std::fs::File::create(file_name) {
+            Ok(file) => file,
+            Err(err) => return Err(format!("Failed to create file: {}", err))
+        };
+        
+        // Write to file
+        match file.write(str.as_bytes()) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(format!("Failed to write to file: {}", err))
+        }
+    }
+    
+    pub fn load_store_edits<P>(file_name: P) -> Result<Self, String>
+        where
+            P: AsRef<Path>
+    {
+        // Open file
+        let mut file = match std::fs::File::open(file_name) {
+            Ok(file) => file,
+            Err(err) => return Err(format!("Failed to open file: {}", err))
+        };
+        
+        // Read file
+        let mut str = String::new();
+        match file.read_to_string(&mut str) {
+            Ok(_) => {},
+            Err(err) => return Err(format!("Failed to read file: {}", err))
+        }
+        
+        // Deserialize edits
+        let edits: Vec<Edit> = match serde_json::from_str(&str) {
+            Ok(edits) => edits,
+            Err(err) => return Err(format!("Failed to deserialize edits: {}", err))
+        };
+        
+        // Build composite
+        Ok(Shape::composite_from_edits(edits))
     }
 }
 

@@ -1,5 +1,6 @@
 
 use enum_utils::ToIndex;
+use serde::{Serialize, Deserialize};
 use strum_macros::{AsRefStr, EnumIter};
 
 use crate::framework::math::AABB;
@@ -15,7 +16,7 @@ pub enum PrimitiveType {
 }
 
 /// Might carry additional data which cannot be expressed by Transform
-#[derive(Debug, PartialEq, Clone, ToIndex)]
+#[derive(Debug, PartialEq, Clone, ToIndex, Serialize, Deserialize)]
 pub enum Primitive {
     Sphere   { radius: f32 },
     Cube     { width: f32, height: f32, depth: f32 },

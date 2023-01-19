@@ -6,7 +6,7 @@ use std::borrow::Cow;
 
 use crate::{
     sdf::svo,
-    framework::{ gpu, math },
+    framework::{ gpu, math }, warn,
 };
 
 use super::{EvaluationContext, EvaluationContextLayouts};
@@ -172,46 +172,73 @@ impl KernelSVOLevel {
             ..
         } = &mut context.evaluation_context;
         
-        // Update the assignment uniform
-        self.assignment_uniform.update(gpu, &assignment);
         
-        // Create command encoder
-        let mut encoder = {
-            profiler::scope!("Level Evaluator: Creating command encoder");
-            gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("KernelSVOLevel: Command Encoder"),
-            })
+        // decompose assignment into a buffer and a bind group to be used separately
+        let (
+            assignment_buffer,
+            assignment_bind_group
+        ) = (
+            &mut self.assignment_uniform.buffer,
+            &self.assignment_uniform.bind_group
+        );
+        
+        // Lambda used to dispatch the compute shader to evaluate the nodes
+        let mut queue_dispatch = |start_index: u32, to_evaluate: u32| {
+            
+            // Create command encoder
+            let mut encoder = {
+                profiler::scope!("Level Evaluator: Creating command encoder");
+                gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("KernelSVOLevel: Command Encoder"),
+                })
+            };
+            
+            // Create compute pass
+            let mut compute_pass = {
+                profiler::scope!("Level Evaluator: Creating Compute Pass");
+                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("KernelSVOLevel: Compute Pass"),
+                })
+            };
+            
+            { profiler::scope!("Level Evaluator: Setting pipeline");
+                compute_pass.set_pipeline(&self.pipeline);
+            }
+            
+            
+            { profiler::scope!("Level Evaluator: Settings bind groups");
+                compute_pass.set_bind_group(0, &bind_groups.node_pool, &[]);
+                compute_pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
+                compute_pass.set_bind_group(2, &bind_groups.edits, &[]);
+                compute_pass.set_bind_group(3, assignment_bind_group, &[]);
+                compute_pass.set_bind_group(4, &self.brick_padding_indices_uniform.bind_group, &[]);
+            }
+            
+            compute_pass.dispatch_workgroups(to_evaluate, 1, 1);
+            
+            // End compute pass to allow command encoder to be submitted
+            drop(compute_pass);
+            
+            // Update assignment buffer
+            assignment_buffer.queue_update(gpu, &[Assignment { start_index, ..assignment }]);
+            
+            // Submit command to gpu
+            gpu.queue.submit(Some(encoder.finish()));
         };
         
-        // Create compute pass
-        let mut compute_pass = {
-            profiler::scope!("Level Evaluator: Creating Compute Pass");
-            encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("KernelSVOLevel: Compute Pass"),
-            })
-        };
-        
-        { profiler::scope!("Level Evaluator: Setting pipeline");
-            compute_pass.set_pipeline(&self.pipeline);
+        { profiler::scope!("Level Evaluator: Dispatch loop");
+            let max_nodes_per_dispatch = 64_000;
+            let mut to_evaluate = to_evaluate_node_count.min(max_nodes_per_dispatch);
+            let mut remaining = to_evaluate_node_count;
+            let mut start_index = assignment.start_index;
+            while to_evaluate > 0 {
+                warn!("evaluating: {}/{}; remaining: {}, start_index: {}", to_evaluate, to_evaluate_node_count, remaining, start_index);
+                queue_dispatch(start_index, to_evaluate);
+                remaining -= to_evaluate;
+                start_index += to_evaluate;
+                to_evaluate = remaining.min(max_nodes_per_dispatch);
+            }
         }
-        
-        { profiler::scope!("Level Evaluator: Settings bind groups");
-            compute_pass.set_bind_group(0, &bind_groups.node_pool, &[]);
-            compute_pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
-            compute_pass.set_bind_group(2, &bind_groups.edits, &[]);
-            compute_pass.set_bind_group(3, &self.assignment_uniform.bind_group, &[]);
-            compute_pass.set_bind_group(4, &self.brick_padding_indices_uniform.bind_group, &[]);
-        }
-        
-        { profiler::scope!("Level Evaluator: Dispatch");
-            compute_pass.dispatch_workgroups(to_evaluate_node_count, 1, 1);
-        }
-        
-        // End compute pass to allow command encoder to be submitted
-        drop(compute_pass);
-        
-        // Submit command encoder to queue
-        gpu.queue.submit(Some(encoder.finish()));
         
         { profiler::scope!("Level Evaluator: Wait for queue to finish computation");
             gpu.device.poll(wgpu::Maintain::Wait);

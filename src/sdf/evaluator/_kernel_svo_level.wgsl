@@ -316,9 +316,10 @@ fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     // TODO: use max-norm for evaluating this
-    let sqrt_3 = 1.7320508075688772935274463415059;
+    // let sqrt_3 = 1.73205080757;
+    let voxel_bounding_spehere_radius = 0.866025 * voxel_size;
     // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.6;
-    let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 1.5;
+    // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.4;
     return abs(dinstance) < voxel_bounding_spehere_radius;
 }
 
@@ -334,6 +335,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     if (in.local_invocation_index == 0u) {
         atomicStore(&divide, 0u);
     }
+    workgroupBarrier();
     
     if (in_voxel(voxel_global_desc.size, sdf_value)) {
         atomicAdd(&divide, 1u);
@@ -403,7 +405,8 @@ fn create_tile(in: ShaderInput) -> u32 {
                 tile_index_shared = first_tile_node_index >> 3u;
             } else {
                 // Refuse to initialize the tile becauase there is no more capacity node count increment has to be corrected.
-                atomicSub(&node_count, 8u); // TODO: This will not be needed when trimming incomplete levels
+                // atomicSub(&node_count, 8u); // TODO: This will not be needed when trimming incomplete levels
+                atomicStore(&node_count, node_pool_capacity);
             }
         }
     }
@@ -511,16 +514,12 @@ fn process_root(in: ShaderInput) {
 @compute
 @workgroup_size(8, 8, 8)
 fn main(in: ShaderInput) {
-    let workgroup_index = in.workgroup_id.x + in.workgroup_id.y * in.num_workgroups.x + in.workgroup_id.z * in.num_workgroups.x * in.num_workgroups.y;
-    let thread_zero = workgroup_index == 0u && in.local_invocation_index == 0u;
-    let start_index = assigment.start_index;
-    
     if (assigment.is_root == 1u) {
-        if (workgroup_index == 0u) {
+        if (in.workgroup_id.x == 0u) {
             process_root(in);
         }
     } else {
-        let node = load_node(start_index + workgroup_index);
+        let node = load_node(assigment.start_index + in.workgroup_id.x);
         process_node(in, node);
     }
 }

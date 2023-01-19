@@ -1,9 +1,11 @@
 
+use serde::{Serialize, Deserialize};
+
 use crate::framework::math::{Transform, AABB};
 use super::{Primitive, Operation};
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edit {
     pub primitive: Primitive,
     pub operation: Operation,
