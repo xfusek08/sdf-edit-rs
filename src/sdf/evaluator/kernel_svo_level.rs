@@ -347,10 +347,6 @@ impl AssignmentUniform {
             bind_group_layout,
         }
     }
-    
-    pub fn update(&mut self, gpu: &gpu::Context, assignment: &Assignment) {
-        self.buffer.queue_update(gpu, &[*assignment]);
-    }
 }
 
 

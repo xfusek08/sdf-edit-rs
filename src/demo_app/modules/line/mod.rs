@@ -13,7 +13,7 @@ use std::{
 use hecs::Entity;
 
 use crate::{
-    demo_app::scene::Scene,
+    demo_app::{scene::Scene, components::Active},
     framework::{
         gui::Gui,
         gpu::{
@@ -145,7 +145,12 @@ impl RenderModule<Scene> for LineRenderModule {
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         
         // For each proper line entity is scene world, update render resources
-        for (entity, mesh) in scene.world.query::<&LineMesh>().iter() {
+        for (entity, (mesh, Active(is_active))) in scene.world.query::<(&LineMesh, &Active)>().iter() {
+            if !is_active {
+                self.render_resources.remove(&entity);
+                continue;
+            }
+            
             match self.render_resources.entry(entity) {
                 Entry::Occupied(_) => {
                     // This entity is already loaded

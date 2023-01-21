@@ -4,10 +4,11 @@ use egui_extras::{TableBuilder, Column};
 use strum::IntoEnumIterator;
 
 use crate::{
-    shape_builder::{Shape, ShapeRecord},
+    warn,
     demo_app::scene::Scene,
+    shape_builder::{Shape, ShapeRecord},
     sdf::geometry::{EvaluationStatus, Primitive, PrimitiveType, Operation},
-    framework::{math::Transform, gui::GuiModule}, warn,
+    framework::{math::Transform, gui::GuiModule},
 };
 
 /// This module controls first geometry in geometry pool

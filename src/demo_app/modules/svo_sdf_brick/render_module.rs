@@ -59,13 +59,12 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         self.brick_instances.clear_resize(&context.gpu, node_count as usize);
         self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.brick_level_break_size);
         
-        // --------------------
-        let cnt = {
+        {
             profiler::scope!("BrickInstances::load_count", pinned);
-            self.brick_instances.load_count(&context.gpu) // TODO: (SLOW) this will not be needed when we will use indirect draw
+            // TODO: (SLOW) this will not be needed when we will use indirect draw
+            // TODO: add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
+            self.brick_instances.load_count(&context.gpu)
         };
-        // dbg!(cnt);
-        // --------------------
         
         self.pipeline.set_svo(&context.gpu, svo);
         self.pipeline.set_display_options(scene.display_toggles.brick_display_options);

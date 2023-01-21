@@ -1,2 +1,3 @@
 
-pub struct Deleted(pub bool);
+pub struct Active(pub bool);
+pub struct AxisMesh;

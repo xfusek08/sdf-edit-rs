@@ -5,7 +5,7 @@ use std::sync::Arc;
 use lazy_static::__Deref;
 
 use crate::{
-    framework::{gpu, math::AABB},
+    framework::gpu,
     sdf::{
         svo,
         geometry::{

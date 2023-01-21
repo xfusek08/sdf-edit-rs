@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     scene::Scene,
-    components::Deleted,
+    components::{AxisMesh, Active},
     modules::{line::LineMesh, TmpEvaluatorConfigProps}, bumpy_sphere::bumpy_sphere,
 };
 
@@ -40,11 +40,12 @@ pub fn init_scene(context: &Context) -> Scene {
     // ---------------------------------
     
     world.spawn((
+        AxisMesh,
         LineMesh {
             is_dirty: true,
             vertices: LINE_VERTICES,
         },
-        Deleted(false),
+        Active(false),
     ));
     
     // Create and register test geometry

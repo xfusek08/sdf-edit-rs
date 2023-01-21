@@ -43,9 +43,9 @@ impl UpdaterModule<Scene> for SvoEvaluatorUpdater {
         InputUpdateResult::default()
     }
 
-    fn resize(&mut self, context: &mut ResizeContext<Scene>) -> UpdateResultAction {
+    fn resize(&mut self, _: &mut ResizeContext<Scene>) -> UpdateResultAction {
         UpdateResultAction::None
     }
 
-    fn after_render(&mut self, state: &mut AfterRenderContext<Scene>) {}
+    fn after_render(&mut self, _: &mut AfterRenderContext<Scene>) {}
 }
