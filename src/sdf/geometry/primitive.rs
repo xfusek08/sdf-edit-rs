@@ -19,7 +19,7 @@ pub enum PrimitiveType {
 #[derive(Debug, PartialEq, Clone, ToIndex, Serialize, Deserialize)]
 pub enum Primitive {
     Sphere   { radius: f32 },
-    Cube     { width: f32, height: f32, depth: f32 },
+    Cube     { width: f32, height: f32, depth: f32, bevel: f32 },
     Cylinder { diameter: f32, height: f32 },
     Torus    { inner_radius: f32, outer_radius: f32 },
     Cone     { diameter: f32, height: f32 },
@@ -30,7 +30,7 @@ pub enum Primitive {
 // API - Primitive
 impl Primitive {
     pub fn default_sphere()   -> Self { Primitive::Sphere   { radius: 1.0 } }
-    pub fn default_cube()     -> Self { Primitive::Cube     { width: 1.0, height: 1.0, depth: 1.0 } }
+    pub fn default_cube()     -> Self { Primitive::Cube     { width: 1.0, height: 1.0, depth: 1.0, bevel: 0.0 } }
     pub fn default_cylinder() -> Self { Primitive::Cylinder { diameter: 1.0, height: 1.0 } }
     pub fn default_torus()    -> Self { Primitive::Torus    { inner_radius: 0.8, outer_radius: 0.2 } }
     pub fn default_cone()     -> Self { Primitive::Cone     { diameter: 1.0, height: 1.0 } }
@@ -61,7 +61,7 @@ impl Primitive {
     pub fn dimensions(&self) -> [f32;4] {
         match self {
             Primitive::Sphere   { radius } => [*radius, 0.0, 0.0, 0.0],
-            Primitive::Cube     { width, height, depth } => [*width, *height, *depth, 0.0],
+            Primitive::Cube     { width, height, depth, bevel } => [*width, *height, *depth, *bevel],
             Primitive::Cylinder { diameter, height } => [*diameter, *height, 0.0, 0.0],
             Primitive::Torus    { inner_radius, outer_radius } => [*inner_radius, *outer_radius, 0.0, 0.0],
             Primitive::Cone     { diameter, height } => [*diameter, *height, 0.0, 0.0],
@@ -76,7 +76,7 @@ impl Primitive {
                 glam::Vec3::splat(-radius),
                 glam::Vec3::splat(*radius)
             ),
-            Primitive::Cube { width, height, depth } => AABB::new(
+            Primitive::Cube { width, height, depth, .. } => AABB::new(
                 glam::Vec3::new(-width, -height, -depth) * 0.5,
                 glam::Vec3::new(*width, *height, *depth) * 0.5,
             ),

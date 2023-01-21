@@ -55,12 +55,11 @@ pub fn init_scene(context: &Context) -> Scene {
         
     // lets generate a geometry using the shape builder
     let test_geometry = Geometry::new(min_voxel_size).with_edits(
-        // Shape::empty().add(
-        //     bumpy_sphere(),
-        //     Transform::IDENTITY,
-        //     0.0
-        // ).build()
-        Shape::sphere(2.58).build()
+        Shape::empty().add(
+            bumpy_sphere(),
+            Transform::IDENTITY,
+            0.0
+        ).build()
     );
     
     let test_geometry_id = geometry_pool.insert(test_geometry);

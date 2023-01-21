@@ -24,7 +24,7 @@ pub struct ShapeRecord {
 impl Shape {
     pub fn empty() -> Self                                                   { Shape::Composite(vec![]) }
     pub fn sphere(radius: f32) -> Self                                       { Shape::Primitive(Primitive::Sphere { radius }) }
-    pub fn cube(width: f32, height: f32, depth: f32) -> Self                 { Shape::Primitive(Primitive::Cube { width, height, depth }) }
+    pub fn cube(width: f32, height: f32, depth: f32, bevel: f32) -> Self     { Shape::Primitive(Primitive::Cube { width, height, depth, bevel }) }
     pub fn cylinder(diameter: f32, height: f32) -> Self                      { Shape::Primitive(Primitive::Cylinder { diameter, height }) }
     pub fn torus(inner_radius: f32, outer_radius: f32) -> Self               { Shape::Primitive(Primitive::Torus { inner_radius, outer_radius }) }
     pub fn cone(diameter: f32, height: f32) -> Self                          { Shape::Primitive(Primitive::Cone { diameter, height }) }

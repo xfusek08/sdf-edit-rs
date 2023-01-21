@@ -58,21 +58,21 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                     
                 if ui.button("Import").clicked() {
                     if let Some(file_name) = fd.clone().pick_file() {
-                            if let Ok(new_shape) = Shape::load_store_edits(file_name) {
-                                shape = new_shape;
-                                changed = true;
-                            } else {
-                                warn!("Failed to load shape");
-                            }
+                        if let Ok(new_shape) = Shape::load_store_edits(file_name) {
+                            shape = new_shape;
+                            changed = true;
+                        } else {
+                            warn!("Failed to load shape");
                         }
+                    }
                 }
                 
                 if ui.button("Export").clicked() {
                     if let Some(file_name) = fd.save_file() {
-                            if let Err(e) = shape.store_flat_edits(file_name) {
-                                warn!("Failed to save shape: {}", e);
-                            }
+                        if let Err(e) = shape.store_flat_edits(file_name) {
+                            warn!("Failed to save shape: {}", e);
                         }
+                    }
                 }
             });
             
@@ -87,7 +87,6 @@ impl GuiModule<Scene> for DynamicTestGeometry {
             
             TableBuilder::new(ui)
                 .cell_layout(Layout::left_to_right(Align::Center))
-                .min_scrolled_height(0.0)
                 .column(Column::auto()) // Primitive
                 .column(Column::auto()) // Operation
                 .column(Column::auto()) // Position
@@ -95,6 +94,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                 .column(Column::auto()) // Blending
                 .column(Column::auto())// Dimensions
                 .column(Column::auto())// delete action
+                .min_scrolled_height(0.0)
                 .header(20.0, |mut header| {
                     header.col(|ui| { ui.strong("Primitive"); });
                     header.col(|ui| { ui.strong("Operation"); });
@@ -156,14 +156,16 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             
                             // Rotation
                             row.col(|ui| {
-                                let rot_euler = transform.rotation.to_euler(glam::EulerRot::XYZ);
-                                let mut rot_degrees = (rot_euler.0.to_degrees(), rot_euler.1.to_degrees(), rot_euler.2.to_degrees());
-                                ui.add(egui::DragValue::new(&mut rot_degrees.0).speed(0.1).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut rot_degrees.1).speed(0.1).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut rot_degrees.2).speed(0.1).max_decimals(3).min_decimals(3));
-                                let rot_euler = (rot_degrees.0.to_radians(), rot_degrees.1.to_radians(), rot_degrees.2.to_radians());
-                                if rot_euler != transform.rotation.to_euler(glam::EulerRot::XYZ) {
-                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, rot_euler.0, rot_euler.1, rot_euler.2);
+                                let orig_radians: glam::Vec3 = transform.rotation.to_euler(glam::EulerRot::XYZ).into();
+                                
+                                let (mut x_deg, mut y_deg, mut z_deg) = (orig_radians.x.to_degrees(), orig_radians.y.to_degrees(), orig_radians.z.to_degrees());
+                                ui.add(egui::DragValue::new(&mut x_deg).speed(0.1).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut y_deg).speed(0.1).max_decimals(3).min_decimals(3));
+                                ui.add(egui::DragValue::new(&mut z_deg).speed(0.1).max_decimals(3).min_decimals(3));
+                                
+                                let new_radians: glam::Vec3 = (x_deg.to_radians(), y_deg.to_radians(), z_deg.to_radians()).into();
+                                if new_radians.distance_squared(orig_radians) > 0.0001 { // TODO: Magic squared error constant
+                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, new_radians.x, new_radians.y, new_radians.z);
                                     changed = true;
                                 }
                             });
@@ -182,10 +184,11 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                     Primitive::Sphere { radius } => {
                                         ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
-                                    Primitive::Cube { width, height, depth } => {
+                                    Primitive::Cube { width, height, depth, bevel } => {
                                         ui.add(egui::DragValue::new(width).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(depth).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(bevel).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
                                     Primitive::Cylinder { diameter, height } => {
                                         ui.add(egui::DragValue::new(diameter).speed(0.01).max_decimals(3).min_decimals(3));

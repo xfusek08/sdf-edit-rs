@@ -32,7 +32,7 @@ impl SvoBrickSelectPipeline {
     
     #[profiler::function]
     pub fn new(context: &RenderContext) -> Self {
-                
+        
         let node_pool_bind_group_layout = svo::NodePool::create_bind_group_layout(
             &context.gpu,
             wgpu::ShaderStages::COMPUTE,
@@ -90,7 +90,7 @@ impl SvoBrickSelectPipeline {
         let mut encoder = context.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Brick select encoder"),
         });
-    
+        
         // Prepare bind groups
         let node_bind_group = svo.node_pool.create_bind_group(&context.gpu, &self.node_pool_bind_group_layout);
         let brick_instances_bind_group = brick_instances.create_bind_group(&context.gpu, &self.brick_instances_bind_group_layout);
@@ -106,11 +106,11 @@ impl SvoBrickSelectPipeline {
             compute_pass.set_bind_group(1, &brick_instances_bind_group, &[]);
             
             compute_pass.set_push_constants(0, bytemuck::cast_slice(&[PushConstants {
-                camera_projection_matrix: context.camera.projection_matrix,
-                camera_focal_length: context.camera.focal_length,
                 node_count,
-                domain: svo.domain,
                 level_break_size,
+                camera_projection_matrix: context.camera.projection_matrix,
+                camera_focal_length:      context.camera.focal_length,
+                domain:                   svo.domain,
                 ..Default::default()
             }]));
             
