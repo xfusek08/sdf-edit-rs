@@ -189,7 +189,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                         ui.add(egui::DragValue::new(width).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
                                         ui.add(egui::DragValue::new(depth).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(bevel).speed(0.01).max_decimals(3).min_decimals(3));
+                                        ui.add(egui::DragValue::new(bevel).speed(0.01).max_decimals(3).min_decimals(3).clamp_range(0.0..=0.45));
                                     },
                                     Primitive::Cylinder { diameter, height } => {
                                         ui.add(egui::DragValue::new(diameter).speed(0.01).max_decimals(3).min_decimals(3));

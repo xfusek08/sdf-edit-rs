@@ -218,14 +218,27 @@ fn sd_capsule(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
     return length(p) - r;
 }
 
-fn smooth_min(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
-    let h = clamp(0.5 + 0.5 * (dist2 - dist1) / koeficient, 0.0, 1.0);
-    return mix(dist2, dist1, h) - koeficient * h * (1.0 - h);
+/// Smooth min/max functions
+// This is implementation designed for Dreams by David Smith
+// This implementation is slightly more effitient and offers better continuity
+// so it is less prone to lighting artifacts.
+// [https://iquilezles.org/articles/smin/]
+
+fn ramp(v: f32, l: f32, h: f32) -> f32 {
+    return v * (h - l) + l;
 }
 
-fn smooth_max(dist1: f32, dist2: f32, koeficient: f32) -> f32 {
-    let h = clamp(0.5 - 0.5 * (dist1 - dist2) / koeficient, 0.0, 1.0);
-    return mix(dist1, dist2, h) + koeficient * h * (1.0 - h);
+fn smooth_bolume_add(a: f32, b: f32, k: f32) -> f32 {
+    let kk = ramp(max(k, 0.0), 0.01, 1.0);
+    let e = max(kk - abs(a - b), 0.0);
+    return min(a, b) - e * e * 0.25 / kk;
+}
+
+fn smooth_volume_difference(a: f32, b: f32, k: f32) -> f32 {
+    let bb = -b;
+    let kk = ramp(max(k, 0.0), 0.025, 1.0);
+    let e = max(kk - abs(a - bb), 0.0);
+    return max(a, bb) - e * e * 0.25 / -kk;
 }
 
 fn distance_to_edit(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
@@ -263,11 +276,11 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
         // TODO Use preprocessor because constant are not yet supported in naga
         switch (edit.operation) {
             // EDIT_OPERATION_ADD
-            case 0u: { sdf_value = smooth_min(sdf_value, distance_to_primitive, edit.blending); }
+            case 0u: { sdf_value = smooth_bolume_add(sdf_value, distance_to_primitive, edit.blending); }
             // EDIT_OPERATION_SUBTRACT
-            case 1u: { sdf_value = smooth_max(sdf_value, -distance_to_primitive, edit.blending); }
-            // EDIT_OPERATION_INTERSECT
-            case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
+            case 1u: { sdf_value = smooth_volume_difference(sdf_value, distance_to_primitive, edit.blending); }
+            // // EDIT_OPERATION_INTERSECT
+            // case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
             
             default: {} // to make naga happy
         }

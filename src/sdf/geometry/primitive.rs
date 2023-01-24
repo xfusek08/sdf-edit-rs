@@ -26,7 +26,6 @@ pub enum Primitive {
     Capsule  { radius: f32, height: f32 },
 }
 
-
 // API - Primitive
 impl Primitive {
     pub fn default_sphere()   -> Self { Primitive::Sphere   { radius: 1.0 } }

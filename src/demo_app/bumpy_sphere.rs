@@ -29,7 +29,7 @@ pub fn bumpy_sphere() -> Shape {
         .subtract(
             spiral_bumps_on_sphere(400, 17, 0.1, 1.02),
             Transform::IDENTITY,
-            0.03
+            0.01
         );
     result
 }
