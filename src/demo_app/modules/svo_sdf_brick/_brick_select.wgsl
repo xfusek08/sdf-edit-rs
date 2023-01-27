@@ -102,18 +102,19 @@ fn main(in: ShaderInput) {
     if (node_id < node_count) {
         let header = deconstruct_node_header(node_headers[node_id]);
         let vertex = node_vertices[node_id];
+        let treshhold = 0.1 * pc.level_break_size;
         
+        // compute size on screen of current node
         let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
         let me_size = vertex.w * pc.domain.w;
         let project_me_size = bounding_cube_screen_size(me_position, me_size);
         let project_me_size = project_me_size * distance_adjustment(me_position, me_size);
         
+        // compute size on screen of parent node
         let parent_position = compute_parent_position(node_id, me_position, me_size);
         let parent_size = me_size * 2.0;
         let projected_parent_size = bounding_cube_screen_size(parent_position, parent_size);
         let projected_parent_size = projected_parent_size * distance_adjustment(parent_position, parent_size);
-        
-        let treshhold = 0.1 * pc.level_break_size;
         
         if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
             return; // No brick
@@ -127,6 +128,7 @@ fn main(in: ShaderInput) {
         if (project_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
             return; // Node is too big to be rendered and has children which will be rendered instead
         }
+        
         let index = atomicAdd(&brick_count, 1u);
         brick_index_buffer[index] = node_id;
     }

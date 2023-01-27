@@ -109,46 +109,40 @@ where
                 
                 // Let input helper process event to somewhat coherent input state and work with that.
                 //   (input.update(..) returns true only on Event::MainEventsCleared hence `update_scene` variable)
-                if input.update(&event) {
-                    flow_result_action = flow_result_action.combine(
-                        if let Some(size) = input.window_resized() {
-                            let scale_factor = input.scale_factor().unwrap_or(1.0);
-                            renderer.resize(
-                                &size,
-                                scale_factor
-                            );
-                            updater.resize(ResizeContext {
-                                gui: &mut gui,
-                                scene: &mut scene,
-                                size: &size,
-                                scale_factor,
-                            })
-                        } else if let Some(scale_factor) = input.scale_factor_changed() {
-                            let size = &window.inner_size();
-                            renderer.resize(
-                                &size,
-                                scale_factor
-                            );
-                            updater.resize(ResizeContext {
-                                gui: &mut gui,
-                                scene: &mut scene,
-                                size: &size,
-                                scale_factor,
-                            })
-                        } else if input.quit() {
-                            UpdateResultAction::Exit
-                        } else if !event_consumed_by_gui {
-                            updater.input(UpdateContext {
-                                gui:    &mut gui,
-                                scene:  &mut scene,
-                                input:  &input,
-                                tick:   clock.current_tick(),
-                                window: &window,
-                            })
-                        } else {
-                            UpdateResultAction::None
-                        }
-                    );
+                if !input.update(&event) {
+                    let input_result = if let Some(size) = input.window_resized() {
+                        let scale_factor = input.scale_factor().unwrap_or(1.0);
+                        renderer.resize(&size, scale_factor);
+                        updater.resize(ResizeContext {
+                            gui:   &mut gui,
+                            scene: &mut scene,
+                            size:  &size,
+                            scale_factor,
+                        })
+                    } else if let Some(scale_factor) = input.scale_factor_changed() {
+                        let size = &window.inner_size();
+                        renderer.resize(&size, scale_factor);
+                        updater.resize(ResizeContext {
+                            gui:   &mut gui,
+                            scene: &mut scene,
+                            size:  &size,
+                            scale_factor,
+                        })
+                    } else if input.quit() {
+                        UpdateResultAction::Exit
+                    } else if !event_consumed_by_gui {
+                        updater.input(UpdateContext {
+                            gui:    &mut gui,
+                            scene:  &mut scene,
+                            input:  &input,
+                            tick:   clock.current_tick(),
+                            window: &window,
+                        })
+                    } else {
+                        UpdateResultAction::None
+                    };
+                    
+                    flow_result_action = flow_result_action.combine(input_result);
                 }
                 
             },

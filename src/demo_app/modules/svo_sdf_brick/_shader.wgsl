@@ -142,7 +142,8 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     var brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
     var brick_to_local_transform =
         scale(brick_inverted_size)
-        * translate(brick_shift) * M4_IDENTITY;
+        * translate(brick_shift)
+        * M4_IDENTITY;
     
     out.brick_local_camera_pos = (brick_to_local_transform * pc.camera_position);
     

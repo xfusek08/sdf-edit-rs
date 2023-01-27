@@ -101,6 +101,7 @@ impl DepthStencilTexture {
         let texture = profiler::call!(
             device.create_texture(&wgpu::TextureDescriptor {
                 format: Self::DEPTH_FORMAT,
+                // view_formats: &[Self::DEPTH_FORMAT], // TODO: wgpu 15
                 label: Some(label),
                 size: wgpu::Extent3d {
                     width: config.width,

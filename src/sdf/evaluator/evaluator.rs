@@ -96,7 +96,7 @@ impl Evaluator {
         
         // Retrieve svo from kernel
         let EvaluationContext  { mut svo, .. } = level_kernel.take_context().expect("Fatal error: KernelSVOLevel did not return an svo");
-                
+        
         // Update SVO to reflect changes
         svo.levels = levels;
         svo.domain = domain;

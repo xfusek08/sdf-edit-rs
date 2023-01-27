@@ -12,13 +12,19 @@ impl Context {
     
     #[profiler::function]
     pub async fn new(window: &Window) -> Self {
-        let instance = profiler::call!(
+        let instance = {
+            profiler::scope!("Creating instance");
             wgpu::Instance::new(wgpu::Backends::VULKAN)
-        );
+        };
         
-        let surface = profiler::call!(
+        let surface = {
+            profiler::scope!("Creating surface");
             unsafe { instance.create_surface(window) }
-        );
+            
+            // TODO: wgpu 15 :
+            // (unsafe { instance.create_surface(window) })
+            //     .expect("Failed to create surface")
+        };
         
         let adapter = profiler::call!(
             instance.request_adapter(

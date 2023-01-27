@@ -5,8 +5,9 @@
 use std::borrow::Cow;
 
 use crate::{
+    warn,
     sdf::svo,
-    framework::{ gpu, math }, warn,
+    framework::{ gpu, math },
 };
 
 use super::{EvaluationContext, EvaluationContextLayouts};
@@ -30,7 +31,7 @@ pub struct KernelSVOLevel {
     
     /// A compute pipeline used to dispatch the kernel.
     pipeline: wgpu::ComputePipeline,
-        
+    
     /// A uniform buffer used to pass assignment data to the kernel.
     assignment_uniform: AssignmentUniform,
     
@@ -131,7 +132,7 @@ impl KernelSVOLevel {
                 bind_group_layouts: &[
                     &context_layouts.node_pool,                       // 0
                     &context_layouts.brick_pool,                      // 1
-                    &context_layouts.edits,                  // 2
+                    &context_layouts.edits,                           // 2
                     &assignment_uniform.bind_group_layout,            // 3
                     &brick_padding_indices_uniform.bind_group_layout, // 4
                 ],
@@ -226,6 +227,8 @@ impl KernelSVOLevel {
             gpu.queue.submit(Some(encoder.finish()));
         };
         
+        // Run evaluation for this level - maximum number of groups could be exceeded in the leve,
+        // hence wee need break the evaluation process to be iterative.
         { profiler::scope!("Level Evaluator: Dispatch loop");
             let max_nodes_per_dispatch = 64_000;
             let mut to_evaluate = to_evaluate_node_count.min(max_nodes_per_dispatch);
@@ -249,19 +252,20 @@ impl KernelSVOLevel {
         let new_node_count = node_pool.load_count(gpu);
         
         // Return next unevaluated level
+        
         let added_node_count = new_node_count - current_node_count;
+        
         if assignment.is_root == 1 {
-            svo::Level {
+            return svo::Level {
                 start_index: 0,
                 node_count: added_node_count,
-            }
-        } else {
-            svo::Level {
-                start_index: assignment.start_index + to_evaluate_node_count,
-                node_count: added_node_count,
-            }
+            };
         }
         
+        svo::Level {
+            start_index: assignment.start_index + to_evaluate_node_count,
+            node_count: added_node_count,
+        }
     }
     
 }
