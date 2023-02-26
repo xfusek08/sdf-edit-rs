@@ -90,9 +90,9 @@ impl AABB {
     #[inline]
     pub fn transform(&self, transform: &Transform) -> Self {
         self
+            .scale(&transform.scale)
             .rotate(&transform.rotation)
             .translate(&transform.position)
-            .scale(&transform.scale)
     }
     
     #[inline]

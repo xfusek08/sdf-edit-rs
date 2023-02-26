@@ -1,4 +1,6 @@
+
 use slotmap::SlotMap;
+use rand::Rng;
 
 use crate::{
     framework::{
@@ -10,7 +12,8 @@ use crate::{
     sdf::{
         model::{ModelPool, Model},
         geometry::{GeometryPool, Geometry},
-    }, shape_builder::Shape,
+    },
+    shape_builder::Shape,
 };
 
 use super::{
@@ -66,38 +69,57 @@ pub fn init_scene(context: &Context) -> Scene {
     // ------------------------------
     
     let mut model_pool = ModelPool::new();
-    model_pool.insert(
-        Model::new(test_geometry_id).with_transform(Transform::IDENTITY
-            // .translate((0.01, 0.0, 0.0).into())
-            // .scale(glam::Vec3::splat(1.5))
-            .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
-        )
-    );
+    // model_pool.insert(
+    //     Model::new(test_geometry_id).with_transform(Transform::IDENTITY
+    //         .translate((1.0, 0.0, 0.0).into())
+    //         // .scale(glam::Vec3::splat(2.5))
+    //         // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
+    //     )
+    // );
     
-    model_pool.insert(
-        Model::new(test_geometry_id)
-            .with_transform(
+    // model_pool.insert(
+    //     Model::new(test_geometry_id).with_transform(Transform::IDENTITY
+    //         // .translate((5.0, 0.0, 0.0).into())
+    //         // .scale(glam::Vec3::splat(3.5))
+    //         // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
+    //     )
+    // );
+    
+    // model_pool.insert(
+    //     Model::new(test_geometry_id)
+    //         .with_transform(
+    //             Transform::IDENTITY
+    //                 .translate((3.0, 0.0, 0.0).into())
+    //         )
+    // );
+    
+    
+    let mut rng = rand::thread_rng();
+    for z in 0..=500 {
+        model_pool.insert(
+            Model::new(test_geometry_id).with_transform(
                 Transform::IDENTITY
-                    .translate((3.0, 0.0, 0.0).into())
+                    .translate((
+                        rng.gen_range(-40.0..=40.0),
+                        rng.gen_range(-40.0..=40.0),
+                        rng.gen_range(-40.0..=40.0),
+                    ).into())
+                    .scale(glam::Vec3::splat(rng.gen_range(0.21..=5.0)))
+                    .rotate(glam::Quat::from_euler(
+                        glam::EulerRot::XYZ,
+                        rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                        rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                        rng.gen_range(0.0..=360.0 as f32).to_radians()
+                    ))
             )
-    );
-    
-    // for x in -10..=10 {
-    //     for y in -10..=10 {
-    //         model_pool.insert(
-    //             Model::new(test_geometry_id)
-    //                 .with_transform(
-    //                     Transform::IDENTITY
-    //                         .translate((2.2 * x as f32, 2.2 * y as f32, 0.0).into())
-    //                 )
-    //         );
-    //     }
-    // }
+        );
+    }
     
     Scene {
         camera: Camera::new(CameraProperties {
             aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
             fov: 60.0,
+            far: 300000.0,
             ..Default::default()
         }).orbit(glam::Vec3::ZERO, 4.0),
         geometry_pool,

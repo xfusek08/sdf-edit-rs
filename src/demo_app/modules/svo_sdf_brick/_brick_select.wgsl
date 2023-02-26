@@ -56,34 +56,19 @@ struct BrickInstance {
 
 // Instance buffer where currently evaluated svo has one transform mer instance
 // -----------------------------------------------------------------------------------
-struct Transform {
-    position: vec3<f32>,
-    scale:    f32,
-    rotation: vec4<f32>,
-}
-@group(2) @binding(0) var<storage, read> instance_transforms: array<Transform>;
-@group(2) @binding(1) var<uniform>       instances:           u32;
+@group(2) @binding(0) var<storage, read> instance_transforms:         array<mat4x4<f32>>;
+@group(2) @binding(1) var<storage, read> instance_inverse_transforms: array<mat4x4<f32>>;
+@group(2) @binding(2) var<uniform>       instance_count:              u32;
 
-fn quat_mult(q1 : vec4<f32>, q2 : vec4<f32>) -> vec4<f32> {
-    return vec4(
-        (q1.w * q2.x) + (q1.x * q2.w) + (q1.y * q2.z) - (q1.z * q2.y),
-        (q1.w * q2.y) - (q1.x * q2.z) + (q1.y * q2.w) + (q1.z * q2.x),
-        (q1.w * q2.z) + (q1.x * q2.y) - (q1.y * q2.x) + (q1.z * q2.w),
-        (q1.w * q2.w) - (q1.x * q2.x) - (q1.y * q2.y) - (q1.z * q2.z)
-    );
+fn apply_transform(pos: vec3<f32>, transform: mat4x4<f32>) -> vec3<f32> {
+    return (transform * vec4<f32>(pos, 1.0)).xyz;
 }
 
-fn rotate_quad(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
-    let q_v = vec4(v, 0.0);
-    let q_conj = vec4(-q.xyz, q.w);
-    return quat_mult(quat_mult(q, q_v), q_conj).xyz;
-}
-
-fn apply_transform(pos: vec3<f32>, transform: Transform) -> vec3<f32> {
-    let pos = pos * transform.scale;
-    let pos = rotate_quad(transform.rotation, pos);
-    let pos = pos + transform.position;
-    return pos;
+fn extract_scaling(m: mat4x4<f32>) -> f32 {
+    let x = length(m[0].xyz);
+    let y = length(m[1].xyz);
+    let z = length(m[2].xyz);
+    return max(x, max(y, z));
 }
 
 // -----------------------------------------------------------------------------------
@@ -153,15 +138,16 @@ fn main(in: ShaderInput) {
         return; // No brick
     }
     
-    for (var i = 0u; i < instances; i = i + 1u) {
+    for (var i = 0u; i < instance_count; i = i + 1u) {
         let transform = instance_transforms[i];
+        let scaling = extract_scaling(transform);
         
         let me_position_transformed = apply_transform(me_position, transform);
-        let me_size_scaled = me_size * transform.scale;
+        let me_size_scaled = me_size * scaling;
         let projected_me_size = bounding_cube_screen_size(me_position_transformed, me_size_scaled);
         
         let parent_position_transformed = apply_transform(parent_position, transform);
-        let parent_size_scaled = parent_size * transform.scale;
+        let parent_size_scaled = parent_size * scaling;
         let projected_parent_size = bounding_cube_screen_size(parent_position_transformed, parent_size_scaled);
         
         if (projected_parent_size <=0.0 || projected_me_size <= 0.0) {

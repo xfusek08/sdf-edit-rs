@@ -47,73 +47,9 @@ struct InstanceInput {
 
 // Instance buffer where currently evaluated svo has one transform mer instance
 // -----------------------------------------------------------------------------------
-struct Transform {
-    position: vec3<f32>,
-    scale:    f32,
-    rotation: vec4<f32>,
-}
-@group(2) @binding(0) var<storage, read> instance_transforms: array<Transform>;
-@group(2) @binding(1) var<uniform>       instances:           u32;
-
-fn quat_mult(q1 : vec4<f32>, q2 : vec4<f32>) -> vec4<f32> {
-    return vec4(
-        (q1.w * q2.x) + (q1.x * q2.w) + (q1.y * q2.z) - (q1.z * q2.y),
-        (q1.w * q2.y) - (q1.x * q2.z) + (q1.y * q2.w) + (q1.z * q2.x),
-        (q1.w * q2.z) + (q1.x * q2.y) - (q1.y * q2.x) + (q1.z * q2.w),
-        (q1.w * q2.w) - (q1.x * q2.x) - (q1.y * q2.y) - (q1.z * q2.z)
-    );
-}
-
-fn quat_to_mat(q: vec4<f32>) -> mat4x4<f32> {
-    let x2 = q.x * q.x;
-    let y2 = q.y * q.y;
-    let z2 = q.z * q.z;
-    let xy = q.x * q.y;
-    let xz = q.x * q.z;
-    let yz = q.y * q.z;
-    let wx = q.w * q.x;
-    let wy = q.w * q.y;
-    let wz = q.w * q.z;
-
-    return mat4x4<f32>(
-        vec4<f32>(1.0 - 2.0 * (y2 + z2), 2.0 * (xy - wz), 2.0 * (xz + wy), 0.0),
-        vec4<f32>(2.0 * (xy + wz), 1.0 - 2.0 * (x2 + z2), 2.0 * (yz - wx), 0.0),
-        vec4<f32>(2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (x2 + y2), 0.0),
-        vec4<f32>(0.0, 0.0, 0.0, 1.0),
-    );
-}
-
-fn quat_to_inverse_mat(q: vec4<f32>) -> mat4x4<f32> {
-    let x2 = q.x * q.x;
-    let y2 = q.y * q.y;
-    let z2 = q.z * q.z;
-    let xy = q.x * q.y;
-    let xz = q.x * q.z;
-    let yz = q.y * q.z;
-    let wx = q.w * q.x;
-    let wy = q.w * q.y;
-    let wz = q.w * q.z;
-
-    return mat4x4<f32>(
-        vec4<f32>(1.0 - 2.0 * (y2 + z2), 2.0 * (xy + wz), 2.0 * (xz - wy), 0.0),
-        vec4<f32>(2.0 * (xy - wz), 1.0 - 2.0 * (x2 + z2), 2.0 * (yz + wx), 0.0),
-        vec4<f32>(2.0 * (xz + wy), 2.0 * (yz - wx), 1.0 - 2.0 * (x2 + y2), 0.0),
-        vec4<f32>(0.0, 0.0, 0.0, 1.0),
-    );
-}
-
-fn rotate_quad(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
-    let q_v = vec4(v, 0.0);
-    let q_conj = vec4(-q.xyz, q.w);
-    return quat_mult(quat_mult(q, q_v), q_conj).xyz;
-}
-
-fn apply_transform(pos: vec3<f32>, transform: Transform) -> vec3<f32> {
-    let pos = pos * transform.scale;
-    let pos = rotate_quad(transform.rotation, pos);
-    let pos = pos + transform.position;
-    return pos;
-}
+@group(2) @binding(0) var<storage, read> instance_transforms:         array<mat4x4<f32>>;
+@group(2) @binding(1) var<storage, read> instance_inverse_transforms: array<mat4x4<f32>>;
+@group(2) @binding(2) var<uniform>       instance_count:              u32;
 
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
@@ -161,7 +97,7 @@ struct VertexOutput {
     
     @location(0) frag_pos: vec3<f32>,
     
-    @location(1) @interpolate(flat) brick_shift: vec3<f32>,
+    @location(1) @interpolate(flat) brick_lookup_shift: vec3<f32>,
     @location(2) @interpolate(flat) brick_local_camera_pos: vec4<f32>,
     
     @location(3) @interpolate(flat) brick_to_local_transform_1: vec4<f32>,
@@ -169,8 +105,13 @@ struct VertexOutput {
     @location(5) @interpolate(flat) brick_to_local_transform_3: vec4<f32>,
     @location(6) @interpolate(flat) brick_to_local_transform_4: vec4<f32>,
     
+    @location(7)  @interpolate(flat) local_to_brick_transform_1: vec4<f32>,
+    @location(8)  @interpolate(flat) local_to_brick_transform_2: vec4<f32>,
+    @location(9)  @interpolate(flat) local_to_brick_transform_3: vec4<f32>,
+    @location(10) @interpolate(flat) local_to_brick_transform_4: vec4<f32>,
+    
     // tmp
-    @location(7) @interpolate(flat) subdivided: u32,
+    @location(11) @interpolate(flat) subdivided: u32,
     // end tmp
 };
 
@@ -193,7 +134,7 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     
     // values for root node display
     var node_vertex = pc.domain;
-    out.brick_shift = vec3<f32>(pc.brick_voxel_size);
+    out.brick_lookup_shift = vec3(pc.brick_voxel_size);
     
     // Set values for non-root nodes
     // TODO maybe make a directive in preprocessor and make two versions of the shader
@@ -203,33 +144,22 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
             (node_vertex.xyz * pc.domain.w) + pc.domain.xyz,
             node_vertex.w * pc.domain.w,
         );
-        out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
+        out.brick_lookup_shift = calculate_atlas_lookup_shift(instance_input.node_index);
     }
     
+    let brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
     let transform = instance_transforms[instance_input.instance_id];
-    // let rotation = transform.rotation;
-    // let q = vec4(0.3826834, 0.0, 0.0, 0.9238795);
-    // let q = vec4(0.0, 0.0, 0.0, 1.0);
-    node_vertex = vec4<f32>(
-        apply_transform(node_vertex.xyz, transform),
-        node_vertex.w * transform.scale,
-    );
+    let inverse_transform = instance_inverse_transforms[instance_input.instance_id];
     
-    let position = rotate_quad(transform.rotation, vertex_input.position);
-    let position = (node_vertex.w * position) + node_vertex.xyz;
+    let brick_to_local_transform = scale(1.0 / node_vertex.w) * translate(brick_shift) * inverse_transform;
     
-    out.position = pc.view_projection * vec4(position, 1.0);
-    out.frag_pos = position;
+    // inverse(brick_to_local_transform):
+    let local_to_brick_transform = transform * translate(-brick_shift) * scale(node_vertex.w);
     
-    var brick_inverted_size = 1.0 / node_vertex.w;
-    var brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
-    var brick_to_local_transform = M4_IDENTITY
-        * scale(brick_inverted_size)
-        // * quat_to_inverse_mat(transform.rotation)
-        * quat_to_mat(transform.rotation)
-        * translate(brick_shift);
-        
+    let position = transform * vec4(node_vertex.w * vertex_input.position + node_vertex.xyz, 1.0);
     
+    out.position = pc.view_projection * position;
+    out.frag_pos = position.xyz;
     out.brick_local_camera_pos = (brick_to_local_transform * pc.camera_position);
     
     out.brick_to_local_transform_1 = brick_to_local_transform[0];
@@ -237,13 +167,17 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     out.brick_to_local_transform_3 = brick_to_local_transform[2];
     out.brick_to_local_transform_4 = brick_to_local_transform[3];
     
-    let header_data = deconstruct_node_header(node_headers[instance_input.node_index]);
+    out.local_to_brick_transform_1 = local_to_brick_transform[0];
+    out.local_to_brick_transform_2 = local_to_brick_transform[1];
+    out.local_to_brick_transform_3 = local_to_brick_transform[2];
+    out.local_to_brick_transform_4 = local_to_brick_transform[3];
+    
+    out.subdivided = 0u;
     
     // tmp
+    let header_data = deconstruct_node_header(node_headers[instance_input.node_index]);
     if header_data.is_subdivided != 0u {
         out.subdivided = 1u;
-    } else {
-        out.subdivided = 0u;
     }
     // end tmp
     
@@ -284,7 +218,7 @@ fn sample_volume_distance(in: VertexOutput, act_position: vec3<f32>,) -> f32 {
     return textureSample(
         brick_atlas,
         brick_atlas_sampler,
-        act_position * pc.brick_scale + in.brick_shift
+        act_position * pc.brick_scale + in.brick_lookup_shift
     ).r;
 }
 
@@ -332,7 +266,7 @@ let MAX_STEPS: u32 = 50u;
 struct HitResult {
     hit:          bool,
     color:        vec4<f32>,
-    distance:     f32,
+    position:     vec3<f32>,
     max_distance: f32,
     normal:       vec3<f32>,
     steps:        u32,
@@ -347,7 +281,7 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
     var hit = HitResult(
         false,
         vec4<f32>(0.0, 0.0, 0.0, 0.0),
-        0.0,
+        vec3<f32>(0.0, 0.0, 0.0),
         get_distance_to_end_of_brick(ray.origin, ray.direction),
         vec3<f32>(0.0, 0.0, 0.0),
         0u
@@ -378,17 +312,26 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
             break;
         }
     }
-    hit.distance = ray.dist;
+    hit.position = ray.dist * ray.direction + ray.origin;
     return hit;
+}
+struct FragmentOutput {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
 }
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main(in: VertexOutput) -> FragmentOutput {
     let brick_to_local_transform = mat4x4<f32>(
         in.brick_to_local_transform_1,
         in.brick_to_local_transform_2,
         in.brick_to_local_transform_3,
         in.brick_to_local_transform_4,
+    );
+    
+    var out = FragmentOutput(
+        vec4<f32>(0.0, 0.0, 0.0, 0.0),
+        in.position.z,
     );
     
     var fragment_pos = (brick_to_local_transform * vec4<f32>(in.frag_pos, 1.0)).xyz;
@@ -399,7 +342,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if in.subdivided == 1u {
             col = mix(col, vec4<f32>(1.0, 1.0, 0.0, 1.0), 0.5);
         }
-        return col;
+        out.color = col;
+        return out;
     }
     
     // Run interior brick raymarching
@@ -407,9 +351,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     
     // calculate color on hit
     if (hit.hit) {
+        
+        // Depth buffer value correction
+        // see: https://stackoverflow.com/questions/53650693/opengl-impostor-sphere-problem-when-calculating-the-depth-value
+        let local_to_brick_transform = mat4x4<f32>(
+            in.local_to_brick_transform_1,
+            in.local_to_brick_transform_2,
+            in.local_to_brick_transform_3,
+            in.local_to_brick_transform_4,
+        );
+        let c = pc.view_projection * local_to_brick_transform * vec4(hit.position, 1.0);
+        out.depth = c.z / c.w;
+        
+        // Color calculation
         var color = hit.color;
         if ((pc.show_flags & SHOW_DEPTH) != 0u) {
-            color = mix(color, vec4<f32>(1.0, 0.0, 0.0, 1.0), hit.distance / hit.max_distance);
+            let distnace = length(hit.position - fragment_pos);
+            color = mix(color, vec4<f32>(1.0, 0.0, 0.0, 1.0), distnace / hit.max_distance);
         }
         if ((pc.show_flags & SHOW_NORMALS) != 0u) {
             color = mix(color, vec4<f32>(hit.normal, 1.0), 0.5);
@@ -417,7 +375,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
             color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
         }
-        return color;
+        out.color = color;
+        return out;
     }
     
     discard;

@@ -56,6 +56,7 @@ impl Context {
                     | wgpu::Features::POLYGON_MODE_LINE // to allow wireframe rendering
                     | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS // to allow mapping of primary buffers to memory
                     | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES // to allow sampling storage textures see: https://github.com/gfx-rs/wgpu/issues/1412 and https://github.com/gfx-rs/wgpu-rs/issues/877#issuecomment-826896142
+                    // | wgpu::Features::DEPTH_CLIP_CONTROL // to allow disabling depth clipping
                 ,
                 limits: wgpu::Limits {
                     max_push_constant_size: 128,

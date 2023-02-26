@@ -22,30 +22,37 @@ impl GPUGeometryTransform {
 
 #[derive(Debug)]
 pub struct GPUGeometryTransforms {
-    pub transforms: gpu::Buffer<GPUGeometryTransform>,
-    pub count:      gpu::Buffer<u32>,
+    pub transforms:         gpu::Buffer<glam::Mat4>,
+    pub inverse_transforms: gpu::Buffer<glam::Mat4>,
+    pub count:              gpu::Buffer<u32>,
 }
 
 impl GPUGeometryTransforms {
-    fn map_transforms(transforms: &[Transform]) -> Vec<GPUGeometryTransform> {
+    fn map_transforms(transforms: &[Transform]) -> (Vec<glam::Mat4>, Vec<glam::Mat4>) {
         transforms.iter()
-            .map(GPUGeometryTransform::from_transform)
-            .collect::<Vec<_>>()
+            .map(|t| {
+                let m = glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+                let mi = m.inverse();
+                (m, mi)
+            })
+            .unzip()
     }
     
     #[profiler::function]
     pub fn from_transforms(gpu: &gpu::Context, transforms: &[Transform]) -> Self {
-        let transforms = Self::map_transforms(transforms);
+        let (transforms, inverse_transforms) = Self::map_transforms(transforms);
         Self {
-            transforms: gpu::Buffer::new(gpu, Some("Geometry transforms"), &transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST),
-            count:      gpu::Buffer::new(gpu, Some("Geometry transforms count"), &[transforms.len() as u32], wgpu::BufferUsages::UNIFORM  | wgpu::BufferUsages::COPY_DST),
+            transforms:         gpu::Buffer::new(gpu, Some("Geometry transforms"), &transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST),
+            inverse_transforms: gpu::Buffer::new(gpu, Some("Geometry inverse transforms"), &inverse_transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST),
+            count:              gpu::Buffer::new(gpu, Some("Geometry transforms count"), &[transforms.len() as u32], wgpu::BufferUsages::UNIFORM  | wgpu::BufferUsages::COPY_DST),
         }
     }
     
     #[profiler::function]
     pub fn update(&mut self, gpu: &gpu::Context, transforms: &[Transform]) {
-        let transforms = Self::map_transforms(transforms);
+        let (transforms, inverse_transforms) = Self::map_transforms(transforms);
         self.transforms.queue_update(gpu, &transforms);
+        self.inverse_transforms.queue_update(gpu, &inverse_transforms);
         self.count.queue_update(gpu, &[transforms.len() as u32]);
     }
     
@@ -66,6 +73,16 @@ impl GPUGeometryTransforms {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
+                    visibility: stages,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
                     visibility: stages,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -90,6 +107,10 @@ impl GPUGeometryTransforms {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: self.inverse_transforms.buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
                     resource: self.count.buffer.as_entire_binding(),
                 },
             ],

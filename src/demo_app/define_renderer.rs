@@ -31,7 +31,7 @@ pub fn define_renderer(context: &Context) -> Renderer<Scene> {
         line_module,
         cube_outline,
         svo_sdf_brick_module,
-        svo_wireframe_module
+        svo_wireframe_module,
     ]);
     
     renderer.register_render_pass(RenderPass::gui, &[

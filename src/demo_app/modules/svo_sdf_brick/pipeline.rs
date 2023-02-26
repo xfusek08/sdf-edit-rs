@@ -162,7 +162,7 @@ impl SvoSDFBrickPipeline {
                 strip_index_format: Some(wgpu::IndexFormat::Uint16),
                 front_face:         wgpu::FrontFace::Ccw,   // Counter clockwise vertices are front-facing
                 cull_mode:          Some(wgpu::Face::Back), // Cull back-facing triangles
-                unclipped_depth:    false,
+                unclipped_depth:    false, // Allow depth values to be outside of 0.0 to 1.0 range
                 polygon_mode:       wgpu::PolygonMode::Fill,
                 conservative:       false,
             },
