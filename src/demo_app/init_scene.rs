@@ -35,7 +35,7 @@ pub fn init_scene(context: &Context) -> Scene {
     //   - TODO: Add transform component to each entity in the world
     
     let mut world = hecs::World::new();
-
+    
     // Simple Drawing of coordinate axes
     // ---------------------------------
     
@@ -53,8 +53,6 @@ pub fn init_scene(context: &Context) -> Scene {
     
     let min_voxel_size = 0.01;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
-        
-    // lets generate a geometry using the shape builder
     let test_geometry = Geometry::new(min_voxel_size).with_edits(
         Shape::empty().add(
             bumpy_sphere(),
@@ -62,15 +60,39 @@ pub fn init_scene(context: &Context) -> Scene {
             0.0
         ).build()
     );
-    
     let test_geometry_id = geometry_pool.insert(test_geometry);
     
     // Create and register test model
     // ------------------------------
     
-    let mut model_pool: ModelPool = SlotMap::with_key();
-    let test_model = Model::new(test_geometry_id);
-    model_pool.insert(test_model);
+    let mut model_pool = ModelPool::new();
+    model_pool.insert(
+        Model::new(test_geometry_id).with_transform(Transform::IDENTITY
+            // .translate((0.01, 0.0, 0.0).into())
+            // .scale(glam::Vec3::splat(1.5))
+            .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
+        )
+    );
+    
+    model_pool.insert(
+        Model::new(test_geometry_id)
+            .with_transform(
+                Transform::IDENTITY
+                    .translate((3.0, 0.0, 0.0).into())
+            )
+    );
+    
+    // for x in -10..=10 {
+    //     for y in -10..=10 {
+    //         model_pool.insert(
+    //             Model::new(test_geometry_id)
+    //                 .with_transform(
+    //                     Transform::IDENTITY
+    //                         .translate((2.2 * x as f32, 2.2 * y as f32, 0.0).into())
+    //                 )
+    //         );
+    //     }
+    // }
     
     Scene {
         camera: Camera::new(CameraProperties {
@@ -87,6 +109,6 @@ pub fn init_scene(context: &Context) -> Scene {
             min_voxel_size,
         },
         display_toggles: Default::default(),
-        brick_level_break_size: 0.1,
+        brick_level_break_size: 0.03,
     }
 }

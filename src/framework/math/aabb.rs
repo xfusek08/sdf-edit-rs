@@ -1,5 +1,7 @@
 
-use super::{BoundingCube, Transform};
+use glam::Vec4Swizzles;
+
+use super::{BoundingCube, Transform, Frustum, PositionRelativeToFrustum, HalfSpace, Plane};
 
 #[derive(Debug, Clone)]
 pub struct AABB {
@@ -31,6 +33,20 @@ impl AABB {
         BoundingCube { pos, size }
     }
     
+    /// Creates 8 vertices of an aabb and rotate them, then create a new aabb from the rotated vertices
+    pub fn vertices(&self) -> [glam::Vec3; 8] {
+        [
+            self.min,
+            glam::Vec3::new(self.min.x, self.min.y, self.max.z),
+            glam::Vec3::new(self.min.x, self.max.y, self.min.z),
+            glam::Vec3::new(self.min.x, self.max.y, self.max.z),
+            glam::Vec3::new(self.max.x, self.min.y, self.min.z),
+            glam::Vec3::new(self.max.x, self.min.y, self.max.z),
+            glam::Vec3::new(self.max.x, self.max.y, self.min.z),
+            self.max,
+        ]
+    }
+    
     #[inline]
     pub fn add(&self, other: &Self) -> Self {
         Self {
@@ -45,20 +61,9 @@ impl AABB {
             return self.clone();
         }
         
-        // create 8 vertices of an aabb and rotate them, then create a new aabb from the rotated vertices
-        let vertices = [
-            self.min,
-            glam::Vec3::new(self.min.x, self.min.y, self.max.z),
-            glam::Vec3::new(self.min.x, self.max.y, self.min.z),
-            glam::Vec3::new(self.min.x, self.max.y, self.max.z),
-            glam::Vec3::new(self.max.x, self.min.y, self.min.z),
-            glam::Vec3::new(self.max.x, self.min.y, self.max.z),
-            glam::Vec3::new(self.max.x, self.max.y, self.min.z),
-            self.max,
-        ];
         let mut min = glam::Vec3::splat(f32::MAX);
         let mut max = glam::Vec3::splat(f32::MIN);
-        for vertex in vertices.iter() {
+        for vertex in self.vertices().iter() {
             let rotated_vertex = *rotation * *vertex;
             min = min.min(rotated_vertex);
             max = max.max(rotated_vertex);
@@ -97,6 +102,28 @@ impl AABB {
             max: self.max + glam::Vec3::splat(amount),
         }
     }
+    
+    pub fn in_frustum(&self, frustum: &Frustum) -> bool {
+        
+        let is_intersecting_into_positive_half_space = |plane: &Plane| {
+            self.vertices().iter().any(|v| { plane.classify_point(v) == HalfSpace::Positive})
+        };
+        
+        if !frustum.planes().iter().all(is_intersecting_into_positive_half_space) {
+            return false;
+        }
+        
+        // NOTE: following code is not working right for some reason
+        
+        // // Compute if all frustum vertices are outside of the aabb according to: https://iquilezles.org/articles/frustumcorrect/
+        // if frustum.vertices().iter().all(|fv| {fv.x >  self.max.x}) { return false; }
+        // if frustum.vertices().iter().all(|fv| {fv.x <  self.min.x}) { return false; }
+        // if frustum.vertices().iter().all(|fv| {fv.y >  self.max.y}) { return false; }
+        // if frustum.vertices().iter().all(|fv| {fv.y <  self.min.y}) { return false; }
+        // if frustum.vertices().iter().all(|fv| {fv.z >  self.max.z}) { return false; }
+        // if frustum.vertices().iter().all(|fv| {fv.z <  self.min.z}) { return false; }
+        true
+    }
 }
 
 // GPU aligned version
@@ -117,44 +144,10 @@ impl AABBAligned {
     }
     
     pub fn from_aabb(aabb: &AABB) -> Self {
-        Self::new(
-            glam::Vec3::new(aabb.min.x, aabb.min.y, aabb.min.z),
-            glam::Vec3::new(aabb.max.x, aabb.max.y, aabb.max.z),
-        )
+        Self::new(aabb.min, aabb.max)
     }
     
     pub fn to_aabb(&self) -> AABB {
-        AABB::new(
-            glam::Vec3::new(self.min.x, self.min.y, self.min.z),
-            glam::Vec3::new(self.max.x, self.max.y, self.max.z),
-        )
-    }
-    
-    pub fn bounding_cube(&self) -> BoundingCube {
-        self.to_aabb().bounding_cube()
-    }
-    
-    pub fn from_bounding_cube(bounding_cube: &BoundingCube) -> Self {
-        Self::from_aabb(&AABB::from_bounding_cube(bounding_cube))
-    }
-    
-    pub fn add(&self, other: &Self) -> Self {
-        Self::from_aabb(&self.to_aabb().add(&other.to_aabb()))
-    }
-    
-    pub fn rotate(&mut self, rotation: &glam::Quat) {
-        self.to_aabb().rotate(rotation);
-    }
-    
-    pub fn translate(&mut self, translation: &glam::Vec3) {
-        self.to_aabb().translate(translation);
-    }
-    
-    pub fn scale(&mut self, scale: &glam::Vec3) {
-        self.to_aabb().scale(scale);
-    }
-    
-    pub fn transform(&mut self, transform: &Transform) {
-        self.to_aabb().transform(transform);
+        AABB::new(self.min.xyz(), self.max.xyz())
     }
 }

@@ -10,3 +10,6 @@ pub use render_module::*;
 
 mod brick_instances;
 pub use brick_instances::*;
+
+mod gpu_geometry_transforms;
+pub use gpu_geometry_transforms::*;

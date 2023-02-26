@@ -61,7 +61,7 @@ impl Evaluator {
         // TODO: Dispatch a kernel to compute the domain of the geometry (tightly fitted AABB)
         
         // Construct edit list in gpu memory
-        let edits = geometry::GPUEdits::from_edit_list(&self.gpu, &geometry.edits);
+        let edits = geometry::GPUEdits::from_edit_list(&self.gpu, &geometry.edits());
         
         // Extract svo from geometry
         let svo = geometry.svo.take().unwrap_or_else(|| {

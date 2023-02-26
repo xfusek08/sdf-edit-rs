@@ -1,10 +1,19 @@
 
 use crate::framework::gpu;
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct BrickInstance {
+    /// Id of a brick(node) in a particular SVO
+    brick_id: u32,
+    /// Id of a instance of particular SVO
+    instance_id: u32,
+}
+
 #[derive(Debug)]
 pub struct BrickInstances {
     count: Option<u32>,
-    pub buffer: gpu::Buffer<u32>,
+    pub buffer: gpu::Buffer<BrickInstance>,
     pub count_buffer: gpu::Buffer<u32>,
 }
 

@@ -19,27 +19,21 @@ struct ShaderInput {
 // SVO: Node pool Read-only bind group
 // -----------------------------------------------------------------------------------
 
-@group(0) @binding(0) var<storage, read> node_count: u32;
-@group(0) @binding(1) var<storage, read> node_headers: array<u32>;
-@group(0) @binding(2) var<storage, read> node_payload: array<u32>;
-@group(0) @binding(3) var<storage, read> node_vertices: array<vec4<f32>>;
+@group(0) @binding(0) var<storage, read> node_count:         u32;
+@group(0) @binding(1) var<storage, read> node_headers:       array<u32>;
+@group(0) @binding(2) var<storage, read> node_payload:       array<u32>;
+@group(0) @binding(3) var<storage, read> node_vertices:      array<vec4<f32>>;
 @group(0) @binding(4) var<uniform>       node_pool_capacity: u32;
-
-
-// Oputput brick instance buffer
-// -----------------------------------------------------------------------------------
-@group(1) @binding(0) var<storage, read_write> brick_index_buffer: array<u32>;
-@group(1) @binding(1) var<storage, read_write> brick_count: atomic<u32>;
-
-let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
-let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
-let HEADER_HAS_BRICK_FLAG = 0x40000000u;
 
 struct NodeHeader {
     has_brick: u32,
     is_subdivided: u32,
     tile_index: u32,
 }
+
+let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
+let HEADER_HAS_BRICK_FLAG = 0x40000000u;
 
 fn deconstruct_node_header(node_header: u32) -> NodeHeader {
     return NodeHeader(
@@ -48,6 +42,51 @@ fn deconstruct_node_header(node_header: u32) -> NodeHeader {
         node_header & HEADER_TILE_INDEX_MASK,
     );
 }
+
+// Oputput brick instance buffer
+// -----------------------------------------------------------------------------------
+
+struct BrickInstance {
+    brick_id: u32,
+    instakce_id: u32,
+}
+@group(1) @binding(0) var<storage, read_write> brick_index_buffer: array<BrickInstance>;
+@group(1) @binding(1) var<storage, read_write> brick_count:        atomic<u32>;
+
+
+// Instance buffer where currently evaluated svo has one transform mer instance
+// -----------------------------------------------------------------------------------
+struct Transform {
+    position: vec3<f32>,
+    scale:    f32,
+    rotation: vec4<f32>,
+}
+@group(2) @binding(0) var<storage, read> instance_transforms: array<Transform>;
+@group(2) @binding(1) var<uniform>       instances:           u32;
+
+fn quat_mult(q1 : vec4<f32>, q2 : vec4<f32>) -> vec4<f32> {
+    return vec4(
+        (q1.w * q2.x) + (q1.x * q2.w) + (q1.y * q2.z) - (q1.z * q2.y),
+        (q1.w * q2.y) - (q1.x * q2.z) + (q1.y * q2.w) + (q1.z * q2.x),
+        (q1.w * q2.z) + (q1.x * q2.y) - (q1.y * q2.x) + (q1.z * q2.w),
+        (q1.w * q2.w) - (q1.x * q2.x) - (q1.y * q2.y) - (q1.z * q2.z)
+    );
+}
+
+fn rotate_quad(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+    let q_v = vec4(v, 0.0);
+    let q_conj = vec4(-q.xyz, q.w);
+    return quat_mult(quat_mult(q, q_v), q_conj).xyz;
+}
+
+fn apply_transform(pos: vec3<f32>, transform: Transform) -> vec3<f32> {
+    let pos = pos * transform.scale;
+    let pos = rotate_quad(transform.rotation, pos);
+    let pos = pos + transform.position;
+    return pos;
+}
+
+// -----------------------------------------------------------------------------------
 
 /// Compute the screen size of a bounding cube
 /// Based on: https://iquilezles.org/articles/sphereproj/
@@ -72,12 +111,6 @@ fn bounding_cube_screen_size(center: vec3<f32>, side_size: f32) -> f32 {
     return -3.14159 * pc.camera_focal_length * pc.camera_focal_length * r2 * sqrt(abs((l2 - r2) / (r2 - z2))) / (r2 - z2);
 }
 
-fn distance_adjustment(position: vec3<f32>, size: f32) -> f32 {
-    return 1.0;
-    // let distance = length(position - pc.camera_projection_matrix[3].xyz);
-    // return 1.0 / (distance + pc.camera_focal_length);
-}
-
 // Compute a parent boundign sphere
 fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter: f32) -> vec3<f32> {
     var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
@@ -99,37 +132,49 @@ fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter
 @workgroup_size(128, 1, 1)
 fn main(in: ShaderInput) {
     let node_id = in.workgroup_id.x * in.workgroup_size.x + in.local_invocation_id.x;
-    if (node_id < node_count) {
-        let header = deconstruct_node_header(node_headers[node_id]);
-        let vertex = node_vertices[node_id];
-        let treshhold = 0.1 * pc.level_break_size;
+    if (node_id >= node_count) {
+        return;
+    }
+    
+    let header = deconstruct_node_header(node_headers[node_id]);
+    let vertex = node_vertices[node_id];
+    let treshhold = 0.1 * pc.level_break_size;
+    
+    // compute size on screen of current node
+    let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
+    let me_size = vertex.w * pc.domain.w;
+    let me_position_transformed = (pc.camera_projection_matrix * vec4<f32>(me_position, 1.0)).xyz;
+    
+    // compute size on screen of parent node
+    let parent_position = compute_parent_position(node_id, me_position, me_size);
+    let parent_size = me_size * 2.0;
+    
+    if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
+        return; // No brick
+    }
+    
+    for (var i = 0u; i < instances; i = i + 1u) {
+        let transform = instance_transforms[i];
         
-        // compute size on screen of current node
-        let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
-        let me_size = vertex.w * pc.domain.w;
-        let project_me_size = bounding_cube_screen_size(me_position, me_size);
-        let project_me_size = project_me_size * distance_adjustment(me_position, me_size);
+        let me_position_transformed = apply_transform(me_position, transform);
+        let me_size_scaled = me_size * transform.scale;
+        let projected_me_size = bounding_cube_screen_size(me_position_transformed, me_size_scaled);
         
-        // compute size on screen of parent node
-        let parent_position = compute_parent_position(node_id, me_position, me_size);
-        let parent_size = me_size * 2.0;
-        let projected_parent_size = bounding_cube_screen_size(parent_position, parent_size);
-        let projected_parent_size = projected_parent_size * distance_adjustment(parent_position, parent_size);
+        let parent_position_transformed = apply_transform(parent_position, transform);
+        let parent_size_scaled = parent_size * transform.scale;
+        let projected_parent_size = bounding_cube_screen_size(parent_position_transformed, parent_size_scaled);
         
-        if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
-            return; // No brick
-        }
-        if (projected_parent_size <=0.0 || project_me_size <= 0.0) {
-            return; // Not possible
+        if (projected_parent_size <=0.0 || projected_me_size <= 0.0) {
+            continue; // Not possible
         }
         if (projected_parent_size < treshhold) {
-            return; // Parent of this node will be rendered instead
+            continue; // Parent of this node will be rendered instead
         }
-        if (project_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
-            return; // Node is too big to be rendered and has children which will be rendered instead
+        if (projected_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {
+            continue; // Node is too big to be rendered and has children which will be rendered instead
         }
         
         let index = atomicAdd(&brick_count, 1u);
-        brick_index_buffer[index] = node_id;
+        brick_index_buffer[index] = BrickInstance(node_id, i);
     }
 }

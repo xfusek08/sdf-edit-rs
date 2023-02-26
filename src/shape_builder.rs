@@ -75,8 +75,8 @@ impl Shape {
     }
     
     pub fn store_flat_edits<P>(&self, file_name: P) -> Result<(), String>
-        where
-            P: AsRef<Path>
+    where
+        P: AsRef<Path>
     {
         
         // Serialize edits
@@ -100,8 +100,8 @@ impl Shape {
     }
     
     pub fn load_store_edits<P>(file_name: P) -> Result<Self, String>
-        where
-            P: AsRef<Path>
+    where
+        P: AsRef<Path>
     {
         // Open file
         let mut file = match std::fs::File::open(file_name) {

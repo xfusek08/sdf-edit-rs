@@ -36,8 +36,7 @@ impl DynamicTestGeometry {
             warn!("DynamicTestGeometry::update_geometry called with no shape");
             return;
         };
-        geometry.edits = shape.build();
-        geometry.evaluation_status = EvaluationStatus::NeedsEvaluation;
+        geometry.set_edits(shape.build());
     }
 }
 

@@ -64,16 +64,16 @@ impl<S: SceneWithCamera> Renderer<S> {
     
     /// Adds a new render module to the renderer
     pub fn register_module<M, F>(&mut self, get_module: F) -> RenderModuleID
-        where
-            M: RenderModule<S> + 'static,
-            F: FnOnce(&RenderContext) -> M,
+    where
+        M: RenderModule<S> + 'static,
+        F: FnOnce(&RenderContext) -> M,
     {
         self.modules.insert(Box::new(get_module(&self.context)))
     }
     
     pub fn register_render_pass<F>(&mut self, get_pass: F, modules: &[RenderModuleID]) -> RenderPassID
-        where
-            F: FnOnce(&RenderContext) -> RenderPass,
+    where
+        F: FnOnce(&RenderContext) -> RenderPass,
     {
         let pass = get_pass(&self.context);
         

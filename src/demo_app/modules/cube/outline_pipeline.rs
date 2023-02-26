@@ -4,13 +4,10 @@ use std::borrow::Cow;
 use crate::{
     framework::{
         math,
+        gpu,
         renderer::{
             self,
             RenderContext,
-        },
-        gpu::{
-            self,
-            vertices::Vertex
         },
     },
 };
@@ -29,20 +26,9 @@ struct PushConstants {
     domain:          math::BoundingCube,
 }
 
-type CubeInstanceBuffer = gpu::Buffer<CubeOutlineComponent>;
-impl CubeInstanceBuffer {
-    pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<glam::Vec4>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &wgpu::vertex_attr_array![1 => Float32x4],
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct CubeOutlinePipeline {
-    pub instance_buffer: CubeInstanceBuffer,
+    pub instance_buffer: gpu::Buffer<CubeOutlineComponent>,
     cube_wireframe_mesh: CubeWireframeMesh,
     pipeline: wgpu::RenderPipeline,
     push_constants: PushConstants,
@@ -78,8 +64,16 @@ impl CubeOutlinePipeline {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[
-                    gpu::vertices::SimpleVertex::vertex_layout(),
-                    CubeInstanceBuffer::vertex_layout(),
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<gpu::vertices::SimpleVertex>() as wgpu::BufferAddress,
+                        step_mode:    wgpu::VertexStepMode::Vertex,
+                        attributes:   &wgpu::vertex_attr_array![0 => Float32x3],
+                    },
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<glam::Vec4>() as wgpu::BufferAddress,
+                        step_mode:    wgpu::VertexStepMode::Instance,
+                        attributes:   &wgpu::vertex_attr_array![1 => Float32x4],
+                    },
                 ],
             },
             
@@ -115,7 +109,7 @@ impl CubeOutlinePipeline {
             multiview: None,
         });
         Self {
-            instance_buffer: CubeInstanceBuffer::new(
+            instance_buffer: gpu::Buffer::<CubeOutlineComponent>::new(
                 &context.gpu,
                 Some("Outlined cube instance buffer"),
                 &[],

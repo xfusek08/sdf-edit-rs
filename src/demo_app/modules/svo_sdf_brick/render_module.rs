@@ -1,18 +1,27 @@
 
+use std::collections::HashMap;
+
+use super::{
+    SvoSDFBrickPipeline,
+    SvoBrickSelectPipeline,
+    BrickInstances,
+    GPUGeometryTransforms,
+};
+
 use crate::{
+    error,
     demo_app::scene::Scene,
+    sdf::geometry::GeometryID,
     framework::{
-        gui::Gui,
+        math::{Transform, Frustum},
         renderer::{
             RenderModule,
             RenderContext,
             RenderPassContext,
             RenderPass,
-        },
-    }, warn,
+        }, gui::Gui,
+    }, info,
 };
-
-use super::{SvoSDFBrickPipeline, SvoBrickSelectPipeline, BrickInstances};
 
 ///! This is main renderer of evaluated geometries
 
@@ -21,6 +30,7 @@ pub struct SvoSdfBricksRenderModule {
     pipeline: SvoSDFBrickPipeline,
     brick_select_compute_pipeline: SvoBrickSelectPipeline,
     brick_instances: BrickInstances,
+    instance_transforms: HashMap<GeometryID, GPUGeometryTransforms>,
 }
 
 impl SvoSdfBricksRenderModule {
@@ -29,6 +39,7 @@ impl SvoSdfBricksRenderModule {
             pipeline: SvoSDFBrickPipeline::new(context),
             brick_select_compute_pipeline: SvoBrickSelectPipeline::new(context),
             brick_instances: BrickInstances::new(&context.gpu, 1024),
+            instance_transforms: HashMap::new(),
         }
     }
 }
@@ -39,36 +50,69 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
     #[profiler::function]
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         
-        // TODO: Render all SVOs
-        let svo = scene.geometry_pool
-            .iter()
-            .filter_map(|(_, geometry)| { geometry.svo.as_ref() })
-            .take(1)
-            .last();
+        let camera_frustum = Frustum::from_camera(&scene.camera);
         
-        let Some(svo) = svo else {
-            warn!("SvoSdfBricksRenderModule::prepare: No SVOs to render");
-            return;
-        };
+        // Gather transforms (instances) for each geometry
+        let mut geometry_instances: HashMap<GeometryID, Vec<Transform>> = HashMap::new();
+        for (_, model) in scene.model_pool.iter() {
+            let (transform, geometry_id) = (&model.transform, &model.geometry_id);
+            geometry_instances.entry(*geometry_id)
+                .and_modify(|transforms| { transforms.push(transform.clone()) })
+                .or_insert_with(|| vec![transform.clone()]);
+        }
         
-        let Some(node_count) = svo.node_pool.count() else {
-            warn!("SvoSdfBricksRenderModule::prepare: SVO node pool is empty on does nto have node count loaded from GPU");
-            return;
-        };
-        
-        self.brick_instances.clear_resize(&context.gpu, node_count as usize);
-        self.brick_select_compute_pipeline.run(context, &svo, &self.brick_instances, scene.brick_level_break_size);
-        
-        {
-            profiler::scope!("BrickInstances::load_count", pinned);
-            // TODO: (SLOW) this will not be needed when we will use indirect draw
-            // TODO: add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
-            self.brick_instances.load_count(&context.gpu)
-        };
-        
-        self.pipeline.set_svo(&context.gpu, svo);
-        self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
-        
+        for (geometry_id, transforms) in geometry_instances.iter() {
+            let geometry = scene.geometry_pool.get(*geometry_id).expect("Unexpected Error: Geometry not found in pool");
+            
+            // frustum culling on object level
+            let transforms = transforms.iter().filter_map(|t| {
+                if geometry.total_aabb().transform(t).in_frustum(&camera_frustum) {
+                    Some(t.clone())
+                } else {
+                    None
+                }
+            }).collect::<Vec<_>>();
+            
+            let Some(svo) = &geometry.svo else {
+                error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
+                continue;
+            };
+            
+            let Some(node_count) = svo.node_pool.count() else {
+                error!("Cannot instantiate Geometry {:?}, its SVO node pool is empty or does not have node_count loaded from GPU", geometry_id);
+                continue;
+            };
+            
+            info!("Rendering Geometry {:?} with {} instances", geometry_id, transforms.len());
+            
+            let gpu_transforms = self.instance_transforms.entry(*geometry_id)
+                .and_modify(|gpu_transforms| { gpu_transforms.update(&context.gpu, &transforms) })
+                .or_insert_with(|| GPUGeometryTransforms::from_transforms(&context.gpu, &transforms));
+            
+            self.brick_instances.clear_resize(&context.gpu, transforms.len() * node_count as usize);
+            self.brick_select_compute_pipeline.run(
+                context,
+                svo,
+                scene.brick_level_break_size,
+                &self.brick_instances,
+                &gpu_transforms
+            );
+            
+            {
+                profiler::scope!("BrickInstances::load_count", pinned);
+                // TODO: (SLOW) this will not be needed when we will use indirect draw.
+                // TODO: Add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
+                let cnt = self.brick_instances.load_count(&context.gpu);
+                info!("BrickInstances::load_count: {}", cnt);
+            };
+            
+            self.pipeline.set_svo(&context.gpu, svo, &gpu_transforms);
+            self.pipeline.set_display_options(scene.display_toggles.brick_display_options);
+            
+            // NOTE: For now on we render only one (first) geometry with all its instances
+            //       Instead of set_svo and set_display_options there would be "push" or "submit" methods.
+            break;
+        }
     }
     
     #[profiler::function]

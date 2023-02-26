@@ -12,7 +12,8 @@ use std::{
     sync::Arc,
     thread::ThreadId,
     time::Instant,
-    fs::File, io::Write
+    fs::File,
+    io::Write
 };
 
 

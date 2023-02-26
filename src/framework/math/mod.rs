@@ -1,4 +1,7 @@
 
+mod frustum;
+pub use frustum::*;
+
 mod aabb;
 pub use aabb::*;
 

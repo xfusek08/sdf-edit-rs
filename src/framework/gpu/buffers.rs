@@ -3,7 +3,10 @@ use std::{marker::PhantomData, fmt::Debug};
 
 use wgpu::util::DeviceExt;
 
-use super::{Context, vertices::Vertex};
+use super::{
+    Context,
+    vertices::Vertex,
+};
 
 pub trait BufferItem:  {}
 
@@ -17,10 +20,8 @@ pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> 
     pub size: usize,
     /// Capacity of the buffer (how many items it can hold).
     pub capacity: usize,
-    
     /// TODO: delete after wgpu 0.14
     pub usage: wgpu::BufferUsages,
-    
     /// The type of the buffer item data.
     _phantom: PhantomData<I>,
 }
@@ -136,17 +137,6 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
         Self::static_read(&self.buffer, gpu)
     }
 }
-
-impl Buffer<u32> {
-    pub fn vertex_layout<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<u32>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &wgpu::vertex_attr_array![1 => Uint32],
-        }
-    }
-}
-
 
 // TODO Generalize Buffer for different usage types
 

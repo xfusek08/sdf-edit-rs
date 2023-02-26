@@ -114,6 +114,7 @@ impl Camera {
             ..Default::default()
         }
     }
+    
 }
 
 // SmoothZoomArm

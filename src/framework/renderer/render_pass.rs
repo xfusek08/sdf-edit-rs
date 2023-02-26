@@ -45,7 +45,6 @@ impl RenderPass {
     
 }
 
-
 impl RenderPass {
     pub fn resize(&mut self, context: &RenderContext, scale_factor: f64) {
         match self {
@@ -68,9 +67,7 @@ impl RenderPass {
         view: &'pass wgpu::TextureView,
         context: &'pass RenderContext,
     ) ->  RenderPassContext<'pass> {
-        
         match self {
-            
             Self::Base {
                 clear_color,
                 depth_texture

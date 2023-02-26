@@ -18,7 +18,7 @@ use crate::{
         gui::Gui,
         gpu::{
             self,
-            vertices::Vertex
+            vertices::{Vertex, ColorVertex}
         },
         renderer::{
             RenderContext,
@@ -95,7 +95,16 @@ impl LineRenderModule {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[gpu::vertices::ColorVertex::vertex_layout()], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
+                buffers: &[
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<ColorVertex>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &wgpu::vertex_attr_array![
+                            0 => Float32x3,
+                            1 => Float32x3,
+                        ],
+                    }
+                ], // <- List of configurations where each item is a description of one vertex buffer (vertex puller configuration)
             },
             // ⬇ Fragment shader -> define an entry point in our shader
             fragment: Some(wgpu::FragmentState {

@@ -2,15 +2,27 @@
 use std::borrow::Cow;
 
 use crate::{
-    sdf::svo::{self, Svo},
-    demo_app::modules::cube::{CUBE_INDICES_TRIANGLE_STRIP, CubeSolidMesh},
+    warn,
+    sdf::svo::{
+        self,
+        Svo,
+    },
+    demo_app::modules::cube::{
+        CUBE_INDICES_TRIANGLE_STRIP,
+        CubeSolidMesh
+    },
     framework::{
+        math,
+        gpu,
         renderer::RenderContext,
-        gpu::{self, vertices::Vertex}, math,
-    }, warn,
+    },
 };
 
-use super::BrickInstances;
+use super::{
+    BrickInstances,
+    BrickInstance,
+    GPUGeometryTransforms
+};
 
 // bit flags for showing solid brick, normals,  step count and depth
 bitflags::bitflags! {
@@ -45,19 +57,21 @@ struct PushConstants {
 }
 
 #[derive(Debug)]
-struct SvoBindGroups {
-    pub node_pool:  wgpu::BindGroup,
-    pub brick_pool: wgpu::BindGroup,
+struct SVORenderResources {
+    pub node_pool_bind_group:       wgpu::BindGroup,
+    pub brick_pool_bind_group:      wgpu::BindGroup,
+    pub instance_buffer_bind_group: wgpu::BindGroup,
 }
 
 #[derive(Debug)]
 pub struct SvoSDFBrickPipeline {
-    pipeline:                     wgpu::RenderPipeline,
-    node_pool_bind_group_layout:  wgpu::BindGroupLayout,
-    brick_pool_bind_group_layout: wgpu::BindGroupLayout,
-    cube_solid_mesh:              CubeSolidMesh,
-    bind_groups:                  Option<SvoBindGroups>,
-    push_constants:               PushConstants,
+    pipeline:                          wgpu::RenderPipeline,
+    node_pool_bind_group_layout:       wgpu::BindGroupLayout,
+    brick_pool_bind_group_layout:      wgpu::BindGroupLayout,
+    instance_buffer_bind_group_layout: wgpu::BindGroupLayout,
+    cube_solid_mesh:                   CubeSolidMesh,
+    svo_render_resources:              Option<SVORenderResources>,
+    push_constants:                    PushConstants,
 }
 
 impl SvoSDFBrickPipeline {
@@ -68,9 +82,14 @@ impl SvoSDFBrickPipeline {
             true
         );
         
+        let instance_buffer_bind_group_layout = GPUGeometryTransforms::create_bind_group_layout(
+            &context.gpu,
+            wgpu::ShaderStages::VERTEX,
+        );
+        
         let brick_pool_bind_group_layout = svo::BrickPool::create_read_bind_group_layout(
             &context.gpu,
-            wgpu::ShaderStages::FRAGMENT
+            wgpu::ShaderStages::FRAGMENT, // Brick data are read in the fragment shader for ray-marching
         );
         
         let shader = context.gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -87,8 +106,9 @@ impl SvoSDFBrickPipeline {
                     label: Some("SDF Pipeline brick Pipeline Layout"),
                     // define buffers layout of the svo
                     bind_group_layouts: &[
-                        &node_pool_bind_group_layout,  // 0 - Node Pool
-                        &brick_pool_bind_group_layout, // 1 - Brick Pool
+                        &node_pool_bind_group_layout,       // 0 - Node Pool
+                        &brick_pool_bind_group_layout,      // 1 - Brick Pool
+                        &instance_buffer_bind_group_layout, // 2 - Instance Buffer
                     ],
                     // set camera transform matrix as shader push constant
                     push_constant_ranges: &[wgpu::PushConstantRange {
@@ -103,8 +123,22 @@ impl SvoSDFBrickPipeline {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[
-                    gpu::vertices::SimpleVertex::vertex_layout(),
-                    gpu::Buffer::<u32>::vertex_layout(),
+                    // Vertices of the cube to me instanced
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<gpu::vertices::SimpleVertex>() as wgpu::BufferAddress,
+                        step_mode:    wgpu::VertexStepMode::Vertex,
+                        attributes:   &wgpu::vertex_attr_array![0 => Float32x3],
+                    },
+                    
+                    // Data pulled per instance -> indices of the brick in svo and index of the svo (model) instance in the instance buffer
+                    wgpu::VertexBufferLayout {
+                        step_mode:    wgpu::VertexStepMode::Instance,
+                        array_stride: std::mem::size_of::<BrickInstance>() as wgpu::BufferAddress,
+                        attributes:   &wgpu::vertex_attr_array![
+                            1 => Uint32,
+                            2 => Uint32,
+                        ],
+                    }
                 ],
             },
             
@@ -140,24 +174,30 @@ impl SvoSDFBrickPipeline {
             multiview: None,
         });
         Self {
-            cube_solid_mesh: CubeSolidMesh::new(&context.gpu.device),
             pipeline,
             node_pool_bind_group_layout,
             brick_pool_bind_group_layout,
-            bind_groups: None,
-            push_constants: PushConstants::default(),
+            instance_buffer_bind_group_layout,
+            cube_solid_mesh:      CubeSolidMesh::new(&context.gpu.device),
+            svo_render_resources: None,
+            push_constants:       PushConstants::default(),
         }
     }
     
-    pub fn set_svo(&mut self, gpu: &gpu::Context, svo: &Svo) {
-        self.bind_groups = Some(SvoBindGroups {
-            node_pool: svo.node_pool.create_bind_group(&gpu, &self.node_pool_bind_group_layout),
-            brick_pool: svo.brick_pool.create_read_bind_group(&gpu, &self.brick_pool_bind_group_layout),
+    pub fn set_svo(&mut self, gpu: &gpu::Context, svo: &Svo, instance_buffer: &GPUGeometryTransforms) {
+        self.push_constants = PushConstants {
+            domain:             svo.domain,
+            brick_atlas_stride: svo.brick_pool.atlas_stride(),
+            brick_voxel_size:   svo.brick_pool.atlas_voxel_size(),
+            brick_scale:        svo.brick_pool.atlas_scale(),
+            ..self.push_constants
+        };
+        
+        self.svo_render_resources = Some(SVORenderResources {
+            node_pool_bind_group:       svo.node_pool.create_bind_group(&gpu, &self.node_pool_bind_group_layout),
+            brick_pool_bind_group:      svo.brick_pool.create_read_bind_group(&gpu, &self.brick_pool_bind_group_layout),
+            instance_buffer_bind_group: instance_buffer.create_bind_group(&gpu, &self.instance_buffer_bind_group_layout),
         });
-        self.push_constants.domain = svo.domain;
-        self.push_constants.brick_atlas_stride = svo.brick_pool.atlas_stride();
-        self.push_constants.brick_voxel_size = svo.brick_pool.atlas_voxel_size();
-        self.push_constants.brick_scale = svo.brick_pool.atlas_scale();
     }
     
     pub fn set_display_options(&mut self, options: DisplayOptions) {
@@ -165,8 +205,13 @@ impl SvoSDFBrickPipeline {
     }
     
     /// Runs this pipeline for given render pass
-    pub fn render_on_pass<'rpass>(&'rpass self, pass: &mut wgpu::RenderPass<'rpass>, context: &RenderContext, brick_instance_buffer: &'rpass BrickInstances) {
-        let Some(bind_groups) = self.bind_groups.as_ref()  else {
+    pub fn render_on_pass<'rpass>(
+        &'rpass self,
+        pass: &mut wgpu::RenderPass<'rpass>,
+        context: &RenderContext,
+        brick_instance_buffer: &'rpass BrickInstances
+    ) {
+        let Some(bind_groups) = self.svo_render_resources.as_ref()  else {
             return;
         };
         
@@ -195,8 +240,9 @@ impl SvoSDFBrickPipeline {
             bytemuck::cast_slice(&[pc]
         ));
         
-        pass.set_bind_group(0, &bind_groups.node_pool, &[]);
-        pass.set_bind_group(1, &bind_groups.brick_pool, &[]);
+        pass.set_bind_group(0, &bind_groups.node_pool_bind_group, &[]);
+        pass.set_bind_group(1, &bind_groups.brick_pool_bind_group, &[]);
+        pass.set_bind_group(2, &bind_groups.instance_buffer_bind_group, &[]);
         
         pass.set_vertex_buffer(0, self.cube_solid_mesh.vertex_buffer.slice(..));
         pass.set_vertex_buffer(1, brick_instance_buffer.buffer.buffer.slice(..));

@@ -18,11 +18,12 @@ let SHOW_DEPTH      = 0x08u; // 0b00001000;
 let JUST_ROOT       = 0x10u; // 0b00010000;
 
 struct VertexInput {
-    @location(0) position: vec3<f32>
+    @location(0) position: vec3<f32>,
 }
 
 struct InstanceInput {
-    @location(1) node_index: u32
+    @location(1) node_index: u32,
+    @location(2) instance_id: u32,
 }
 
 // SVO: Node pool Read-only bind group
@@ -42,6 +43,77 @@ struct InstanceInput {
 @group(1) @binding(1) var                brick_atlas_sampler:  sampler;
 @group(1) @binding(2) var<storage, read> brick_count:          atomic<u32>; // Number of bricks in brick texture, use to atomically add new bricks
 @group(1) @binding(3) var<uniform>       brick_pool_side_size: u32;         // Number of bricks in one side of the brick atlas texture
+
+
+// Instance buffer where currently evaluated svo has one transform mer instance
+// -----------------------------------------------------------------------------------
+struct Transform {
+    position: vec3<f32>,
+    scale:    f32,
+    rotation: vec4<f32>,
+}
+@group(2) @binding(0) var<storage, read> instance_transforms: array<Transform>;
+@group(2) @binding(1) var<uniform>       instances:           u32;
+
+fn quat_mult(q1 : vec4<f32>, q2 : vec4<f32>) -> vec4<f32> {
+    return vec4(
+        (q1.w * q2.x) + (q1.x * q2.w) + (q1.y * q2.z) - (q1.z * q2.y),
+        (q1.w * q2.y) - (q1.x * q2.z) + (q1.y * q2.w) + (q1.z * q2.x),
+        (q1.w * q2.z) + (q1.x * q2.y) - (q1.y * q2.x) + (q1.z * q2.w),
+        (q1.w * q2.w) - (q1.x * q2.x) - (q1.y * q2.y) - (q1.z * q2.z)
+    );
+}
+
+fn quat_to_mat(q: vec4<f32>) -> mat4x4<f32> {
+    let x2 = q.x * q.x;
+    let y2 = q.y * q.y;
+    let z2 = q.z * q.z;
+    let xy = q.x * q.y;
+    let xz = q.x * q.z;
+    let yz = q.y * q.z;
+    let wx = q.w * q.x;
+    let wy = q.w * q.y;
+    let wz = q.w * q.z;
+
+    return mat4x4<f32>(
+        vec4<f32>(1.0 - 2.0 * (y2 + z2), 2.0 * (xy - wz), 2.0 * (xz + wy), 0.0),
+        vec4<f32>(2.0 * (xy + wz), 1.0 - 2.0 * (x2 + z2), 2.0 * (yz - wx), 0.0),
+        vec4<f32>(2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (x2 + y2), 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0),
+    );
+}
+
+fn quat_to_inverse_mat(q: vec4<f32>) -> mat4x4<f32> {
+    let x2 = q.x * q.x;
+    let y2 = q.y * q.y;
+    let z2 = q.z * q.z;
+    let xy = q.x * q.y;
+    let xz = q.x * q.z;
+    let yz = q.y * q.z;
+    let wx = q.w * q.x;
+    let wy = q.w * q.y;
+    let wz = q.w * q.z;
+
+    return mat4x4<f32>(
+        vec4<f32>(1.0 - 2.0 * (y2 + z2), 2.0 * (xy + wz), 2.0 * (xz - wy), 0.0),
+        vec4<f32>(2.0 * (xy - wz), 1.0 - 2.0 * (x2 + z2), 2.0 * (yz + wx), 0.0),
+        vec4<f32>(2.0 * (xz + wy), 2.0 * (yz - wx), 1.0 - 2.0 * (x2 + y2), 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0),
+    );
+}
+
+fn rotate_quad(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+    let q_v = vec4(v, 0.0);
+    let q_conj = vec4(-q.xyz, q.w);
+    return quat_mult(quat_mult(q, q_v), q_conj).xyz;
+}
+
+fn apply_transform(pos: vec3<f32>, transform: Transform) -> vec3<f32> {
+    let pos = pos * transform.scale;
+    let pos = rotate_quad(transform.rotation, pos);
+    let pos = pos + transform.position;
+    return pos;
+}
 
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
@@ -134,16 +206,29 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
         out.brick_shift = calculate_atlas_lookup_shift(instance_input.node_index);
     }
     
-    let position = (node_vertex.w * vertex_input.position) + node_vertex.xyz;
-    out.position = pc.view_projection * vec4<f32>(position, 1.0);
+    let transform = instance_transforms[instance_input.instance_id];
+    // let rotation = transform.rotation;
+    // let q = vec4(0.3826834, 0.0, 0.0, 0.9238795);
+    // let q = vec4(0.0, 0.0, 0.0, 1.0);
+    node_vertex = vec4<f32>(
+        apply_transform(node_vertex.xyz, transform),
+        node_vertex.w * transform.scale,
+    );
+    
+    let position = rotate_quad(transform.rotation, vertex_input.position);
+    let position = (node_vertex.w * position) + node_vertex.xyz;
+    
+    out.position = pc.view_projection * vec4(position, 1.0);
     out.frag_pos = position;
     
     var brick_inverted_size = 1.0 / node_vertex.w;
     var brick_shift = node_vertex.www * 0.5 - node_vertex.xyz;
-    var brick_to_local_transform =
-        scale(brick_inverted_size)
-        * translate(brick_shift)
-        * M4_IDENTITY;
+    var brick_to_local_transform = M4_IDENTITY
+        * scale(brick_inverted_size)
+        // * quat_to_inverse_mat(transform.rotation)
+        * quat_to_mat(transform.rotation)
+        * translate(brick_shift);
+        
     
     out.brick_local_camera_pos = (brick_to_local_transform * pc.camera_position);
     
