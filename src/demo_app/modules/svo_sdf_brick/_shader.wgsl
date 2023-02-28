@@ -15,7 +15,6 @@ let SHOW_SOLID      = 0x01u; // 0b00000001;
 let SHOW_NORMALS    = 0x02u; // 0b00000010;
 let SHOW_STEP_COUNT = 0x04u; // 0b00000100;
 let SHOW_DEPTH      = 0x08u; // 0b00001000;
-let JUST_ROOT       = 0x10u; // 0b00010000;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -50,6 +49,8 @@ struct InstanceInput {
 @group(2) @binding(0) var<storage, read> instance_transforms:         array<mat4x4<f32>>;
 @group(2) @binding(1) var<storage, read> instance_inverse_transforms: array<mat4x4<f32>>;
 @group(2) @binding(2) var<uniform>       instance_count:              u32;
+
+let ROOT_ID = 0xFFFFFFFFu;
 
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
@@ -138,7 +139,7 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     
     // Set values for non-root nodes
     // TODO maybe make a directive in preprocessor and make two versions of the shader
-    if ((pc.show_flags & JUST_ROOT) == 0u) {
+    if (instance_input.node_index != ROOT_ID) {
         node_vertex = node_vertices[instance_input.node_index];
         node_vertex = vec4<f32>(
             (node_vertex.xyz * pc.domain.w) + pc.domain.xyz,
@@ -260,8 +261,8 @@ fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>
     return vec4<f32>(result, 1.0);
 }
 
-let HIT_DISTANCE: f32 = 0.01;
-let MAX_STEPS: u32 = 50u;
+let HIT_DISTANCE: f32 = 0.03;
+let MAX_STEPS: u32 = 40u;
 
 struct HitResult {
     hit:          bool,

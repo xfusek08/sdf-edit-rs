@@ -34,6 +34,7 @@ struct NodeHeader {
 let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
 let HEADER_HAS_BRICK_FLAG = 0x40000000u;
+let ROOT_ID = 0xFFFFFFFFu;
 
 fn deconstruct_node_header(node_header: u32) -> NodeHeader {
     return NodeHeader(
@@ -154,6 +155,11 @@ fn main(in: ShaderInput) {
             continue; // Not possible
         }
         if (projected_parent_size < treshhold) {
+            // only root node is supposed to be rendered, but it is not in the node tree, hence add it manually
+            if (node_id == 0u) {
+                let index = atomicAdd(&brick_count, 1u);
+                brick_index_buffer[index] = BrickInstance(ROOT_ID, i);
+            }
             continue; // Parent of this node will be rendered instead
         }
         if (projected_me_size >= (1.01 * treshhold) && header.is_subdivided == HEADER_SUBDIVIDED_FLAG) {

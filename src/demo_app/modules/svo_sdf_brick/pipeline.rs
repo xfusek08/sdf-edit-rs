@@ -34,7 +34,6 @@ bitflags::bitflags! {
         const NORMALS    = 0b00000010;
         const STEP_COUNT = 0b00000100;
         const DEPTH      = 0b00001000;
-        const JUST_ROOT  = 0b00010000;
     }
 }
 
@@ -222,17 +221,12 @@ impl SvoSDFBrickPipeline {
         
         pass.set_pipeline(&self.pipeline);
         
-        let mut pc = PushConstants {
+        let pc = PushConstants {
             view_projection: context.camera.projection_matrix,
             camera_position: glam::Vec4::from((context.camera.transform.position, 1.0)),
             focal_length:    context.camera.focal_length,
             ..self.push_constants
         };
-        
-        // if there are less than 8 instances, we can just render the root node
-        if instance_count < 8 {
-            pc.display_options |= DisplayOptions::JUST_ROOT;
-        }
         
         pass.set_push_constants(
             wgpu::ShaderStages::VERTEX_FRAGMENT,

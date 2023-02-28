@@ -54,7 +54,7 @@ pub fn init_scene(context: &Context) -> Scene {
     // Create and register test geometry
     // ---------------------------------
     
-    let min_voxel_size = 0.01;
+    let min_voxel_size = 0.03;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     let test_geometry = Geometry::new(min_voxel_size).with_edits(
         Shape::empty().add(
@@ -71,31 +71,30 @@ pub fn init_scene(context: &Context) -> Scene {
     let mut model_pool = ModelPool::new();
     // model_pool.insert(
     //     Model::new(test_geometry_id).with_transform(Transform::IDENTITY
-    //         .translate((1.0, 0.0, 0.0).into())
+    //         // .translate((1.0, 0.0, 0.0).into())
     //         // .scale(glam::Vec3::splat(2.5))
     //         // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
     //     )
     // );
     
-    // model_pool.insert(
-    //     Model::new(test_geometry_id).with_transform(Transform::IDENTITY
-    //         // .translate((5.0, 0.0, 0.0).into())
-    //         // .scale(glam::Vec3::splat(3.5))
-    //         // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
-    //     )
-    // );
-    
-    // model_pool.insert(
-    //     Model::new(test_geometry_id)
-    //         .with_transform(
-    //             Transform::IDENTITY
-    //                 .translate((3.0, 0.0, 0.0).into())
-    //         )
-    // );
-    
+    // for i in -5..=5 {
+    //     for j in -5..=5 {
+    //         model_pool.insert(
+    //             Model::new(test_geometry_id).with_transform(
+    //                 Transform::IDENTITY
+    //                     .translate((
+    //                         i as f32 * 1.5,
+    //                         j as f32 * 1.5,
+    //                         0.0,
+    //                     ).into())
+    //                     .scale(glam::Vec3::splat(0.25))
+    //             )
+    //         );
+    //     }
+    // }
     
     let mut rng = rand::thread_rng();
-    for z in 0..=500 {
+    for _ in 0..=500 {
         model_pool.insert(
             Model::new(test_geometry_id).with_transform(
                 Transform::IDENTITY
