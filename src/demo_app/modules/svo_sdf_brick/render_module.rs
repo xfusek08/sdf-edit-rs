@@ -18,7 +18,7 @@ use crate::{
             RenderModule,
             RenderContext,
             RenderPassContext,
-            RenderPass,
+            RenderPass, camera::Camera,
         }, gui::Gui,
     }, info,
 };
@@ -50,8 +50,6 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
     #[profiler::function]
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         
-        let camera_frustum = Frustum::from_camera(&scene.camera);
-        
         // Gather transforms (instances) for each geometry
         let mut geometry_instances: HashMap<GeometryID, Vec<Transform>> = HashMap::new();
         for (_, model) in scene.model_pool.iter() {
@@ -61,12 +59,19 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 .or_insert_with(|| vec![transform.clone()]);
         }
         
+        // let frustum_camera = crate::framework::camera::Camera {
+        //     position: (2.0, 0.0, 0.0).into(),
+        //     ..scene.camera_rig.camera
+        // }.look_at((0.0, 0.0, 0.0).into());
+        let frustum_camera = &scene.camera_rig.camera;
+        let frustum = Frustum::from_camera(&frustum_camera);
+        
         for (geometry_id, transforms) in geometry_instances.iter() {
             let geometry = scene.geometry_pool.get(*geometry_id).expect("Unexpected Error: Geometry not found in pool");
             
             // frustum culling on object level
             let transforms = transforms.iter().filter_map(|t| {
-                if geometry.total_aabb().transform(t).in_frustum(&camera_frustum) {
+                if geometry.total_aabb().transform(t).in_frustum(&frustum) {
                     Some(t.clone())
                 } else {
                     None

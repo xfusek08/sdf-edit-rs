@@ -37,7 +37,7 @@ impl GuiModule<Scene> for LegacyAppsGui {
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("Camera fov:");
-                    ui.add(egui::Slider::new(&mut scene.camera.fov, 10.0..=150.0)
+                    ui.add(egui::Slider::new(&mut scene.camera_rig.camera.fov, 10.0..=150.0)
                         // .step_by(step as f64)
                         .clamp_to_range(true)
                     );

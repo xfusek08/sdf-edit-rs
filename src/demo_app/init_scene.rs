@@ -7,7 +7,7 @@ use crate::{
         gpu::vertices::ColorVertex,
         application::Context,
         math::Transform,
-        camera::{Camera, CameraProperties},
+        camera::{CameraRig, Camera},
     },
     sdf::{
         model::{ModelPool, Model},
@@ -94,14 +94,14 @@ pub fn init_scene(context: &Context) -> Scene {
     // }
     
     let mut rng = rand::thread_rng();
-    for _ in 0..=500 {
+    for _ in 0..=2000 {
         model_pool.insert(
             Model::new(test_geometry_id).with_transform(
                 Transform::IDENTITY
                     .translate((
-                        rng.gen_range(-40.0..=40.0),
-                        rng.gen_range(-40.0..=40.0),
-                        rng.gen_range(-40.0..=40.0),
+                        rng.gen_range(-100.0..=100.0),
+                        rng.gen_range(-100.0..=100.0),
+                        rng.gen_range(-100.0..=100.0),
                     ).into())
                     .scale(glam::Vec3::splat(rng.gen_range(0.21..=5.0)))
                     .rotate(glam::Quat::from_euler(
@@ -115,12 +115,12 @@ pub fn init_scene(context: &Context) -> Scene {
     }
     
     Scene {
-        camera: Camera::new(CameraProperties {
+        camera_rig: CameraRig::from_camera(Camera {
+            fov:          60.0,
+            far:          300000.0,
             aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
-            fov: 60.0,
-            far: 300000.0,
             ..Default::default()
-        }).orbit(glam::Vec3::ZERO, 4.0),
+        }).set_orbiting(glam::Vec3::ZERO, 4.0),
         geometry_pool,
         model_pool,
         world,

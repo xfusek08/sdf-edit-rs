@@ -2,7 +2,7 @@ use hecs::World;
 
 use crate::{
     framework::camera::{
-        Camera,
+        CameraRig,
         SceneWithCamera
     },
     sdf::{
@@ -28,7 +28,7 @@ pub struct DisplayToggles {
 }
 
 pub struct Scene {
-    pub camera: Camera,
+    pub camera_rig: CameraRig,
     pub geometry_pool: GeometryPool,
     pub model_pool: ModelPool,
     pub display_toggles: DisplayToggles,
@@ -41,11 +41,11 @@ pub struct Scene {
 }
 
 impl SceneWithCamera for Scene {
-    fn get_camera(&self) -> &crate::framework::camera::Camera {
-        &self.camera
+    fn get_camera_rig(&self) -> &crate::framework::camera::CameraRig {
+        &self.camera_rig
     }
     
-    fn get_camera_mut(&mut self) -> &mut Camera {
-        &mut self.camera
+    fn get_camera_mut(&mut self) -> &mut CameraRig {
+        &mut self.camera_rig
     }
 }

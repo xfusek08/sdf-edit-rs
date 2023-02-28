@@ -3,6 +3,8 @@ struct PushConstants {
     domain:                   vec4<f32>,
     camera_projection_matrix: mat4x4<f32>,
     camera_focal_length:      f32,
+    camera_far:               f32,
+    camera_near:              f32,
     node_count:               u32,
     level_break_size:         f32,
 }
@@ -114,6 +116,14 @@ fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter
     return node_position + (shift_vector[child_index] * node_diameter);
 }
 
+fn in_frustum(position: vec3<f32>, diameter: f32) -> bool {
+    let p = (pc.camera_projection_matrix * vec4<f32>(position, 1.0));
+    let ndc = p.xyz / p.w;
+    let low = -1.0 - diameter * 0.5;
+    let high = 1.0 + diameter * 0.5;
+    return p.w > 0.0 && ndc.x > low && ndc.x < high && ndc.y > low && ndc.y < high && ndc.z > low && ndc.z < high;
+}
+
 @compute
 @workgroup_size(128, 1, 1)
 fn main(in: ShaderInput) {
@@ -145,6 +155,11 @@ fn main(in: ShaderInput) {
         
         let me_position_transformed = apply_transform(me_position, transform);
         let me_size_scaled = me_size * scaling;
+        
+        if (!in_frustum(me_position_transformed, me_size_scaled)) {
+            continue;
+        }
+        
         let projected_me_size = bounding_cube_screen_size(me_position_transformed, me_size_scaled);
         
         let parent_position_transformed = apply_transform(parent_position, transform);

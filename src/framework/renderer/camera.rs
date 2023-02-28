@@ -9,10 +9,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Camera {
-    pub binding: u32,
-    pub projection_matrix: glam::Mat4,
-    pub focal_length: f32,
+    pub camera: framework::camera::Camera,
+    pub view_projection_matrix: glam::Mat4,
     pub transform: Transform,
+    pub binding: u32,
     pub uniform_buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
@@ -65,31 +65,34 @@ impl Camera {
             ]
         });
         
+        let camera = framework::camera::Camera::default();
+        
         Self {
-            projection_matrix: glam::Mat4::IDENTITY,
-            focal_length: 1.0,
-            transform: Transform::default(),
             binding,
             bind_group_layout,
             bind_group,
             uniform_buffer,
+            view_projection_matrix: camera.projection_matrix(),
+            transform:         camera.transform(),
+            camera,
         }
     }
     
     #[profiler::function]
     pub fn update(&mut self, queue: &wgpu::Queue, camera: &framework::camera::Camera) {
-        self.transform = camera.transform();
-        self.projection_matrix = camera.view_projection_matrix();
-        self.focal_length = camera.focal_length();
-        profiler::call!(
-            queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.projection_matrix]))
-        );
+        self.camera = camera.clone();
+        self.view_projection_matrix = self.camera.view_projection_matrix();
+        self.transform = self.camera.transform();
+        {
+            profiler::scope!("write camera to camera uniform buffer");
+            queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.view_projection_matrix]))
+        }
     }
     
     #[profiler::function]
     pub fn to_push_constant_data(&self) -> PushConstantData {
         PushConstantData {
-            projection_matrix: self.projection_matrix,
+            projection_matrix: self.view_projection_matrix,
             position: glam::Vec4::from((self.transform.position, 1.0)),
         }
     }

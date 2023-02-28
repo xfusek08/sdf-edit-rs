@@ -222,9 +222,9 @@ impl SvoSDFBrickPipeline {
         pass.set_pipeline(&self.pipeline);
         
         let pc = PushConstants {
-            view_projection: context.camera.projection_matrix,
+            view_projection: context.camera.view_projection_matrix,
             camera_position: glam::Vec4::from((context.camera.transform.position, 1.0)),
-            focal_length:    context.camera.focal_length,
+            focal_length:    context.camera.camera.focal_length(),
             ..self.push_constants
         };
         
