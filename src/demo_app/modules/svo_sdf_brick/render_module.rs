@@ -1,6 +1,8 @@
 
 use std::collections::HashMap;
 
+use slotmap::SlotMap;
+
 use super::{
     SvoSDFBrickPipeline,
     SvoBrickSelectPipeline,
@@ -52,11 +54,14 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         // Gather transforms (instances) for each geometry
         let mut geometry_instances: HashMap<GeometryID, Vec<Transform>> = HashMap::new();
-        for (_, model) in scene.model_pool.iter() {
-            let (transform, geometry_id) = (&model.transform, &model.geometry_id);
-            geometry_instances.entry(*geometry_id)
-                .and_modify(|transforms| { transforms.push(transform.clone()) })
-                .or_insert_with(|| vec![transform.clone()]);
+        {
+            profiler::scope!("Gather Geometry Instances");
+            for (_, model) in scene.model_pool.iter() {
+                let (transform, geometry_id) = (&model.transform, &model.geometry_id);
+                geometry_instances.entry(*geometry_id)
+                    .and_modify(|transforms| { transforms.push(transform.clone()) })
+                    .or_insert_with(|| vec![transform.clone()]);
+            }
         }
         
         // let frustum_camera = crate::framework::camera::Camera {
@@ -70,13 +75,17 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             let geometry = scene.geometry_pool.get(*geometry_id).expect("Unexpected Error: Geometry not found in pool");
             
             // frustum culling on object level
-            let transforms = transforms.iter().filter_map(|t| {
-                if geometry.total_aabb().transform(t).in_frustum(&frustum) {
-                    Some(t.clone())
-                } else {
-                    None
-                }
-            }).collect::<Vec<_>>();
+            
+            let transforms = {
+                profiler::scope!("Frustum Culling (Geometry Level)");
+                transforms.iter().filter_map(|t| {
+                    if geometry.total_aabb().transform(t).in_frustum(&frustum) {
+                        Some(t.clone())
+                    } else {
+                        None
+                    }
+                }).collect::<Vec<_>>()
+            };
             
             let Some(svo) = &geometry.svo else {
                 error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
