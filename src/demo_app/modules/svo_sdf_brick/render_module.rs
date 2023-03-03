@@ -114,7 +114,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             
             {
                 profiler::scope!("BrickInstances::load_count", pinned);
-                // TODO: (SLOW) this will not be needed when we will use indirect draw.
+                // TODO: (!!!SLOW!!!) this will not be needed when we will use indirect draw.
                 // TODO: Add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
                 let cnt = self.brick_instances.load_count(&context.gpu);
                 info!("BrickInstances::load_count: {}", cnt);

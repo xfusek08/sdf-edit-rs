@@ -11,10 +11,10 @@ struct PushConstants {
 }
 var<push_constant> pc: PushConstants;
 
-let SHOW_SOLID      = 0x01u; // 0b00000001;
-let SHOW_NORMALS    = 0x02u; // 0b00000010;
-let SHOW_STEP_COUNT = 0x04u; // 0b00000100;
-let SHOW_DEPTH      = 0x08u; // 0b00001000;
+const SHOW_SOLID      = 0x01u; // 0b00000001;
+const SHOW_NORMALS    = 0x02u; // 0b00000010;
+const SHOW_STEP_COUNT = 0x04u; // 0b00000100;
+const SHOW_DEPTH      = 0x08u; // 0b00001000;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -50,11 +50,11 @@ struct InstanceInput {
 @group(2) @binding(1) var<storage, read> instance_inverse_transforms: array<mat4x4<f32>>;
 @group(2) @binding(2) var<uniform>       instance_count:              u32;
 
-let ROOT_ID = 0xFFFFFFFFu;
+const ROOT_ID = 0xFFFFFFFFu;
 
-let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
-let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
-let HEADER_HAS_BRICK_FLAG = 0x40000000u;
+const HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+const HEADER_SUBDIVIDED_FLAG = 0x80000000u;
+const HEADER_HAS_BRICK_FLAG = 0x40000000u;
 
 struct NodeHeader {
     has_brick: u32,
@@ -70,7 +70,7 @@ fn deconstruct_node_header(node_header: u32) -> NodeHeader {
     );
 }
 
-let M4_IDENTITY = mat4x4<f32>(
+const M4_IDENTITY = mat4x4<f32>(
     vec4<f32>(1.0, 0.0, 0.0, 0.0),
     vec4<f32>(0.0, 1.0, 0.0, 0.0),
     vec4<f32>(0.0, 0.0, 1.0, 0.0),
@@ -223,7 +223,7 @@ fn sample_volume_distance(in: VertexOutput, act_position: vec3<f32>,) -> f32 {
     ).r;
 }
 
-let NORMAL_OFFSET = 0.05;
+const NORMAL_OFFSET = 0.05;
 
 /// Compute normal (gradient of sdf) for given point in volume
 /// see: https://iquilezles.org/articles/normalsSDF/
@@ -261,8 +261,8 @@ fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>
     return vec4<f32>(result, 1.0);
 }
 
-let HIT_DISTANCE: f32 = 0.03;
-let MAX_STEPS: u32 = 40u;
+const HIT_DISTANCE: f32 = 0.03;
+const MAX_STEPS: u32 = 40u;
 
 struct HitResult {
     hit:          bool,

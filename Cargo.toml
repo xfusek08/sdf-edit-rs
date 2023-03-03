@@ -19,41 +19,36 @@ profiler = { path = "crates/profiler" }
 enum_utils = { path = "crates/enum_utils" }
 
 # Core
-log = "0.4.17"                                                    # Generic logging API without backend (env_logger)
-env_logger = "0.10.0"                                             # Logging into console based on environment variable.
-pollster = "0.2.5"                                                # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-winit = "0.27.5"                                                  # Windowing library (event loop namaing, window creation, etc.)
-winit_input_helper = "0.13.0"                                     # Helper for winit input handling, storing imput state based on processed events ...
-wgpu = "0.14.2"                                                   # A cross platform GPU API, in this applicationVulcan backend is used.
-dolly = "0.4.0"                                                   # A camera rig library with smooting and inertia.
-bytemuck = { version = "1.12.3", features = [ "derive" ] }        # Static casting between basic types
-glam = { version = "0.22.0", features = [ "bytemuck", "serde" ] } # Math! Supporing SIMD optimizations
-slotmap = "1.0.6"                                                 # Efficient storage of entities
-hecs = "0.9.0"                                                    # A simple minimal ECS for scene object management
-bitflags = "1.3.2"                                                # Bitflags to easily handle bitflags
-lazy_static = "1.4.0"                                             # To implement static values that are to be created only once or never when not used
-rand = "0.8.5"                                                    # Random number generator
+log                = "0.4.17"                                                   # Generic logging API without backend (env_logger)
+env_logger         = "0.10.0"                                                   # Logging into console based on environment variable.
+pollster           = "0.3.0"                                                    # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
+winit              = "0.28.2"                                                   # Windowing library (event loop namaing, window creation, etc.)
+winit_input_helper = "0.14.0"                                                   # Helper for winit input handling, storing imput state based on processed events ...
+wgpu               = "0.15.1"                                                   # A cross platform GPU API, in this applicationVulcan backend i          s used.
+dolly              = "0.4.1"                                                    # A camera rig library with smooting and inertia.
+bytemuck           = { version = "1.12.3", features = [ "derive" ] }            # Static casting between basic types
+glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporing SIMD optimizations
+slotmap            = "1.0.6"                                                    # Efficient storage of entities
+hecs               = "0.9.1"                                                    # A simple minimal ECS for scene object management
+bitflags           = "1.3.2"                                                    # Bitflags to easily handle bitflags
+rand               = "0.8.5"                                                    # Random number generator
+rfd                = "0.11.1"                                                   # File dialog
 
 # Serialization
-serde      = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
-rfd        = "0.10.0"  # File dialog
+serde      = { version = "1.0.152", features = ["derive", "rc"] }
+serde_json = "1.0.93"
 
 # Easily convert enums to strings
-strum = "0.24"
-strum_macros = "0.24"
+strum        = "0.24.1"
+strum_macros = "0.24.3"
 
 # GUI
-egui = "0.20.1"        # Immidiate mode gui library TODO: Wating for Update to allow webgpu 15
-egui_extras = "0.20.0" # For drawing tables
-egui-wgpu = "0.20.0"   # Wgpu backend integration with egui
-egui-winit = "0.20.0"  # Egui integration with winit
+egui = "0.21.0"        # Immidiate mode gui library
+egui_extras = "0.21.0" # For drawing tables
+egui-wgpu = "0.21.0"   # Wgpu backend integration with egui
+egui-winit = "0.21.1"  # Egui integration with winit
 
 
 [features]
-json_trace = [
-    "profiler/json_trace",
-]
-stats = [
-    "profiler/stats",
-]
+json_trace = [ "profiler/json_trace" ]
+stats = [ "profiler/stats" ]

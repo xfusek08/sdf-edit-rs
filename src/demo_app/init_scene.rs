@@ -130,6 +130,6 @@ pub fn init_scene(context: &Context) -> Scene {
             min_voxel_size,
         },
         display_toggles: Default::default(),
-        brick_level_break_size: 0.03,
+        brick_level_break_size: 0.04,
     }
 }

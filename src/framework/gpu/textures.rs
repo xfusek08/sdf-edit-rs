@@ -112,6 +112,7 @@ impl DepthStencilTexture {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[]
             })
         );
         
@@ -126,8 +127,6 @@ impl DepthStencilTexture {
                 min_filter: wgpu::FilterMode::Linear,
                 mipmap_filter: wgpu::FilterMode::Nearest,
                 compare: Some(wgpu::CompareFunction::LessEqual), // 5.
-                lod_min_clamp: -100.0,
-                lod_max_clamp: 100.0,
                 ..Default::default()
             }
         );

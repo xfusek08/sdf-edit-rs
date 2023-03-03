@@ -92,7 +92,6 @@ where
     event_loop.run_return(move |event, _, control_flow| {
         profiler::scope!("Event incoming");
         
-        // Proces window events
         let mut flow_result_action = UpdateResultAction::None;
         
         match event {
@@ -128,7 +127,7 @@ where
                             size:  &size,
                             scale_factor,
                         })
-                    } else if input.quit() {
+                    } else if input.close_requested() || input.destroyed() {
                         UpdateResultAction::Exit
                     } else if !event_consumed_by_gui {
                         updater.input(UpdateContext {
@@ -161,13 +160,15 @@ where
                     gui:    &mut gui,
                     scene:  &mut scene,
                 });
+                
+                // Request redraw after immediately after frame is rendered, to let it run as fast as possible and let vSync to limit FPS by blocking
+                flow_result_action = UpdateResultAction::Redraw;
             },
             _ => {} // Ignore other events
         }
         
-        // Tick clock and update on tick if app is still running
+        // Update application only when is its time to do so
         if clock.tick() {
-            // It is time to tick the application
             updater.update(UpdateContext {
                 gui:    &mut gui,
                 scene:  &mut scene,
@@ -175,10 +176,6 @@ where
                 tick:   clock.current_tick(),
                 window: &window,
             });
-            
-            // Render updated state
-            // TODO: Do not redraw when window is not visible
-            flow_result_action = UpdateResultAction::Redraw;
         } else {
             // Schedule next tick as a time to wake up in case of idling
             *control_flow = ControlFlow::WaitUntil(clock.next_scheduled_tick().clone())

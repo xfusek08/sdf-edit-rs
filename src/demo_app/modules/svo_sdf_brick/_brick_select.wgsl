@@ -13,7 +13,6 @@ var<push_constant> pc: PushConstants;
 struct ShaderInput {
     @builtin(num_workgroups)         num_workgroups:         vec3<u32>,
     @builtin(workgroup_id)           workgroup_id:           vec3<u32>,
-    @builtin(workgroup_size)         workgroup_size:         vec3<u32>,
     @builtin(local_invocation_index) local_invocation_index: u32,
     @builtin(local_invocation_id)    local_invocation_id:    vec3<u32>,
 }
@@ -33,10 +32,10 @@ struct NodeHeader {
     tile_index: u32,
 }
 
-let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
-let HEADER_SUBDIVIDED_FLAG = 0x80000000u;
-let HEADER_HAS_BRICK_FLAG = 0x40000000u;
-let ROOT_ID = 0xFFFFFFFFu;
+const HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+const HEADER_SUBDIVIDED_FLAG = 0x80000000u;
+const HEADER_HAS_BRICK_FLAG = 0x40000000u;
+const ROOT_ID = 0xFFFFFFFFu;
 
 fn deconstruct_node_header(node_header: u32) -> NodeHeader {
     return NodeHeader(
@@ -124,10 +123,11 @@ fn in_frustum(position: vec3<f32>, diameter: f32) -> bool {
     return p.w > 0.0 && ndc.x > low && ndc.x < high && ndc.y > low && ndc.y < high && ndc.z > low && ndc.z < high;
 }
 
+const WORKGROUP_SIZE = 128u;
 @compute
-@workgroup_size(128, 1, 1)
+@workgroup_size(128u, 1, 1)
 fn main(in: ShaderInput) {
-    let node_id = in.workgroup_id.x * in.workgroup_size.x + in.local_invocation_id.x;
+    let node_id = in.workgroup_id.x * WORKGROUP_SIZE + in.local_invocation_id.x;
     if (node_id >= node_count) {
         return;
     }

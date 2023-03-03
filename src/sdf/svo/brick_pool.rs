@@ -149,6 +149,7 @@ impl BrickPool {
                 dimension:       wgpu::TextureDimension::D3,
                 format:          wgpu::TextureFormat::R32Float,
                 usage:           wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats:    &[],
             }
         );
         

@@ -39,14 +39,19 @@ pub struct Renderer<S: SceneWithCamera> {
 // Renderer construction methods
 impl<S: SceneWithCamera> Renderer<S> {
     pub fn new(gpu: Arc<gpu::Context>, window: &Window) -> Self {
+        
+        let swapchain_capabilities = gpu.surface.get_capabilities(&gpu.adapter);
+        let swapchain_format = swapchain_capabilities.formats[0];
+        
         // setup surface for rendering
         let surface_config = wgpu::SurfaceConfiguration {
-            usage:        wgpu::TextureUsages::RENDER_ATTACHMENT,             // texture will be used to draw on screen
-            format:       gpu.surface.get_supported_formats(&gpu.adapter)[0], // texture format - select first supported one
-            present_mode: wgpu::PresentMode::Fifo,                            // VSynch essentially - capping renders on display frame rate
+            usage:        wgpu::TextureUsages::RENDER_ATTACHMENT, // texture will be used to draw on screen
+            format:       swapchain_format,        // texture format - select first supported one
+            present_mode: wgpu::PresentMode::Fifo, // VSynch essentially - capping renders on display frame rate
             width:        window.inner_size().width,
             height:       window.inner_size().height,
             alpha_mode:   wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
         };
         gpu.surface.configure(&gpu.device, &surface_config);
         
@@ -78,9 +83,9 @@ impl<S: SceneWithCamera> Renderer<S> {
         let pass = get_pass(&self.context);
         
         // Check if modules are registered, panic if not.
-        for moduleId in modules {
-            if !self.modules.contains_key(*moduleId) {
-                panic!("Cannot register render pass: module {:?} is not registered", moduleId);
+        for module_id in modules {
+            if !self.modules.contains_key(*module_id) {
+                panic!("Cannot register render pass: module {:?} is not registered", module_id);
             }
         }
         

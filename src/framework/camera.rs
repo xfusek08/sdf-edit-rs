@@ -1,13 +1,22 @@
 
 use std::marker::PhantomData;
 
-use glam::{Vec3, Mat4};
+use glam::{
+    Vec3,
+    Mat4
+};
 
 use dolly::{
     driver::RigDriver,
     transform::Transform as DollyTransform,
     rig::RigUpdateParams,
-    prelude::{YawPitch, Smooth, Handedness, Position, RightHanded},
+    prelude::{
+        YawPitch,
+        Smooth,
+        Handedness,
+        Position,
+        RightHanded
+    },
 };
 
 use super::{
@@ -96,7 +105,8 @@ impl CameraRig {
     
     pub fn from_camera(mut camera: Camera) -> Self {
         let rig = dolly::rig::CameraRig::builder().build();
-        camera.position = rig.final_transform.position;
+        let p = rig.final_transform.position;
+        camera.position = p;
         camera.rotation = rig.final_transform.rotation;
         Self { rig, camera }
     }

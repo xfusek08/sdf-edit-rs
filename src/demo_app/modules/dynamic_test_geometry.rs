@@ -7,7 +7,7 @@ use crate::{
     warn,
     demo_app::scene::Scene,
     shape_builder::{Shape, ShapeRecord},
-    sdf::geometry::{EvaluationStatus, Primitive, PrimitiveType, Operation},
+    sdf::geometry::{Primitive, PrimitiveType, Operation},
     framework::{math::Transform, gui::GuiModule},
 };
 

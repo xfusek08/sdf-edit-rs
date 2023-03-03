@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use lazy_static::__Deref;
+// use lazy_static::__Deref;
 
 use crate::{
     framework::gpu,
@@ -27,7 +27,7 @@ pub struct Evaluator {
 impl Evaluator {
     #[profiler::function]
     pub fn new(gpu: Arc<gpu::Context>) -> Self {
-        let level_evaluation_kernel = KernelSVOLevel::new(gpu.deref());
+        let level_evaluation_kernel = KernelSVOLevel::new(&gpu);
         Self { gpu, level_evaluation_kernel }
     }
 }

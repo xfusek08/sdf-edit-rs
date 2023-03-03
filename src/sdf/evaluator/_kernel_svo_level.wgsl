@@ -34,9 +34,9 @@ fn load_node(node_index: u32) -> Node {
 }
 
 // TODO: Use preprocessor for constatns
-let HEADER_IS_SUBDIVIDED_SHIFT = 31u;
-let HEADER_HAS_BRICK_SHIFT = 30u;
-let HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
+const HEADER_IS_SUBDIVIDED_SHIFT = 31u;
+const HEADER_HAS_BRICK_SHIFT = 30u;
+const HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 
 /// Combines tile index and flags into single node header integer
 ///   - `is_subdivided` must have value 0 or 1
@@ -78,17 +78,17 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
 // =================================================================================================
 
 // TODO: Use preprocessor for constatns
-let EDIT_PRIMITIVE_SPHERE = 0u;
-let EDIT_PRIMITIVE_CUBE = 1u;
-let EDIT_PRIMITIVE_CYLINDER = 2u;
-let EDIT_PRIMITIVE_TORUS = 3u;
-let EDIT_PRIMITIVE_CONE = 4u;
-let EDIT_PRIMITIVE_CAPSULE = 5u;
+const EDIT_PRIMITIVE_SPHERE = 0u;
+const EDIT_PRIMITIVE_CUBE = 1u;
+const EDIT_PRIMITIVE_CYLINDER = 2u;
+const EDIT_PRIMITIVE_TORUS = 3u;
+const EDIT_PRIMITIVE_CONE = 4u;
+const EDIT_PRIMITIVE_CAPSULE = 5u;
 
 // TODO: Use preprocessor for constatns
-let EDIT_OPERATION_ADD = 0u;
-let EDIT_OPERATION_SUBTRACT = 1u;
-let EDIT_OPERATION_INTERSECT = 2u;
+const EDIT_OPERATION_ADD = 0u;
+const EDIT_OPERATION_SUBTRACT = 1u;
+const EDIT_OPERATION_INTERSECT = 2u;
 // ...
 
 struct EditPacked {
@@ -210,11 +210,11 @@ fn sd_cone(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 }
 
 fn sd_capsule(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
-    let p = transform_pos(edit_data, position);
+    var p = transform_pos(edit_data, position);
     let h = edit_data.dimensions[1];
     let r = edit_data.dimensions[0];
-    let p = p + vec3(0.0, h * 0.5, 0.0);
-    let p = p - vec3(0.0, clamp(p.y, 0.0, h), 0.0);
+    p = p + vec3(0.0, h * 0.5, 0.0);
+    p = p - vec3(0.0, clamp(p.y, 0.0, h), 0.0);
     return length(p) - r;
 }
 
@@ -294,9 +294,9 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
 // =================================================================================================
 
 // TODO: Use preprocessor for constatns
-let BRICK_IS_EMPTY = 0u;
-let BRICK_IS_BOUONDARY = 1u;
-let BRICK_IS_FILLED = 2u;
+const BRICK_IS_EMPTY = 0u;
+const BRICK_IS_BOUONDARY = 1u;
+const BRICK_IS_FILLED = 2u;
 
 var<workgroup> divide: atomic<u32>;
 var<workgroup> brick_index: u32;
