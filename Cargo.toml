@@ -15,8 +15,9 @@ edition = "2021"
 [dependencies]
 
 # Local crates
-profiler = { path = "crates/profiler" }
+profiler   = { path = "crates/profiler" }
 enum_utils = { path = "crates/enum_utils" }
+counters   = { path = "crates/counters" }
 
 # Core
 log                = "0.4.17"                                                   # Generic logging API without backend (env_logger)
@@ -51,4 +52,5 @@ egui-winit = "0.21.1"  # Egui integration with winit
 
 [features]
 json_trace = [ "profiler/json_trace" ]
-stats = [ "profiler/stats" ]
+stats      = [ "profiler/stats" ]
+counters   = [ "counters/enabled" ]

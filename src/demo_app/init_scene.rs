@@ -69,13 +69,13 @@ pub fn init_scene(context: &Context) -> Scene {
     // ------------------------------
     
     let mut model_pool = ModelPool::new();
-    // model_pool.insert(
-    //     Model::new(test_geometry_id).with_transform(Transform::IDENTITY
-    //         // .translate((1.0, 0.0, 0.0).into())
-    //         // .scale(glam::Vec3::splat(2.5))
-    //         // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
-    //     )
-    // );
+    model_pool.insert(
+        Model::new(test_geometry_id).with_transform(Transform::IDENTITY
+            // .translate((1.0, 0.0, 0.0).into())
+            // .scale(glam::Vec3::splat(2.5))
+            // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
+        )
+    );
     
     // for i in -5..=5 {
     //     for j in -5..=5 {
@@ -94,14 +94,14 @@ pub fn init_scene(context: &Context) -> Scene {
     // }
     
     let mut rng = rand::thread_rng();
-    for _ in 0..=2000 {
+    for _ in 0..=4000 {
         model_pool.insert(
             Model::new(test_geometry_id).with_transform(
                 Transform::IDENTITY
                     .translate((
-                        rng.gen_range(-100.0..=100.0),
-                        rng.gen_range(-100.0..=100.0),
-                        rng.gen_range(-100.0..=100.0),
+                        rng.gen_range(-500.0..=500.0),
+                        rng.gen_range(-500.0..=500.0),
+                        rng.gen_range(-500.0..=500.0),
                     ).into())
                     .scale(glam::Vec3::splat(rng.gen_range(0.21..=5.0)))
                     .rotate(glam::Quat::from_euler(

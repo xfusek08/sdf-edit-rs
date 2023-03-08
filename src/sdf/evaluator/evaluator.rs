@@ -2,8 +2,6 @@
 
 use std::sync::Arc;
 
-// use lazy_static::__Deref;
-
 use crate::{
     framework::gpu,
     sdf::{

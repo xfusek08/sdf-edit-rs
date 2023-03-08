@@ -1,0 +1,18 @@
+[package]
+name = "counters"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+parking_lot    = { version = "0.12.1", optional = true }
+log            = { version = "0.4.17", optional = true }
+env_logger     = { version = "0.10.0", optional = true }
+circular_buffer = { path = "../circular_buffer", optional = true }
+
+[features]
+enabled = [
+    "parking_lot",
+    "log",
+    "env_logger",
+    "circular_buffer",
+]

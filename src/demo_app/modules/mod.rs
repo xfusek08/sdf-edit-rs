@@ -23,3 +23,6 @@ pub use legacy_apps_gui::LegacyAppsGui;
 
 #[cfg(feature = "stats")]
 pub mod stats_gui;
+
+#[cfg(feature = "counters")]
+pub mod counters_gui;

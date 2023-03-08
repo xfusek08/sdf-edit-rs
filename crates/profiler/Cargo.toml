@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-json_trace            = { path = "./json_trace", optional = true }
+json_trace            = { path = "./json_trace",    optional = true }
 runtime_stats         = { path = "./runtime_stats", optional = true }
 instrumentation_macro = { path = "./instrumentation_macro" }
 

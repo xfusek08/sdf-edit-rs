@@ -37,6 +37,9 @@ pub struct SvoSdfBricksRenderModule {
 
 impl SvoSdfBricksRenderModule {
     pub fn new(context: &RenderContext) -> Self {
+        counters::register!("brick_selected_counter");
+        counters::register!("object_selected_counter");
+        counters::register!("object_instance_counter");
         Self {
             pipeline: SvoSDFBrickPipeline::new(context),
             brick_select_compute_pipeline: SvoBrickSelectPipeline::new(context),
@@ -74,8 +77,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         for (geometry_id, transforms) in geometry_instances.iter() {
             let geometry = scene.geometry_pool.get(*geometry_id).expect("Unexpected Error: Geometry not found in pool");
             
-            // frustum culling on object level
-            
+            counters::sample!("object_instance_counter", transforms.len() as f64);
             let transforms = {
                 profiler::scope!("Frustum Culling (Geometry Level)");
                 transforms.iter().filter_map(|t| {
@@ -86,6 +88,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                     }
                 }).collect::<Vec<_>>()
             };
+            counters::sample!("object_selected_counter", transforms.len() as f64);
             
             let Some(svo) = &geometry.svo else {
                 error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
@@ -117,6 +120,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 // TODO: (!!!SLOW!!!) this will not be needed when we will use indirect draw.
                 // TODO: Add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
                 let cnt = self.brick_instances.load_count(&context.gpu);
+                counters::sample!("brick_selected_counter", cnt as f64);
                 info!("BrickInstances::load_count: {}", cnt);
             };
             

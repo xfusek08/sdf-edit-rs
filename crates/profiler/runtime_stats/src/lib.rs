@@ -1,7 +1,11 @@
 
+use circular_buffer::CircularBuffer;
 use log::warn;
 use parking_lot::Mutex;
-use std::{collections::{HashMap, VecDeque}, time::Duration};
+use std::{
+    collections::HashMap,
+    time::Duration
+};
 
 pub static STATISTICS: Mutex<Option<Statistic>> = Mutex::new(None);
 
@@ -87,7 +91,7 @@ impl StatisticRecord {
         self.total_time += duration;
         self.max_time = self.max_time.max(duration);
         self.min_time = self.min_time.min(duration);
-        self.history.push(duration);
+        self.history.push_front(duration);
     }
 
     pub fn average(&self) -> Duration {
@@ -99,7 +103,7 @@ impl StatisticRecord {
     }
     
     pub fn latest(&self) -> Duration {
-        let latest = self.history.buffer.back();
+        let latest = self.history.first();
         if let Some(latest) = latest {
             return latest.clone();
         }
@@ -133,31 +137,5 @@ impl Drop for TimedScope {
                 .or_insert_with(|| StatisticRecord::new(self.pinned));
             record.add(duration);
         }
-    }
-}
-
-#[derive(Clone)]
-pub struct CircularBuffer<T> {
-    buffer: VecDeque<T>,
-    capacity: usize,
-}
-
-impl<T> CircularBuffer<T> {
-    fn new(capacity: usize) -> Self {
-        CircularBuffer {
-            buffer: VecDeque::with_capacity(capacity),
-            capacity,
-        }
-    }
-
-    fn push(&mut self, element: T) {
-        if self.buffer.len() == self.capacity {
-            self.buffer.pop_front();
-        }
-        self.buffer.push_back(element);
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &T> {
-        self.buffer.iter()
     }
 }

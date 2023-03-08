@@ -89,8 +89,15 @@ where
     
     // Main loop
     let mut event_consumed_by_gui = false;
+    
+    // Register measurements
+    counters::register!("frame_counter");
+    counters::register!("event_counter");
+    counters::register!("update_counter");
+    
     event_loop.run_return(move |event, _, control_flow| {
         profiler::scope!("Event incoming");
+        counters::sample!("event_counter", 1.0);
         
         let mut flow_result_action = UpdateResultAction::None;
         
@@ -161,6 +168,8 @@ where
                     scene:  &mut scene,
                 });
                 
+                counters::sample!("frame_counter", 1.0);
+                
                 // Request redraw after immediately after frame is rendered, to let it run as fast as possible and let vSync to limit FPS by blocking
                 flow_result_action = UpdateResultAction::Redraw;
             },
@@ -176,6 +185,7 @@ where
                 tick:   clock.current_tick(),
                 window: &window,
             });
+            counters::sample!("update_counter", 1.0);
         } else {
             // Schedule next tick as a time to wake up in case of idling
             *control_flow = ControlFlow::WaitUntil(clock.next_scheduled_tick().clone())

@@ -319,6 +319,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "circular_buffer"
+version = "0.1.0"
+
+[[package]]
 name = "clipboard-win"
 version = "4.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -394,6 +398,16 @@ dependencies = [
  "core-foundation",
  "foreign-types",
  "libc",
+]
+
+[[package]]
+name = "counters"
+version = "0.1.0"
+dependencies = [
+ "circular_buffer",
+ "env_logger",
+ "log",
+ "parking_lot",
 ]
 
 [[package]]
@@ -1619,6 +1633,7 @@ dependencies = [
 name = "runtime_stats"
 version = "0.1.0"
 dependencies = [
+ "circular_buffer",
  "env_logger",
  "log",
  "parking_lot",
@@ -1702,6 +1717,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags",
  "bytemuck",
+ "counters",
  "dolly",
  "egui",
  "egui-wgpu",

@@ -18,6 +18,9 @@ use super::{
 #[cfg(feature = "stats")]
 use super::modules::stats_gui::StatsGui;
 
+#[cfg(feature = "counters")]
+use super::modules::counters_gui::CountersGui;
+
 pub fn define_updater(context: &Context) -> Updater<Scene> {
     Updater::new()
         .with_module(GuiUpdateModule::new(vec![
@@ -25,6 +28,8 @@ pub fn define_updater(context: &Context) -> Updater<Scene> {
             Box::new(DynamicTestGeometry::new()),
             #[cfg(feature = "stats")]
             Box::new(StatsGui),
+            #[cfg(feature = "counters")]
+            Box::new(CountersGui),
         ]))
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
