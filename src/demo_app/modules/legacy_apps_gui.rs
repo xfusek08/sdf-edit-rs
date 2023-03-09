@@ -1,6 +1,6 @@
 
 use crate::{
-    framework::gui::GuiModule,
+    framework::{gui::GuiModule, camera::Camera},
     sdf::geometry::Geometry,
     demo_app::{
         scene::Scene,
@@ -37,10 +37,12 @@ impl GuiModule<Scene> for LegacyAppsGui {
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("Camera fov:");
-                    ui.add(egui::Slider::new(&mut scene.camera_rig.camera.fov, 10.0..=150.0)
-                        // .step_by(step as f64)
-                        .clamp_to_range(true)
-                    );
+                    let mut fov = scene.camera_rig.camera().fov;
+                    ui.add(egui::Slider::new(&mut fov, 10.0..=150.0).clamp_to_range(true));
+                    scene.camera_rig.set_camera(Camera {
+                        fov,
+                        ..*scene.camera_rig.camera()
+                    });
                     ui.end_row();
                     ui.label("Brick Level Break Size:");
                     ui.add(egui::Slider::new(&mut scene.brick_level_break_size, 0.0..=5.0)

@@ -1,8 +1,6 @@
 
 use std::collections::HashMap;
 
-use slotmap::SlotMap;
-
 use super::{
     SvoSDFBrickPipeline,
     SvoBrickSelectPipeline,
@@ -20,7 +18,7 @@ use crate::{
             RenderModule,
             RenderContext,
             RenderPassContext,
-            RenderPass, camera::Camera,
+            RenderPass,
         }, gui::Gui,
     }, info,
 };
@@ -71,7 +69,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         //     position: (2.0, 0.0, 0.0).into(),
         //     ..scene.camera_rig.camera
         // }.look_at((0.0, 0.0, 0.0).into());
-        let frustum_camera = &scene.camera_rig.camera;
+        let frustum_camera = scene.camera_rig.camera();
         let frustum = Frustum::from_camera(&frustum_camera);
         
         for (geometry_id, transforms) in geometry_instances.iter() {
@@ -100,8 +98,6 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 continue;
             };
             
-            info!("Rendering Geometry {:?} with {} instances", geometry_id, transforms.len());
-            
             let gpu_transforms = self.instance_transforms.entry(*geometry_id)
                 .and_modify(|gpu_transforms| { gpu_transforms.update(&context.gpu, &transforms) })
                 .or_insert_with(|| GPUGeometryTransforms::from_transforms(&context.gpu, &transforms));
@@ -121,7 +117,6 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 // TODO: Add node count to GUI display -> there has to be a global stat counter accessible even when scene is immutable
                 let cnt = self.brick_instances.load_count(&context.gpu);
                 counters::sample!("brick_selected_counter", cnt as f64);
-                info!("BrickInstances::load_count: {}", cnt);
             };
             
             self.pipeline.set_svo(&context.gpu, svo, &gpu_transforms);

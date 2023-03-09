@@ -126,7 +126,7 @@ impl<S: SceneWithCamera> Renderer<S> {
         
         // update camera
         // TODO: Only if camera is dirty?
-        self.context.camera.update(&self.context.gpu.queue, &scene.get_camera_rig().camera);
+        self.context.camera.update(&self.context.gpu.queue, scene.get_camera_rig().camera());
         
         // Prepare all modules
         // TODO: parallelize this

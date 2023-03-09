@@ -7,7 +7,7 @@ use crate::{
         gpu::vertices::ColorVertex,
         application::Context,
         math::Transform,
-        camera::{CameraRig, Camera},
+        camera::{OrbitCameraRig, Camera},
     },
     sdf::{
         model::{ModelPool, Model},
@@ -103,7 +103,7 @@ pub fn init_scene(context: &Context) -> Scene {
                         rng.gen_range(-500.0..=500.0),
                         rng.gen_range(-500.0..=500.0),
                     ).into())
-                    .scale(glam::Vec3::splat(rng.gen_range(0.21..=5.0)))
+                    .scale(glam::Vec3::splat(rng.gen_range(0.21..=20.0)))
                     .rotate(glam::Quat::from_euler(
                         glam::EulerRot::XYZ,
                         rng.gen_range(0.0..=360.0 as f32).to_radians(),
@@ -115,12 +115,17 @@ pub fn init_scene(context: &Context) -> Scene {
     }
     
     Scene {
-        camera_rig: CameraRig::from_camera(Camera {
-            fov:          60.0,
-            far:          300000.0,
-            aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
-            ..Default::default()
-        }).set_orbiting(glam::Vec3::ZERO, 4.0),
+        camera_rig: Box::new(OrbitCameraRig::from_camera(
+            Camera {
+                fov:          60.0,
+                far:          10000.0,
+                aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
+                position:     glam::vec3(5.0, 5.0, 5.0),
+                ..Default::default()
+            },
+            glam::Vec3::ZERO,
+            5.0,
+        )),
         geometry_pool,
         model_pool,
         world,
