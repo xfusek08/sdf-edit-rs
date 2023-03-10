@@ -1,6 +1,7 @@
 
 pub mod scene;
 pub mod components;
+pub mod gui_modules;
 pub mod modules;
 
 mod define_renderer;

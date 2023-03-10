@@ -9,10 +9,8 @@ use crate::framework::application;
 
 fn main() {
     env_logger::init();
-    profiler::session_begin! ("sdf-editor-app");
-    
+    profiler::session_begin!("sdf-editor-app");
     counters::init!();
-    
     info!("Starting...");
     pollster::block_on(application::run(
         application::ApplicationDescriptor {
@@ -25,8 +23,6 @@ fn main() {
             ..Default::default()
         }
     ));
-    
     counters::deinit!();
-    
     info!("Exiting");
 }

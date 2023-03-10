@@ -1,8 +1,11 @@
+
+
 [workspace]
 members = [
     ".",
     "crates/profiler",
     "crates/enum_utils",
+    "crates/counters",
 ]
 
 
@@ -25,7 +28,7 @@ env_logger         = "0.10.0"                                                   
 pollster           = "0.3.0"                                                    # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
 winit              = "0.28.2"                                                   # Windowing library (event loop namaing, window creation, etc.)
 winit_input_helper = "0.14.0"                                                   # Helper for winit input handling, storing imput state based on processed events ...
-wgpu               = "0.15.1"                                                   # A cross platform GPU API, in this applicationVulcan backend i          s used.
+wgpu               = "0.15.1"                                                   # A cross platform GPU API, in this applicationVulcan backend is used.
 dolly              = "0.4.1"                                                    # A camera rig library with smooting and inertia.
 bytemuck           = { version = "1.12.3", features = [ "derive" ] }            # Static casting between basic types
 glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporing SIMD optimizations
@@ -44,10 +47,10 @@ strum        = "0.24.1"
 strum_macros = "0.24.3"
 
 # GUI
-egui = "0.21.0"        # Immidiate mode gui library
+egui        = "0.21.0" # Immidiate mode gui library
 egui_extras = "0.21.0" # For drawing tables
-egui-wgpu = "0.21.0"   # Wgpu backend integration with egui
-egui-winit = "0.21.1"  # Egui integration with winit
+egui-wgpu   = "0.21.0" # Wgpu backend integration with egui
+egui-winit  = "0.21.1" # Egui integration with winit
 
 
 [features]

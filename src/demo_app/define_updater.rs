@@ -8,18 +8,20 @@ use crate::framework::{
 use super::{
     scene::Scene,
     modules::{
-        LegacyAppsGui,
-        DynamicTestGeometry,
         TmpEvaluatorConfig,
         SvoEvaluatorUpdater,
+    },
+    gui_modules::{
+        LegacyAppsGui,
+        DynamicTestGeometry
     },
 };
 
 #[cfg(feature = "stats")]
-use super::modules::stats_gui::StatsGui;
+use super::gui_modules::stats_gui::StatsGui;
 
 #[cfg(feature = "counters")]
-use super::modules::counters_gui::CountersGui;
+use super::gui_modules::counters_gui::CountersGui;
 
 pub fn define_updater(context: &Context) -> Updater<Scene> {
     Updater::new()

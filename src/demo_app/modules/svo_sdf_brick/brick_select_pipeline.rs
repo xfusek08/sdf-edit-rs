@@ -13,8 +13,8 @@ use crate::{
         Svo,
     },
     framework::{
+        math,
         renderer::RenderContext,
-        math, self,
     },
 };
 
