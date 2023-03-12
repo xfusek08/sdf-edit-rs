@@ -3,6 +3,7 @@ use slotmap::SlotMap;
 use rand::Rng;
 
 use crate::{
+    shape_builder::Shape,
     framework::{
         gpu::vertices::ColorVertex,
         application::Context,
@@ -13,13 +14,16 @@ use crate::{
         model::{ModelPool, Model},
         geometry::{GeometryPool, Geometry},
     },
-    shape_builder::Shape,
 };
 
 use super::{
     scene::Scene,
-    components::{AxisMesh, Active},
-    modules::{line::LineMesh, TmpEvaluatorConfigProps}, bumpy_sphere::bumpy_sphere,
+    components::{
+        AxisMesh,
+        Active
+    },
+    line::LineMesh,
+    geometries::{bumpy_sphere, test_geometry}, tmp_evaluator_config::TmpEvaluatorConfigProps,
 };
 
 
@@ -54,28 +58,22 @@ pub fn init_scene(context: &Context) -> Scene {
     // Create and register test geometry
     // ---------------------------------
     
-    let min_voxel_size = 0.03;
+    let min_voxel_size = 0.016;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
-    let test_geometry = Geometry::new(min_voxel_size).with_edits(
-        Shape::empty().add(
-            bumpy_sphere(),
-            Transform::IDENTITY,
-            0.0
-        ).build()
-    );
-    let test_geometry_id = geometry_pool.insert(test_geometry);
+    let g1 = Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build());
+    let g2 = Geometry::new(min_voxel_size).with_edits(test_geometry().build());
+    
+    let g1_id = geometry_pool.insert(g1);
+    let g2_id = geometry_pool.insert(g2);
     
     // Create and register test model
     // ------------------------------
     
     let mut model_pool = ModelPool::new();
-    model_pool.insert(
-        Model::new(test_geometry_id).with_transform(Transform::IDENTITY
-            // .translate((1.0, 0.0, 0.0).into())
-            // .scale(glam::Vec3::splat(2.5))
-            // .rotate(glam::Quat::from_rotation_x((45 as f32).to_radians()))
-        )
-    );
+    // model_pool.insert(Model::new(g1_id));
+    
+    // model_pool.insert(Model::new(g2_id)
+    //     .with_transform(Transform::IDENTITY.translate((3.0, 0.0, 0.0).into())));
     
     // for i in -5..=5 {
     //     for j in -5..=5 {
@@ -96,7 +94,7 @@ pub fn init_scene(context: &Context) -> Scene {
     let mut rng = rand::thread_rng();
     for _ in 0..=4000 {
         model_pool.insert(
-            Model::new(test_geometry_id).with_transform(
+            Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
                 Transform::IDENTITY
                     .translate((
                         rng.gen_range(-500.0..=500.0),
@@ -135,6 +133,6 @@ pub fn init_scene(context: &Context) -> Scene {
             min_voxel_size,
         },
         display_toggles: Default::default(),
-        brick_level_break_size: 0.04,
+        brick_level_break_size: 0.03,
     }
 }

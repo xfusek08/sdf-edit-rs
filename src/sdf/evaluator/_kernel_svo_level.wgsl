@@ -329,11 +329,9 @@ fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
     // TODO: use max-norm for evaluating this
-    // let sqrt_3 = 1.73205080757;
-    let voxel_bounding_spehere_radius = 0.866025 * voxel_size;
-    // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.6;
-    // let voxel_bounding_spehere_radius = (voxel_size * sqrt_3) * 0.4;
-    return abs(dinstance) < voxel_bounding_spehere_radius;
+    let sqrt_3 = 1.73205080757;
+    let voxel_bounding_spehere_radius = sqrt_3 * voxel_size;
+    return abs(dinstance * 0.9) < voxel_bounding_spehere_radius;
 }
 
 // Main function of this section

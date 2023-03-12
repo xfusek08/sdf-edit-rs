@@ -2,7 +2,14 @@
 pub mod scene;
 pub mod components;
 pub mod gui_modules;
-pub mod modules;
+
+mod line;
+mod cube;
+mod svo_sdf_brick;
+mod tmp_evaluator_config;
+mod svo_evaluator;
+mod svo_wireframe;
+
 
 mod define_renderer;
 pub use define_renderer::define_renderer;
@@ -16,4 +23,4 @@ pub use style_gui::*;
 mod init_scene;
 pub use init_scene::init_scene;
 
-pub mod bumpy_sphere;
+pub mod geometries;

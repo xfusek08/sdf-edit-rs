@@ -116,6 +116,11 @@ impl Shape {
             Err(err) => return Err(format!("Failed to read file: {}", err))
         }
         
+        Self::from_string(&str)
+    }
+    
+    pub fn from_string(str: &str) -> Result<Self, String>
+    {
         // Deserialize edits
         let edits: Vec<Edit> = match serde_json::from_str(&str) {
             Ok(edits) => edits,

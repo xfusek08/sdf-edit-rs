@@ -1,11 +1,17 @@
 
 use crate::{
-    framework::{gui::GuiModule, camera::Camera},
     sdf::geometry::Geometry,
+    framework::{
+        gui::GuiModule,
+        camera::Camera
+    },
     demo_app::{
+        svo_sdf_brick::DisplayOptions,
         scene::Scene,
-        modules::svo_sdf_brick,
-        components::{AxisMesh, Active},
+        components::{
+            AxisMesh,
+            Active
+        },
     },
 };
 
@@ -124,10 +130,10 @@ impl GuiModule<Scene> for LegacyAppsGui {
                     };
                 }
                 
-                checkbox!(svo_sdf_brick::DisplayOptions::DEPTH,      "Depth");
-                checkbox!(svo_sdf_brick::DisplayOptions::NORMALS,    "Normals");
-                checkbox!(svo_sdf_brick::DisplayOptions::SOLID,      "Solid");
-                checkbox!(svo_sdf_brick::DisplayOptions::STEP_COUNT, "Step Count");
+                checkbox!(DisplayOptions::DEPTH,      "Depth");
+                checkbox!(DisplayOptions::NORMALS,    "Normals");
+                checkbox!(DisplayOptions::SOLID,      "Solid");
+                checkbox!(DisplayOptions::STEP_COUNT, "Step Count");
             });
         });
     }

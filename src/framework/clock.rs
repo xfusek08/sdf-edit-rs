@@ -57,7 +57,7 @@ impl Clock {
             
             // Schedule next tick
             self.next_tick_scheduled = time + self.update_time_window - time_difference;
-                        
+            
             // FPS measurement
             self.elapsed_seconds += self.current_tick.delta.as_secs_f32();
             self.tick_counter += 1;

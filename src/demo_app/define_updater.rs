@@ -7,10 +7,8 @@ use crate::framework::{
 
 use super::{
     scene::Scene,
-    modules::{
-        TmpEvaluatorConfig,
-        SvoEvaluatorUpdater,
-    },
+    tmp_evaluator_config::TmpEvaluatorConfig,
+    svo_evaluator::SvoEvaluatorUpdater,
     gui_modules::{
         LegacyAppsGui,
         DynamicTestGeometry

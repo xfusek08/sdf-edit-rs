@@ -7,12 +7,10 @@ use crate::framework::{
 
 use super::{
     scene::Scene,
-    modules::{
-        line::LineRenderModule,
-        cube::CubeOutlineRenderModule,
-        svo_sdf_brick::SvoSdfBricksRenderModule,
-        SvoWireframeRenderModule,
-    },
+    line::LineRenderModule,
+    cube::CubeOutlineRenderModule,
+    svo_sdf_brick::SvoSdfBricksRenderModule,
+    svo_wireframe::SvoWireframeRenderModule,
 };
 
 

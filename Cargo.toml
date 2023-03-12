@@ -23,8 +23,8 @@ enum_utils = { path = "crates/enum_utils" }
 counters   = { path = "crates/counters" }
 
 # Core
-log                = "0.4.17"                                                   # Generic logging API without backend (env_logger)
-env_logger         = "0.10.0"                                                   # Logging into console based on environment variable.
+log                = { version = "0.4.17", optional = true }                    # Generic logging API without backend (env_logger)
+env_logger         = { version = "0.10.0", optional = true }                    # Logging into console based on environment variable.
 pollster           = "0.3.0"                                                    # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
 winit              = "0.28.2"                                                   # Windowing library (event loop namaing, window creation, etc.)
 winit_input_helper = "0.14.0"                                                   # Helper for winit input handling, storing imput state based on processed events ...
@@ -57,3 +57,4 @@ egui-winit  = "0.21.1" # Egui integration with winit
 json_trace = [ "profiler/json_trace" ]
 stats      = [ "profiler/stats" ]
 counters   = [ "counters/enabled" ]
+log        = [ "dep:log", "dep:env_logger" ]

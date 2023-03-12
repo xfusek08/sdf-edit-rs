@@ -2,8 +2,8 @@ use hecs::World;
 
 use crate::{
     framework::camera::{
-        OrbitCameraRig,
-        SceneWithCamera, CameraRig
+        SceneWithCamera,
+        CameraRig
     },
     sdf::{
         geometry::GeometryPool,
@@ -11,7 +11,11 @@ use crate::{
     },
 };
 
-use super::modules::svo_sdf_brick;
+use super::{
+    svo_sdf_brick::DisplayOptions,
+    tmp_evaluator_config::TmpEvaluatorConfigProps
+};
+
 
 #[derive(Debug, Default)]
 pub struct SceneCounters {
@@ -22,7 +26,7 @@ pub struct SceneCounters {
 #[derive(Debug, Default)]
 pub struct DisplayToggles {
     pub show_axes: bool,
-    pub brick_display_options: svo_sdf_brick::DisplayOptions,
+    pub brick_display_options: DisplayOptions,
     pub show_wireframe: bool,
     pub show_voxel_size_reference: bool,
 }
@@ -37,7 +41,7 @@ pub struct Scene {
     // tmp stuff
     pub world: World,
     pub counters: SceneCounters,
-    pub tmp_evaluator_config: super::modules::TmpEvaluatorConfigProps,
+    pub tmp_evaluator_config: TmpEvaluatorConfigProps,
 }
 
 impl SceneWithCamera for Scene {

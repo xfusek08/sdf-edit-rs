@@ -113,7 +113,7 @@ impl AABB {
         
         is_at_least_one_vertex_inside
         
-        // NOTE: following code is not working right for some reason
+        // NOTE: following code is not working right, for some reason
         // // Compute if all frustum vertices are outside of the aabb according to: https://iquilezles.org/articles/frustumcorrect/
         // if frustum.vertices().iter().all(|fv| {fv.x >  self.max.x}) { return false; }
         // if frustum.vertices().iter().all(|fv| {fv.x <  self.min.x}) { return false; }

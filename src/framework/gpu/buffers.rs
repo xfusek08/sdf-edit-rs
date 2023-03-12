@@ -3,6 +3,8 @@ use std::{marker::PhantomData, fmt::Debug};
 
 use wgpu::util::DeviceExt;
 
+use crate::warn;
+
 use super::{
     Context,
     vertices::Vertex,
@@ -91,11 +93,14 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
     /// Update the buffer on the GPU using wgpu queue with the given data.
     /// - If the buffer is not large enough, it will be reallocated with the new size.
+    /// - Returns true if the buffer was resized and thus the old bindings is invalid.
     #[profiler::function]
-    pub fn queue_update(&mut self, gpu: &Context, new_data: &[I]) {
+    pub fn queue_update(&mut self, gpu: &Context, new_data: &[I]) -> bool {
+        self.size = new_data.len();
         if new_data.len() > self.capacity {
             // TODO: For some reason this might not work ... Assignment buffer is empty when first update went through this branch
             profiler::scope!("Updating Buffer with reallocation");
+            warn!("Updating Buffer with reallocation {} -> {}", self.capacity, new_data.len());
             self.buffer = gpu.device.create_buffer_init(
                 &wgpu::util::BufferInitDescriptor {
                     label: self.label,
@@ -105,11 +110,11 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
             );
             self.capacity = new_data.len();
             self.size     = new_data.len();
-        } else {
-            profiler::scope!("Updating Buffer without reallocation");
-            gpu.queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(new_data));
+            return true;
         }
-        self.size = new_data.len();
+        profiler::scope!("Updating Buffer without reallocation");
+        gpu.queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(new_data));
+        false
     }
     
     /// If new capacity is larger than current capacity, resize the buffer.
