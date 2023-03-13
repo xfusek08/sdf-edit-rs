@@ -3,7 +3,7 @@ use std::{marker::PhantomData, fmt::Debug};
 
 use wgpu::util::DeviceExt;
 
-use crate::warn;
+use crate::info;
 
 use super::{
     Context,
@@ -16,7 +16,7 @@ pub trait BufferItem:  {}
 pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> {
     /// Label of buffer on GPU.
     pub label: Option<&'static str>,
-    /// Vertex buffer on GPU.
+    /// Vertex buffer on GPU.self.
     pub buffer: wgpu::Buffer,
     /// The number of items in the buffer.
     pub size: usize,
@@ -24,26 +24,38 @@ pub struct Buffer<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> 
     pub capacity: usize,
     /// TODO: delete after wgpu 0.14
     pub usage: wgpu::BufferUsages,
+    /// The rate at which the buffer will grow when it is full.
+    pub grow_rate: f32,
     /// The type of the buffer item data.
     _phantom: PhantomData<I>,
 }
 
 // Statics (Helpers, Constructors)
 impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
+    
     /// Create a new buffer on the GPU.
     #[profiler::function]
-    pub fn new(gpu: &Context, label: Option<&'static str>, data: &[I], usage: wgpu::BufferUsages) -> Buffer<I> {
+    pub fn new(
+        gpu: &Context,
+        label: Option<&'static str>,
+        data: &[I],
+        usage: wgpu::BufferUsages,
+    ) -> Buffer<I> {
         let size = data.len();
         let buffer = gpu.device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor { label, usage, contents: bytemuck::cast_slice(data) }
         );
-        
-        Buffer { label, buffer, size, capacity: size, usage, _phantom: PhantomData }
+        Buffer { label, buffer, size, capacity: size, usage, grow_rate: 1.0, _phantom: PhantomData }
     }
     
     /// Create a new buffer on the GPU with a given capacity without initializing it.
     #[profiler::function]
-    pub fn new_empty(gpu: &Context, label: Option<&'static str>, capacity: usize, usage: wgpu::BufferUsages) -> Buffer<I> {
+    pub fn new_empty(
+        gpu: &Context,
+        label: Option<&'static str>,
+        capacity: usize,
+        usage: wgpu::BufferUsages,
+    ) -> Buffer<I> {
         let size = 0;
         let buffer = gpu.device.create_buffer(
             &wgpu::BufferDescriptor {
@@ -53,7 +65,12 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
                 mapped_at_creation: false,
             }
         );
-        Buffer { label, buffer, size, capacity, usage, _phantom: PhantomData }
+        Buffer { label, buffer, size, capacity, usage, grow_rate: 1.0, _phantom: PhantomData }
+    }
+    
+    pub fn with_grow_rate(mut self, grow_rate: f32) -> Self {
+        self.grow_rate = grow_rate;
+        self
     }
     
     /// Helper function to compute how many bytes will occupy given number of items in this buffer
@@ -79,10 +96,25 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
 // Instance methods
 impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
+    fn grow_size(&self, size: usize) -> usize {
+        if self.grow_rate > 0.0 && self.grow_rate != 1.0 {
+            (size as f32 * self.grow_rate) as usize
+        } else {
+            size
+        }
+    }
+    
+    fn label(&self) -> &str {
+        self.label.unwrap_or("Unnamed Buffer")
+    }
+    
     /// Returns allocated number of bytes (on GPU) for this buffer
     pub fn byte_size(&self) -> usize {
-        // self.buffer.size() as usize // TODO: wgpu 0.14
-        self.size * std::mem::size_of::<I>()
+        Self::bytes_for_item_count(self.size)
+    }
+    
+    pub fn capacity_bytes(&self) -> usize {
+        Self::bytes_for_item_count(self.capacity)
     }
     
     /// Returns the usage with which this buffer was created
@@ -96,24 +128,27 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// - Returns true if the buffer was resized and thus the old bindings is invalid.
     #[profiler::function]
     pub fn queue_update(&mut self, gpu: &Context, new_data: &[I]) -> bool {
-        self.size = new_data.len();
+        info!("Buffer \"{}\": Updating data: {}/{} -> {}/{}", self.label(), self.size, self.capacity, new_data.len(), self.capacity);
+        
+        // Reallocate if too small
         if new_data.len() > self.capacity {
-            // TODO: For some reason this might not work ... Assignment buffer is empty when first update went through this branch
             profiler::scope!("Updating Buffer with reallocation");
-            warn!("Updating Buffer with reallocation {} -> {}", self.capacity, new_data.len());
-            self.buffer = gpu.device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
-                    label: self.label,
-                    usage: self.usage(),
-                    contents: bytemuck::cast_slice(new_data),
-                }
-            );
-            self.capacity = new_data.len();
-            self.size     = new_data.len();
+            let new_capacity = self.grow_size(new_data.len());
+            let data_slice: &[u8] = bytemuck::cast_slice(new_data);
+            info!("Buffer: \"{}\": Reallocating with new capacity and data {}/{} -> {}/{}", self.label(), self.size, self.capacity, new_data.len(), new_capacity);
+            self.reallocate_buffer(gpu, new_capacity, true);
+            self.buffer.slice(..)
+                .get_mapped_range_mut()[..data_slice.len()]
+                .copy_from_slice(data_slice);
+            self.buffer.unmap();
+            self.size = new_data.len();
+            self.capacity = new_capacity;
             return true;
         }
+        
         profiler::scope!("Updating Buffer without reallocation");
         gpu.queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(new_data));
+        self.size = new_data.len();
         false
     }
     
@@ -123,18 +158,29 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     #[profiler::function]
     pub fn resize(&mut self, gpu: &Context, new_capacity: usize) -> bool {
         if new_capacity > self.capacity {
-            self.buffer = gpu.device.create_buffer(
-                &wgpu::BufferDescriptor {
-                    label: self.label,
-                    size:  Self::bytes_for_item_count(new_capacity) as u64,
-                    usage: self.usage(),
-                    mapped_at_creation: false,
-                }
-            );
+            let new_capacity = self.grow_size(new_capacity);
+            info!("Buffer \"{}\": Resizing: {}/{} -> {}/{}", self.label(), self.size, self.capacity, self.size, new_capacity);
+            self.reallocate_buffer(gpu, new_capacity, false);
             self.capacity = new_capacity;
             return true;
         }
         false
+    }
+    
+    fn reallocate_buffer(&mut self, gpu: &Context, capacity: usize, mapped: bool) {
+        // for more info why it is done this way see wgpu::DeviceExt::create_buffer_init
+        let unpadded_size = Self::bytes_for_item_count(capacity) as u64;
+        let align_mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
+        let padded_size = ((unpadded_size + align_mask) & !align_mask).max(wgpu::COPY_BUFFER_ALIGNMENT);
+        
+        self.buffer = gpu.device.create_buffer(
+            &wgpu::BufferDescriptor {
+                label: self.label,
+                size: padded_size,
+                usage: self.usage(),
+                mapped_at_creation: mapped,
+            }
+        );
     }
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.

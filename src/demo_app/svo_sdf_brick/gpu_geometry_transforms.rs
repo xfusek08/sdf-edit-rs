@@ -42,8 +42,8 @@ impl GPUGeometryTransforms {
     pub fn from_transforms(gpu: &gpu::Context, transforms: &[Transform]) -> Self {
         let (transforms, inverse_transforms) = Self::map_transforms(transforms);
         Self {
-            transforms:         gpu::Buffer::new(gpu, Some("Geometry transforms"), &transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST),
-            inverse_transforms: gpu::Buffer::new(gpu, Some("Geometry inverse transforms"), &inverse_transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST),
+            transforms:         gpu::Buffer::new(gpu, Some("Geometry transforms"), &transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST).with_grow_rate(1.5),
+            inverse_transforms: gpu::Buffer::new(gpu, Some("Geometry inverse transforms"), &inverse_transforms, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST).with_grow_rate(1.5),
             count:              gpu::Buffer::new(gpu, Some("Geometry transforms count"), &[transforms.len() as u32], wgpu::BufferUsages::UNIFORM  | wgpu::BufferUsages::COPY_DST),
         }
     }

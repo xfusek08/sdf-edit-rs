@@ -210,19 +210,27 @@ impl SvoSDFBrickPipeline {
         let brick_atlas_stride =svo.brick_pool.atlas_stride();
         let brick_voxel_size =svo.brick_pool.atlas_voxel_size();
         let brick_scale =svo.brick_pool.atlas_scale();
-        let node_count = svo.node_pool.count().expect(format!("SVO {:?} has no node count", id).as_str());
+        
+        // let node_count = svo.node_pool.count().expect(format!("SVO {:?} has no node count", id).as_str());
+        let bottom_level = svo.levels.last().expect(format!("SVO {:?} has no bottom level", id).as_str());
+        let node_count = bottom_level.node_count;
+        
+        // TODO: this number is absurdly large, the more instance_transforms, the more likely they are further away,
+        //       hence only a few nodes per instance will be used and there are no way, space for the whole bottom
+        //       level will be need.
         let brick_count = instance_transforms.len() * node_count as usize;
+        
         let record = self.svos_to_render.entry(*id)
             .and_modify(|rec|  {
+                warn!("{:?}: Modifying SVO with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
                 rec.render = true;
                 rec.domain = domain;
                 rec.brick_atlas_stride = brick_atlas_stride;
                 rec.brick_voxel_size = brick_voxel_size;
                 rec.brick_scale = brick_scale;
-                warn!("{:?}: Modifying SVO with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
                 rec.brick_instance_buffer.clear_resize(gpu, brick_count);
+                rec.instance_buffer.update(gpu, instance_transforms);
                 if rec.instance_buffer.update(gpu, instance_transforms) {
-                    warn!("{:?}: Instance Buffer was resized to {}", id, instance_transforms.len());
                     rec.instance_bind_group = rec.instance_buffer.create_bind_group(gpu, &self.instance_bind_group_layout);
                 }
             })
@@ -301,6 +309,7 @@ impl SvoSDFBrickPipeline {
                 record.brick_instance_buffer.count_buffer.buffer.unmap();
             }
         }
+        
     }
     
     /// Runs this pipeline for given render pass
@@ -345,17 +354,13 @@ impl SvoSDFBrickPipeline {
                 ..Default::default()
             };
             
-            pass.set_push_constants(
-                wgpu::ShaderStages::VERTEX_FRAGMENT,
-                0,
-                bytemuck::cast_slice(&[pc]
-            ));
+            pass.set_push_constants(wgpu::ShaderStages::VERTEX_FRAGMENT, 0, bytemuck::cast_slice(&[pc]));
+            
+            pass.set_vertex_buffer(1, record.brick_instance_buffer.buffer.buffer.slice(..));
             
             pass.set_bind_group(0, &record.node_pool_bind_group, &[]);
             pass.set_bind_group(1, &record.brick_pool_bind_group, &[]);
             pass.set_bind_group(2, &record.instance_bind_group, &[]);
-            
-            pass.set_vertex_buffer(1, record.brick_instance_buffer.buffer.buffer.slice(..));
             
             // TODO: use indirect to avoid pulling instance buffer count from gpu
             pass.draw_indexed(

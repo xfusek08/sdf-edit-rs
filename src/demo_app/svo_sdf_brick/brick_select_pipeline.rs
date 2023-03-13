@@ -154,7 +154,7 @@ impl SvoBrickSelectPipeline {
                 ..Default::default()
             }]));
             
-            compute_pass.dispatch_workgroups((node_count + 128 - 1) / 128, 1, 1);
+            compute_pass.dispatch_workgroups(node_count, 1, 1);
         }
         
         context.gpu.queue.submit(Some(encoder.finish()));

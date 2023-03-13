@@ -29,7 +29,7 @@ impl BrickInstances {
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::STORAGE
                     
-            ),
+            ).with_grow_rate(1.5),
             count_buffer: gpu::Buffer::new(
                 &gpu,
                 Some("Brick instances counter buffer"),
@@ -64,7 +64,12 @@ impl BrickInstances {
                 // Buffer with brick instances
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.buffer.buffer.as_entire_binding(),
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.buffer.buffer,
+                        offset: 0,
+                        // Crop buffer size to max_storage_buffer_binding_size
+                        size: wgpu::BufferSize::new((self.buffer.capacity_bytes() as u64).min(gpu.device.limits().max_storage_buffer_binding_size as u64)),
+                    }),
                 },
                 // Buffer with brick instances count
                 wgpu::BindGroupEntry {
