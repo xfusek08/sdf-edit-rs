@@ -92,7 +92,7 @@ pub fn init_scene(context: &Context) -> Scene {
     // }
     
     let mut rng = rand::thread_rng();
-    for _ in 0..=4000 {
+    for _ in 0..=800 {
         model_pool.insert(
             Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
                 Transform::IDENTITY

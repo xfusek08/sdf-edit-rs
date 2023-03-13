@@ -20,7 +20,9 @@ use crate::{
         gpu,
         math,
         renderer::RenderContext,
-    }, error, warn,
+    },
+    error,
+    info,
 };
 
 use super::{
@@ -222,7 +224,7 @@ impl SvoSDFBrickPipeline {
         
         let record = self.svos_to_render.entry(*id)
             .and_modify(|rec|  {
-                warn!("{:?}: Modifying SVO with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
+                info!("{:?}: Modifying SVO with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
                 rec.render = true;
                 rec.domain = domain;
                 rec.brick_atlas_stride = brick_atlas_stride;
@@ -235,7 +237,7 @@ impl SvoSDFBrickPipeline {
                 }
             })
             .or_insert_with(|| {
-                warn!("Adding SVO {:?} with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
+                info!("Adding SVO {:?} with {} instances, nodes: {}, potential bricks: {}", id, instance_transforms.len(), node_count, brick_count);
                 let brick_instance_buffer = BrickInstances::new(gpu, brick_count);
                 let instance_buffer = GPUGeometryTransforms::from_transforms(gpu, instance_transforms);
                 let instance_bind_group = instance_buffer.create_bind_group(gpu, &self.instance_bind_group_layout);
@@ -304,7 +306,6 @@ impl SvoSDFBrickPipeline {
                 if !record.render {
                     continue;
                 }
-                warn!("Brick count of {:?}: {}", id, count);
                 record.brick_instance_buffer.count = Some(*count);
                 record.brick_instance_buffer.count_buffer.buffer.unmap();
             }
@@ -334,7 +335,7 @@ impl SvoSDFBrickPipeline {
                 continue;
             };
             
-            warn!("Rendering SVO {:?} with {} instances, buffer capacity: {}",
+            info!("Rendering SVO {:?} with {} instances, buffer capacity: {}",
                 id,
                 instance_count,
                 record.brick_instance_buffer.buffer.capacity

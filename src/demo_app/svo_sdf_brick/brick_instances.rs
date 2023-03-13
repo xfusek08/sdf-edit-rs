@@ -1,5 +1,8 @@
 
-use crate::framework::gpu;
+use crate::{
+    warn,
+    framework::gpu,
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -57,6 +60,9 @@ impl BrickInstances {
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
     pub fn create_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+        let max_binding_size_bytes = gpu.device.limits().max_storage_buffer_binding_size as usize;
+        let capacity_bytes = self.buffer.capacity_bytes();
+        
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Brick instance buffer bind group"),
             layout: layout,
@@ -67,8 +73,12 @@ impl BrickInstances {
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &self.buffer.buffer,
                         offset: 0,
-                        // Crop buffer size to max_storage_buffer_binding_size
-                        size: wgpu::BufferSize::new((self.buffer.capacity_bytes() as u64).min(gpu.device.limits().max_storage_buffer_binding_size as u64)),
+                        size: if max_binding_size_bytes > capacity_bytes {
+                            None
+                        } else {
+                            warn!("Brick instances buffer size is too big to be bound: {}. Limiting to {}", capacity_bytes, max_binding_size_bytes);
+                            wgpu::BufferSize::new(max_binding_size_bytes as u64)
+                        },
                     }),
                 },
                 // Buffer with brick instances count

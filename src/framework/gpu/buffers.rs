@@ -1,10 +1,10 @@
 
-use std::{marker::PhantomData, fmt::Debug};
-
+use std::{
+    marker::PhantomData,
+    fmt::Debug
+};
 use wgpu::util::DeviceExt;
-
-use crate::info;
-
+use crate::{info, warn};
 use super::{
     Context,
     vertices::Vertex,
@@ -43,9 +43,22 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     ) -> Buffer<I> {
         let size = data.len();
         let buffer = gpu.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor { label, usage, contents: bytemuck::cast_slice(data) }
+            &wgpu::util::BufferInitDescriptor {
+                label,
+                usage,
+                contents:
+                bytemuck::cast_slice(data)
+            }
         );
-        Buffer { label, buffer, size, capacity: size, usage, grow_rate: 1.0, _phantom: PhantomData }
+        Buffer {
+            label,
+            buffer,
+            size,
+            capacity: size,
+            usage,
+            grow_rate: 1.0,
+            _phantom: PhantomData,
+        }
     }
     
     /// Create a new buffer on the GPU with a given capacity without initializing it.
@@ -56,16 +69,23 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
         capacity: usize,
         usage: wgpu::BufferUsages,
     ) -> Buffer<I> {
-        let size = 0;
         let buffer = gpu.device.create_buffer(
             &wgpu::BufferDescriptor {
                 label,
-                size: Self::bytes_for_item_count(capacity) as u64,
+                size: Self::padded_bytes_for_item_count(capacity) as u64,
                 usage,
                 mapped_at_creation: false,
             }
         );
-        Buffer { label, buffer, size, capacity, usage, grow_rate: 1.0, _phantom: PhantomData }
+        Buffer {
+            size: 0,
+            buffer,
+            label,
+            capacity,
+            usage,
+            grow_rate: 1.0,
+            _phantom: PhantomData,
+        }
     }
     
     pub fn with_grow_rate(mut self, grow_rate: f32) -> Self {
@@ -74,8 +94,30 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
     
     /// Helper function to compute how many bytes will occupy given number of items in this buffer
+    #[inline]
     pub fn bytes_for_item_count(count: usize) -> usize {
         (count * std::mem::size_of::<I>()) as usize
+    }
+    
+    /// Helper function to compute real required size of buffer for given number of items
+    ///   - For more info why it is done this way see `wgpu::DeviceExt::create_buffer_init`.
+    #[inline]
+    pub fn padded_bytes_for_item_count(count: usize) -> usize {
+        let unpadded_size = Self::bytes_for_item_count(count) as u64;
+        let align_mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
+        ((unpadded_size + align_mask) & !align_mask).max(wgpu::COPY_BUFFER_ALIGNMENT) as usize
+    }
+    
+    /// Returns how many items at most can be stored in this buffer.
+    pub fn max_capacity(gpu: &Context, usage: wgpu::BufferUsages) -> usize {
+        let max_capacity_bytes = if usage.contains(wgpu::BufferUsages::STORAGE) {
+            gpu.device.limits().max_storage_buffer_binding_size
+        } else if usage.contains(wgpu::BufferUsages::UNIFORM) {
+            gpu.device.limits().max_uniform_buffer_binding_size
+        } else {
+            0
+        } as usize;
+        max_capacity_bytes / std::mem::size_of::<I>()
     }
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
@@ -91,16 +133,21 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
         profiler::call!(buffer.unmap());
         data
     }
-}
-
-// Instance methods
-impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     
-    fn grow_size(&self, size: usize) -> usize {
-        if self.grow_rate > 0.0 && self.grow_rate != 1.0 {
-            (size as f32 * self.grow_rate) as usize
+    fn calculate_resize_capacity(&self, gpu: &Context, new_size: usize) -> usize {
+        let max_capacity = Self::max_capacity(gpu, self.usage);
+        
+        let new_capacity = if self.grow_rate > 0.0 && self.grow_rate != 1.0 {
+            (new_size as f32 * self.grow_rate) as usize
         } else {
-            size
+            new_size
+        };
+        
+        if new_capacity > max_capacity {
+            warn!("Buffer: \"{}\": Cannot grow buffer to {} items, because it exceeds the maximum capacity of {} items - trimming", self.label(), new_capacity, max_capacity);
+            max_capacity
+        } else {
+            new_capacity
         }
     }
     
@@ -109,18 +156,14 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
     
     /// Returns allocated number of bytes (on GPU) for this buffer
+    #[inline]
     pub fn byte_size(&self) -> usize {
         Self::bytes_for_item_count(self.size)
     }
     
+    #[inline]
     pub fn capacity_bytes(&self) -> usize {
         Self::bytes_for_item_count(self.capacity)
-    }
-    
-    /// Returns the usage with which this buffer was created
-    pub fn usage(&self) -> wgpu::BufferUsages {
-        // self.buffer.usage() // TODO: wgpu 0.14
-        self.usage
     }
     
     /// Update the buffer on the GPU using wgpu queue with the given data.
@@ -133,10 +176,10 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
         // Reallocate if too small
         if new_data.len() > self.capacity {
             profiler::scope!("Updating Buffer with reallocation");
-            let new_capacity = self.grow_size(new_data.len());
+            let new_capacity = self.calculate_resize_capacity(gpu, new_data.len());
             let data_slice: &[u8] = bytemuck::cast_slice(new_data);
             info!("Buffer: \"{}\": Reallocating with new capacity and data {}/{} -> {}/{}", self.label(), self.size, self.capacity, new_data.len(), new_capacity);
-            self.reallocate_buffer(gpu, new_capacity, true);
+            self.buffer = self.new_buffer(gpu, new_capacity, true);
             self.buffer.slice(..)
                 .get_mapped_range_mut()[..data_slice.len()]
                 .copy_from_slice(data_slice);
@@ -157,30 +200,27 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// - Returns true if the buffer was resized and thus the old data is invalid.
     #[profiler::function]
     pub fn resize(&mut self, gpu: &Context, new_capacity: usize) -> bool {
+        
+        // Reallocate if too small
         if new_capacity > self.capacity {
-            let new_capacity = self.grow_size(new_capacity);
-            info!("Buffer \"{}\": Resizing: {}/{} -> {}/{}", self.label(), self.size, self.capacity, self.size, new_capacity);
-            self.reallocate_buffer(gpu, new_capacity, false);
+            let recalculated_capacity = self.calculate_resize_capacity(gpu, new_capacity);
+            info!("Buffer \"{}\": Reallocating with new capacity {}/{} -> {}/{} (asked for {})", self.label(), self.size, self.capacity, self.size, recalculated_capacity, new_capacity);
+            self.buffer = self.new_buffer(gpu, recalculated_capacity, false);
             self.capacity = new_capacity;
             return true;
         }
         false
     }
     
-    fn reallocate_buffer(&mut self, gpu: &Context, capacity: usize, mapped: bool) {
-        // for more info why it is done this way see wgpu::DeviceExt::create_buffer_init
-        let unpadded_size = Self::bytes_for_item_count(capacity) as u64;
-        let align_mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
-        let padded_size = ((unpadded_size + align_mask) & !align_mask).max(wgpu::COPY_BUFFER_ALIGNMENT);
-        
-        self.buffer = gpu.device.create_buffer(
+    fn new_buffer(&mut self, gpu: &Context, capacity: usize, mapped: bool) -> wgpu::Buffer {
+        gpu.device.create_buffer(
             &wgpu::BufferDescriptor {
                 label: self.label,
-                size: padded_size,
-                usage: self.usage(),
+                size: Self::padded_bytes_for_item_count(capacity) as u64,
+                usage: self.usage,
                 mapped_at_creation: mapped,
             }
-        );
+        )
     }
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
