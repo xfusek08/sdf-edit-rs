@@ -19,7 +19,6 @@ pub struct FreeCameraRig {
 }
 
 impl FreeCameraRig {
-    
     pub fn from_camera(camera: Camera, speed: f32) -> Self {
         let mut yaw_pitch = YawPitch::new();
         yaw_pitch.set_rotation_quat(camera.rotation);

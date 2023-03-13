@@ -26,13 +26,18 @@ impl OrbitCameraRig {
     
     pub fn from_camera(camera: Camera, target: glam::Vec3, distance: f32) -> Self {
         let mut yaw_pitch = YawPitch::new();
+        let current_distance_to_target = glam::Vec3::distance(camera.position, target);
         yaw_pitch.set_rotation_quat(camera.rotation);
-        let rig = dolly::rig::CameraRig::builder()
+        let mut rig = dolly::rig::CameraRig::builder()
             .with(yaw_pitch)
             .with(Smooth::new_rotation(0.8))
-            .with(Position::new(target))
-            .with(SmoothZoom::new(distance, 0.8))
+            .with(Position::new(camera.position))
+            .with(SmoothZoom::new(current_distance_to_target, 0.8))
             .build();
+        
+        rig.driver_mut::<SmoothZoom<RightHanded>>().zoom(-(current_distance_to_target - distance));
+        rig.driver_mut::<Position>().position = target;
+        
         Self { rig, camera }
     }
 }
