@@ -1,10 +1,27 @@
+
 use wgpu::util::DeviceExt;
 use crate::framework::gpu;
 use super::Capacity;
 
+#[cfg(debug_assertions)]
+#[derive(Debug)]
+struct ResourceLabels {
+    count_buffer: String,
+    header_buffer: String,
+    payload_buffer: String,
+    vertex_buffer: String,
+    capacity_buffer: String,
+}
+
 /// A Node Pool of the SVO residing on GPU.
 #[derive(Debug)]
 pub struct NodePool {
+    
+    /// A label of the Node Pool
+    svo_name: String,
+    
+    #[cfg(debug_assertions)]
+    resource_labels: ResourceLabels,
     
     /// A total number of nodes that can be stored currently in the buffers.
     capacity: u32,
@@ -71,46 +88,71 @@ impl NodePool {
 impl NodePool {
     /// Creates empty GPU octree by allocating buffers on GPU.
     #[profiler::function]
-    pub fn new(gpu: &gpu::Context, capacity: Capacity) -> Self {
+    pub fn new(svo_name: String, gpu: &gpu::Context, capacity: Capacity) -> Self {
+        
+        #[cfg(debug_assertions)]
+        let resource_labels = ResourceLabels {
+            count_buffer: format!("{} - Node Pool Count Buffer", svo_name),
+            header_buffer: format!("{} - Node Pool Header Buffer", svo_name),
+            payload_buffer: format!("{} - Node Pool Payload Buffer", svo_name),
+            vertex_buffer: format!("{} - Node Pool Vertex Buffer", svo_name),
+            capacity_buffer: format!("{} - Node Pool Capacity Buffer", svo_name),
+        };
         
         let capacity = capacity.nodes();
         let capacity64 = capacity as u64;
         
         let count = 0u32;
         let count_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SVO Node Pool Count Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.count_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             contents: bytemuck::cast_slice(&[count]),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         });
         
         let header_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVO Node Pool Header Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.header_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             size: capacity64 * std::mem::size_of::<u32>() as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
         
         let payload_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVO Node Pool Payload Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.payload_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             size: capacity64 * std::mem::size_of::<u32>() as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
         
         let vertex_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVO Node Pool Vertex Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.vertex_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             size: capacity64 * std::mem::size_of::<glam::Vec4>() as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         
         let capacity_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SVO Node Pool Capacity Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.capacity_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             contents: bytemuck::cast_slice(&[capacity]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
         
         Self {
+            svo_name,
             capacity,
             count_buffer,
             header_buffer,
@@ -118,6 +160,8 @@ impl NodePool {
             vertex_buffer,
             capacity_buffer,
             count: Some(count),
+            #[cfg(debug_assertions)]
+            resource_labels,
         }
     }
     

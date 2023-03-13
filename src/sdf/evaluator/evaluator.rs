@@ -34,10 +34,10 @@ impl Evaluator {
     
     #[profiler::function]
     pub fn evaluate_geometries(&mut self, geometry_pool: &mut GeometryPool) {
-        for (_, geometry) in geometry_pool.iter_mut() {
+        for (geometry_id, geometry) in geometry_pool.iter_mut() {
             if let EvaluationStatus::NeedsEvaluation = geometry.evaluation_status {
                 geometry.evaluation_status = EvaluationStatus::Evaluating;
-                self.evaluate_geometry(geometry);
+                self.evaluate_geometry(format!("{:?}", geometry_id), geometry);
             }
         }
     }
@@ -48,7 +48,7 @@ impl Evaluator {
     }
     
     #[profiler::function(pinned)]
-    fn evaluate_geometry(&mut self, geometry: &mut Geometry) {
+    fn evaluate_geometry(&mut self, svo_label: String, geometry: &mut Geometry) {
         
         // Get minimum voxel size for this evaluation run.
         let minium_voxel_size = geometry.min_voxel_size();
@@ -63,7 +63,7 @@ impl Evaluator {
         
         // Extract svo from geometry
         let svo = geometry.svo.take().unwrap_or_else(|| {
-            svo::Svo::new(&self.gpu, svo::Capacity::Depth(6))
+            svo::Svo::new(svo_label, &self.gpu, svo::Capacity::Nodes(20_000))
         });
         
         // Prepare level evaluation kernel for this run

@@ -4,6 +4,14 @@ use wgpu::util::DeviceExt;
 use crate::{framework::gpu, warn};
 use super::Capacity;
 
+#[cfg(debug_assertions)]
+#[derive(Debug)]
+struct ResourceLabels {
+    brick_atlas: String,
+    side_size_buffer: String,
+    count_buffer: String,
+}
+
 /// A format of one voxel in brick pool texture.
 /// - It determines how many bits are used for each voxel.
 #[derive(Debug)]
@@ -64,6 +72,13 @@ impl BrickPoolFormat {
 /// A Brick Pool of the SVO residing on GPU.
 #[derive(Debug)]
 pub struct BrickPool {
+    
+    /// A label of the brick pool.
+    /// - It is used as a prefix for all GPU resources created by the brick pool.
+    svo_name: String,
+    
+    #[cfg(debug_assertions)]
+    resource_labels: ResourceLabels,
     
     /// A gpu texture that stores all the bricks.
     brick_atlas: wgpu::Texture,
@@ -133,21 +148,32 @@ impl BrickPool {
     ///   `capacity` - Used to set minimal amount of bricks that can be stored in this texture.
     ///   `context`  - GPU context.
     #[profiler::function]
-    pub fn new(gpu: &gpu::Context, capacity: Capacity, format: BrickPoolFormat) -> Self {
+    pub fn new(svo_name: String, gpu: &gpu::Context, capacity: Capacity, format: BrickPoolFormat) -> Self {
+        
+        #[cfg(debug_assertions)]
+        let resource_labels = ResourceLabels {
+            brick_atlas: format!("{} - Brick Pool Texture", svo_name),
+            side_size_buffer: format!("{} - Brick Pool Side Size Buffer", svo_name),
+            count_buffer: format!("{} - Brick Pool Count Buffer", svo_name),
+        };
+        
         let side_size = Self::dimension_from_capacity(capacity.nodes());
         warn!("Brick pool side size: {} makes {} total bricks", side_size, side_size * side_size * side_size);
         let brick_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
+                #[cfg(debug_assertions)]
+                label: Some(&resource_labels.brick_atlas),
+                #[cfg(not(debug_assertions))]
+                label: None,
                 size: wgpu::Extent3d {
                     width:                 side_size * format.voxels_per_brick_in_one_dimension(),
                     height:                side_size * format.voxels_per_brick_in_one_dimension(),
                     depth_or_array_layers: side_size * format.voxels_per_brick_in_one_dimension(),
                 },
-                label:           Some("Brick Pool Texture"),
                 mip_level_count: 1,
                 sample_count:    1,
                 dimension:       wgpu::TextureDimension::D3,
-                format:          wgpu::TextureFormat::R32Float,
+                format:          wgpu::TextureFormat::R16Float,
                 usage:           wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats:    &[],
             }
@@ -156,19 +182,26 @@ impl BrickPool {
         let brick_atlas_view = brick_atlas.create_view(&wgpu::TextureViewDescriptor::default());
         
         let side_size_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Brick Pool Side Size Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.side_size_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             contents: bytemuck::cast_slice(&[side_size]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
         
         let count = 0u32;
         let count_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Brick Pool Count Buffer"),
+            #[cfg(debug_assertions)]
+            label: Some(&resource_labels.count_buffer),
+            #[cfg(not(debug_assertions))]
+            label: None,
             contents: bytemuck::cast_slice(&[count]),
             usage: wgpu::BufferUsages::STORAGE,
         });
         
         Self {
+            svo_name,
             brick_atlas,
             brick_atlas_view,
             side_size,
@@ -176,6 +209,8 @@ impl BrickPool {
             count: Some(count),
             count_buffer,
             bind_group: None,
+            #[cfg(debug_assertions)]
+            resource_labels,
         }
     }
     
@@ -276,7 +311,7 @@ impl BrickPool {
                     count: None,
                     ty: wgpu::BindingType::StorageTexture {
                         access: wgpu::StorageTextureAccess::WriteOnly,
-                        format: wgpu::TextureFormat::R32Float, // TODO: Use format of given BrickVoxelFormat
+                        format: wgpu::TextureFormat::R16Float, // TODO: Use format of given BrickVoxelFormat
                         view_dimension: wgpu::TextureViewDimension::D3,
                     }
                 },

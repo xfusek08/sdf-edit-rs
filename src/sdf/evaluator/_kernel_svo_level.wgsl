@@ -55,7 +55,7 @@ fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
 // Bind group 1: SVO: Brick pool
 // =================================================================================================
 
-@group(1) @binding(0) var brick_atlas: texture_storage_3d<r32float, write>;
+@group(1) @binding(0) var brick_atlas: texture_storage_3d<r16float, write>;
 @group(1) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
 @group(1) @binding(2) var<uniform> brick_pool_side_size: u32;            // Number of bricks in one side of the brick atlas texture
 

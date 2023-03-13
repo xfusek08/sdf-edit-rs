@@ -1,4 +1,5 @@
 
+
 use crate::framework::{gpu, math::BoundingCube};
 use super::{NodePool, BrickPool, BrickPoolFormat, BrickVoxelFormat};
 
@@ -48,6 +49,10 @@ pub struct Level {
 #[derive(Debug)]
 pub struct Svo {
     
+    /// A label of the SVO
+    ///   - it is used as a prefix for all GPU resources created by the SVO
+    pub label: String,
+    
     /// A node pool of the SVO on GPU.
     pub node_pool: NodePool,
     
@@ -63,17 +68,22 @@ pub struct Svo {
 
 impl Svo {
     #[profiler::function]
-    pub fn new(gpu: &gpu::Context, initial_capacity: Capacity) -> Self {
+    pub fn new(label: String, gpu: &gpu::Context, initial_capacity: Capacity) -> Self {
+        let node_pool = NodePool::new(label.clone(), gpu, initial_capacity.clone());
+        let brick_pool = BrickPool::new(
+            label.clone(),
+            gpu,
+            initial_capacity.clone(),
+            BrickPoolFormat {
+                voxel_format: BrickVoxelFormat::Distance,
+                padding: 1,
+            }
+        );
+        
         Self {
-            node_pool: NodePool::new(gpu, initial_capacity.clone()),
-            brick_pool: BrickPool::new(
-                gpu,
-                initial_capacity.clone(),
-                BrickPoolFormat {
-                    voxel_format: BrickVoxelFormat::Distance,
-                    padding: 1,
-                }
-            ),
+            label,
+            node_pool,
+            brick_pool,
             domain: BoundingCube::UNIT,
             levels: vec![]
         }
