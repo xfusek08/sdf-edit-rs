@@ -3,12 +3,11 @@ use slotmap::SlotMap;
 use rand::Rng;
 
 use crate::{
-    shape_builder::Shape,
     framework::{
         gpu::vertices::ColorVertex,
         application::Context,
         math::Transform,
-        camera::{OrbitCameraRig, Camera},
+        camera::{OrbitCameraRig, Camera, CameraRig},
     },
     sdf::{
         model::{ModelPool, Model},
@@ -18,12 +17,16 @@ use crate::{
 
 use super::{
     scene::Scene,
+    line::LineMesh,
+    tmp_evaluator_config::TmpEvaluatorConfigProps,
     components::{
         AxisMesh,
-        Active
+        Active,
     },
-    line::LineMesh,
-    geometries::{bumpy_sphere, test_geometry}, tmp_evaluator_config::TmpEvaluatorConfigProps,
+    geometries::{
+        bumpy_sphere,
+        test_geometry,
+    },
 };
 
 
@@ -113,7 +116,7 @@ pub fn init_scene(context: &Context) -> Scene {
     }
     
     Scene {
-        camera_rig: Box::new(OrbitCameraRig::from_camera(
+        camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(
             Camera {
                 fov:          60.0,
                 far:          10000.0,

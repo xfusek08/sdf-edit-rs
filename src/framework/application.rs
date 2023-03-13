@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use winit_input_helper::WinitInputHelper;
 use winit::{
-    event::Event,
+    event::{Event, WindowEvent},
     platform::run_return::EventLoopExtRunReturn,
     window::{Window, WindowBuilder},
     event_loop::{EventLoop, ControlFlow},
@@ -109,8 +109,16 @@ where
                 
                 // Let gui process window event and when it does not handle it, update scene
                 if let Event::WindowEvent { event, .. } = &event {
-                    profiler::scope!("Processing input event by GUI");
-                    event_consumed_by_gui = gui.on_event(&event).consumed;
+                    match event {
+                        // x11 sends this event when moving cursor on that causes to ignore dragging of egui slides and such
+                        WindowEvent::AxisMotion { .. } => {},
+                        
+                        // rest of the events are handled by egui
+                        _ => {
+                            profiler::scope!("Processing input event by GUI");
+                            event_consumed_by_gui = gui.on_event(&event).consumed;
+                        },
+                    }
                 }
                 
                 // Let input helper process event to somewhat coherent input state and work with that.

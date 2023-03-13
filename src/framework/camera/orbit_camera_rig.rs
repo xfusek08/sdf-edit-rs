@@ -15,7 +15,7 @@ use dolly::{
 };
 
 use crate::framework::math::Transform;
-use super::{Camera, CameraRig};
+use super::Camera;
 
 pub struct OrbitCameraRig {
     rig:    dolly::rig::CameraRig,
@@ -40,21 +40,19 @@ impl OrbitCameraRig {
         
         Self { rig, camera }
     }
-}
-
-impl CameraRig for OrbitCameraRig {
-    fn camera(&self) -> &Camera {
+    
+    pub fn camera(&self) -> &Camera {
         &self.camera
     }
     
-    fn set_camera(&mut self, camera: Camera) {
+    pub fn set_camera(&mut self, camera: Camera) {
         self.camera.fov = camera.fov;
         self.camera.aspect_ratio = camera.aspect_ratio;
         self.camera.near = camera.near;
         self.camera.far = camera.far;
     }
 
-    fn on_input(&mut self, input: &WinitInputHelper) {
+    pub fn on_input(&mut self, input: &WinitInputHelper) {
         let (dx, dy) = input.mouse_diff();
         if (dx != 0.0 || dy != 0.0) && input.mouse_held(0) {
             self.rig
@@ -69,7 +67,7 @@ impl CameraRig for OrbitCameraRig {
         }
     }
     
-    fn update(&mut self, delta_time_seconds: f32, _: &WinitInputHelper) -> Transform {
+    pub fn update(&mut self, delta_time_seconds: f32, _: &WinitInputHelper) -> Transform {
         let res = self.rig.update(delta_time_seconds);
         self.camera.position = res.position;
         self.camera.rotation = res.rotation;

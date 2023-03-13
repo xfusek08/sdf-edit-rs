@@ -1,6 +1,6 @@
 
 use egui_winit::EventResponse;
-use winit::event_loop::EventLoopWindowTarget;
+use winit::{event_loop::EventLoopWindowTarget, event::WindowEvent};
 
 pub struct Gui {
     pub egui_ctx: egui::Context,
