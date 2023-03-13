@@ -18,10 +18,10 @@ fn main() {
     
     pollster::block_on(application::run(
         application::ApplicationDescriptor {
-            define_renderer: demo_app::define_renderer,
-            define_updater:  demo_app::define_updater,
-            init_scene:      demo_app::init_scene,
-            style_gui:       demo_app::style_gui,
+            init_renderer: demo_app::init_renderer,
+            init_updater:  demo_app::init_updater,
+            init_scene:    demo_app::init_scene,
+            style_gui:     demo_app::style_gui,
         },
         application::RunParams {
             ..Default::default()

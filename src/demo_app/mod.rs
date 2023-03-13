@@ -11,11 +11,11 @@ mod svo_evaluator;
 mod svo_wireframe;
 
 
-mod define_renderer;
-pub use define_renderer::define_renderer;
+mod init_renderer;
+pub use init_renderer::init_renderer;
 
-mod define_updater;
-pub use define_updater::define_updater;
+mod init_updater;
+pub use init_updater::init_updater;
 
 mod style_gui;
 pub use style_gui::*;

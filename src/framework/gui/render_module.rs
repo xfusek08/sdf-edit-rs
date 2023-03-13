@@ -34,7 +34,6 @@ impl std::fmt::Debug for GuiRenderModule {
 impl GuiRenderModule {
     #[profiler::function]
     pub fn new(context: &RenderContext) -> GuiRenderModule {
-        let format = context.surface_config.format;
         Self {
             egui_renderer: Renderer::new(&context.gpu.device, context.surface_config.format, None, 1),
             render_data: None,

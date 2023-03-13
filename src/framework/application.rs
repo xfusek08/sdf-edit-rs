@@ -48,8 +48,8 @@ pub struct Context<'a> {
 }
 
 pub struct ApplicationDescriptor<A, B, C, D> {
-    pub define_renderer: A,
-    pub define_updater: B,
+    pub init_renderer: A,
+    pub init_updater: B,
     pub init_scene: C,
     pub style_gui: D,
 }
@@ -58,8 +58,8 @@ pub struct ApplicationDescriptor<A, B, C, D> {
 pub async fn run<S, DR, DU, IS, STG>(app_desc: ApplicationDescriptor<DR, DU, IS, STG>, params: RunParams)
 where
     S:          SceneWithCamera + Sized,
-    for<'a> DR: FnOnce(&'a Context) -> Renderer<S>, // define_renderer
-    DU:         FnOnce(&Context)    -> Updater<S>,  // define_updater
+    for<'a> DR: FnOnce(&'a Context) -> Renderer<S>, // init_renderer
+    DU:         FnOnce(&Context)    -> Updater<S>,  // init_updater
     IS:         FnOnce(&Context)    -> S,           // init_scene
     STG:        FnOnce(egui::Style) -> egui::Style, // style_gui
 {
@@ -77,8 +77,8 @@ where
     };
     
     // init application specifics
-    let mut updater = (app_desc.define_updater)(&context);
-    let mut renderer = (app_desc.define_renderer)(&context);
+    let mut updater = (app_desc.init_updater)(&context);
+    let mut renderer = (app_desc.init_renderer)(&context);
     let mut scene = (app_desc.init_scene)(&context);
     
     let mut gui = Gui::new(&event_loop, app_desc.style_gui);

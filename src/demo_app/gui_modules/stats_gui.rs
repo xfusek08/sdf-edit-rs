@@ -10,7 +10,7 @@ use crate::{
 pub struct StatsGui;
 
 impl GuiModule<Scene> for StatsGui {
-    fn gui(&mut self, _: &mut Scene, egui_ctx: &egui::Context) {
+    fn gui_window(&mut self, _: &mut Scene, egui_ctx: &egui::Context) {
         egui::Window::new("Statistics").show(egui_ctx, |ui| {
             let mut statistics_guard = profiler::STATISTICS.lock();
             let Some(statistics) = statistics_guard.as_mut() else { return; };
@@ -97,4 +97,6 @@ impl GuiModule<Scene> for StatsGui {
             }
         });
     }
+    
+    fn gui_section(&mut self, scene: &mut Scene, ui: &mut egui::Ui) {}
 }

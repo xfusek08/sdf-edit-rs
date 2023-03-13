@@ -41,7 +41,7 @@ impl DynamicTestGeometry {
 }
 
 impl GuiModule<Scene> for DynamicTestGeometry {
-    fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
+    fn gui_window(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
         
         let mut changed = false;
         let mut to_delete_indices: Vec<usize> = vec![];
@@ -247,6 +247,8 @@ impl GuiModule<Scene> for DynamicTestGeometry {
             self.update_geometry(scene);
         }
     }
+    
+    fn gui_section(&mut self, _: &mut Scene, _: &mut egui::Ui) {}
 }
 
 /// A simple combo box for selecting a primitive type.

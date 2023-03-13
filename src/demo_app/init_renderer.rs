@@ -14,7 +14,7 @@ use super::{
 };
 
 
-pub fn define_renderer(context: &Context) -> Renderer<Scene> {
+pub fn init_renderer(context: &Context) -> Renderer<Scene> {
     let mut renderer = Renderer::new(context.gpu.clone(), context.window);
     
     // load modules

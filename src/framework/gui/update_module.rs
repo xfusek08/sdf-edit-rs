@@ -13,7 +13,8 @@ use super::{GuiDataToRender};
 /// Module that runs GUI
 
 pub trait GuiModule<Scene> {
-    fn gui(&mut self, scene: &mut Scene, egui_ctx: &egui::Context);
+    fn gui_window(&mut self, scene: &mut Scene, egui_ctx: &egui::Context);
+    fn gui_section(&mut self, scene: &mut Scene, ui: &mut egui::Ui);
 }
 
 /// Updater module for GUI running gui modules passed to constructor.
@@ -50,8 +51,16 @@ impl<Scene> UpdaterModule<Scene> for GuiUpdateModule<Scene>
             shapes,
         } = profiler::call!(
             gui.egui_ctx.run(raw_input, |egui_ctx| {
+                egui::Window::new("Gui modules")
+                    .default_pos(egui::Pos2::new(0.0, 0.0))
+                    .show(egui_ctx, |ui| {
+                        for module in self.modules.iter_mut() {
+                            ui.separator();
+                            module.gui_section(scene, ui);
+                        }
+                    });
                 for module in self.modules.iter_mut() {
-                    module.gui(scene, egui_ctx);
+                    module.gui_window(scene, egui_ctx);
                 }
             })
         );

@@ -21,15 +21,15 @@ use super::gui_modules::stats_gui::StatsGui;
 #[cfg(feature = "counters")]
 use super::gui_modules::counters_gui::CountersGui;
 
-pub fn define_updater(context: &Context) -> Updater<Scene> {
+pub fn init_updater(context: &Context) -> Updater<Scene> {
     Updater::new()
         .with_module(GuiUpdateModule::new(vec![
+            #[cfg(feature = "counters")]
+            Box::new(CountersGui),
             Box::new(LegacyAppsGui),
             Box::new(DynamicTestGeometry::new()),
             #[cfg(feature = "stats")]
             Box::new(StatsGui),
-            #[cfg(feature = "counters")]
-            Box::new(CountersGui),
         ]))
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
