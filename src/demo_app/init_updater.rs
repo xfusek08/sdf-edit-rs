@@ -11,7 +11,7 @@ use super::{
     svo_evaluator::SvoEvaluatorUpdater,
     gui_modules::{
         LegacyAppsGui,
-        DynamicTestGeometry
+        DynamicTestGeometry, CameraGuiModule
     },
 };
 
@@ -26,6 +26,7 @@ pub fn init_updater(context: &Context) -> Updater<Scene> {
         .with_module(GuiUpdateModule::new(vec![
             #[cfg(feature = "counters")]
             Box::new(CountersGui),
+            Box::new(CameraGuiModule::new(0.3)),
             Box::new(LegacyAppsGui),
             Box::new(DynamicTestGeometry::new()),
             #[cfg(feature = "stats")]

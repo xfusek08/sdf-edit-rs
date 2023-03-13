@@ -64,7 +64,7 @@ impl CameraRig for OrbitCameraRig {
         }
     }
     
-    fn update(&mut self, delta_time_seconds: f32) -> Transform {
+    fn update(&mut self, delta_time_seconds: f32, _: &WinitInputHelper) -> Transform {
         let res = self.rig.update(delta_time_seconds);
         self.camera.position = res.position;
         self.camera.rotation = res.rotation;

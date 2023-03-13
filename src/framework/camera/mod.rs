@@ -7,7 +7,7 @@ pub trait CameraRig {
     fn camera(&self) -> &Camera;
     fn set_camera(&mut self, camera: Camera);
     fn on_input(&mut self, input: &WinitInputHelper);
-    fn update(&mut self, delta_time_seconds: f32) -> Transform;
+    fn update(&mut self, delta_time_seconds: f32, input: &WinitInputHelper) -> Transform;
 }
 
 pub trait SceneWithCamera {
@@ -24,3 +24,6 @@ pub use camera::*;
 
 mod orbit_camera_rig;
 pub use orbit_camera_rig::*;
+
+mod free_camera_rig;
+pub use free_camera_rig::*;

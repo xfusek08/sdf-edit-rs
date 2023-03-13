@@ -88,19 +88,4 @@ impl Svo {
             levels: vec![]
         }
     }
-    
-    // #[profiler::function]
-    // pub fn trim_overflowing_levels(&mut self, gpu: &gpu::Context) {
-    //     let mut final_node_count = 0;
-    //     for level in self.levels.iter().rev() {
-    //         let level_node_count = level.start_index + level.node_count;
-    //         if level_node_count >= self.node_pool.capacity() {
-                
-    //         } else {
-    //             final_node_count = level_node_count;
-    //             break;
-    //         }
-    //     }
-    // }
-    
 }

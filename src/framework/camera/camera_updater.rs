@@ -30,7 +30,7 @@ impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
         let camera_rig = context.scene.get_camera_mut();
         let orig_position = camera_rig.camera().position;
         let orig_rotation = camera_rig.camera().rotation;
-        let t = camera_rig.update(context.tick.delta.as_secs_f32());
+        let t = camera_rig.update(context.tick.delta.as_secs_f32(), context.input);
         if orig_position != t.position || orig_rotation != t.rotation {
             return UpdateResultAction::Redraw;
         }
