@@ -94,25 +94,44 @@ pub fn init_scene(context: &Context) -> Scene {
     //     }
     // }
     
+    // let mut rng = rand::thread_rng();
+    // for _ in 0..=5000 {
+    //     model_pool.insert(
+    //         Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
+    //             Transform::IDENTITY
+    //                 .translate((
+    //                     rng.gen_range(-500.0..=500.0),
+    //                     rng.gen_range(-500.0..=500.0),
+    //                     rng.gen_range(-500.0..=500.0),
+    //                 ).into())
+    //                 .scale(glam::Vec3::splat(rng.gen_range(0.21..=20.0)))
+    //                 .rotate(glam::Quat::from_euler(
+    //                     glam::EulerRot::XYZ,
+    //                     rng.gen_range(0.0..=360.0 as f32).to_radians(),
+    //                     rng.gen_range(0.0..=360.0 as f32).to_radians(),
+    //                     rng.gen_range(0.0..=360.0 as f32).to_radians()
+    //                 ))
+    //         )
+    //     );
+    // }
+    
     let mut rng = rand::thread_rng();
-    for _ in 0..=5000 {
-        model_pool.insert(
-            Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
-                Transform::IDENTITY
-                    .translate((
-                        rng.gen_range(-500.0..=500.0),
-                        rng.gen_range(-500.0..=500.0),
-                        rng.gen_range(-500.0..=500.0),
-                    ).into())
-                    .scale(glam::Vec3::splat(rng.gen_range(0.21..=20.0)))
-                    .rotate(glam::Quat::from_euler(
-                        glam::EulerRot::XYZ,
-                        rng.gen_range(0.0..=360.0 as f32).to_radians(),
-                        rng.gen_range(0.0..=360.0 as f32).to_radians(),
-                        rng.gen_range(0.0..=360.0 as f32).to_radians()
-                    ))
-            )
-        );
+    for i in -50..=50 {
+        for j in -50..=50 {
+            model_pool.insert(
+                Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
+                    Transform::IDENTITY
+                        .translate(((i * 2) as f32, 0.0, (j * 2) as f32).into())
+                        .scale(glam::Vec3::splat(rng.gen_range(0.5..=2.0)))
+                        .rotate(glam::Quat::from_euler(
+                            glam::EulerRot::XYZ,
+                            rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                            rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                            rng.gen_range(0.0..=360.0 as f32).to_radians()
+                        ))
+                )
+            );
+        }
     }
     
     Scene {

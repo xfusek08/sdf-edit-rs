@@ -63,7 +63,7 @@ struct BrickInstance {
 @group(2) @binding(2) var<uniform>       instance_count:              u32;
 
 fn apply_transform(pos: vec3<f32>, transform: mat4x4<f32>) -> vec3<f32> {
-    return (transform * vec4<f32>(pos, 1.0)).xyz;
+    return (transform * vec4(pos, 1.0)).xyz;
 }
 
 fn extract_scaling(m: mat4x4<f32>) -> f32 {
@@ -83,7 +83,7 @@ fn bounding_cube_screen_size(center: vec3<f32>, side_size: f32) -> f32 {
     let radius = 0.866025 * side_size; // sqrt(3)/2 * side_size
     
     // vec3  o = (cam*vec4(sph.xyz,1.0)).xyz;
-    let o = (pc.camera_projection_matrix * vec4<f32>(center, 1.0)).xyz;
+    let o = (pc.camera_projection_matrix * vec4(center, 1.0)).xyz;
     
     // float r2 = sph.w*sph.w;
     let r2 = radius * radius;
@@ -101,14 +101,14 @@ fn bounding_cube_screen_size(center: vec3<f32>, side_size: f32) -> f32 {
 // Compute a parent boundign sphere
 fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter: f32) -> vec3<f32> {
     var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
-        vec3<f32>( 0.25,  0.25,  0.25),
-        vec3<f32>( 0.25,  0.25, -0.25),
-        vec3<f32>( 0.25, -0.25,  0.25),
-        vec3<f32>( 0.25, -0.25, -0.25),
-        vec3<f32>(-0.25, -0.25,  0.25),
-        vec3<f32>(-0.25, -0.25, -0.25),
-        vec3<f32>(-0.25,  0.25,  0.25),
-        vec3<f32>(-0.25,  0.25, -0.25),
+        vec3( 0.25,  0.25,  0.25),
+        vec3( 0.25,  0.25, -0.25),
+        vec3( 0.25, -0.25,  0.25),
+        vec3( 0.25, -0.25, -0.25),
+        vec3(-0.25, -0.25,  0.25),
+        vec3(-0.25, -0.25, -0.25),
+        vec3(-0.25,  0.25,  0.25),
+        vec3(-0.25,  0.25, -0.25),
     );
     
     let child_index = node_id & 7u; // modulo 8 (in tile index)
@@ -116,7 +116,7 @@ fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter
 }
 
 fn in_frustum(position: vec3<f32>, diameter: f32) -> bool {
-    let p = (pc.camera_projection_matrix * vec4<f32>(position, 1.0));
+    let p = (pc.camera_projection_matrix * vec4(position, 1.0));
     let ndc = p.xyz / p.w;
     let low = -1.0 - diameter * 0.5;
     let high = 1.0 + diameter * 0.5;
@@ -139,7 +139,7 @@ fn main(in: ShaderInput) {
     // compute size on screen of current node
     let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
     let me_size = vertex.w * pc.domain.w;
-    let me_position_transformed = (pc.camera_projection_matrix * vec4<f32>(me_position, 1.0)).xyz;
+    let me_position_transformed = (pc.camera_projection_matrix * vec4(me_position, 1.0)).xyz;
     
     // compute size on screen of parent node
     let parent_position = compute_parent_position(node_id, me_position, me_size);

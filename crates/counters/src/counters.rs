@@ -30,7 +30,7 @@ impl<'a> HistoryIterator<'a> {
 
 impl<'a> Iterator for HistoryIterator<'a> {
     type Item = (Duration, f64);
-
+    
     fn next(&mut self) -> Option<Self::Item> {
         let Some((time, value)) = self.iter.next() else {
             if self.is_first {

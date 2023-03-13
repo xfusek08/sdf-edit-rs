@@ -170,7 +170,7 @@ fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
 // =================================================================================================
 
 fn transform_pos(edit: EditData, position: vec3<f32>) -> vec3<f32> {
-    return (edit.transform * vec4<f32>(position, 1.0)).xyz;
+    return (edit.transform * vec4(position, 1.0)).xyz;
 }
 
 fn sd_shpere(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
@@ -324,7 +324,7 @@ fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> Global
 }
 
 fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
-    textureStore(brick_atlas, voxel_coords, vec4<f32>(distance, 0.0, 0.0, 0.0));
+    textureStore(brick_atlas, voxel_coords, vec4(distance, 0.0, 0.0, 0.0));
 }
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
@@ -429,14 +429,14 @@ fn create_tile(in: ShaderInput) -> u32 {
 fn initialize_tile(in: ShaderInput, parent_node: Node, tile_index: u32) {
     
     var shift_vector: array<vec3<f32>, 8> = array<vec3<f32>, 8>(
-        vec3<f32>(-0.25, -0.25, -0.25),
-        vec3<f32>(-0.25, -0.25,  0.25),
-        vec3<f32>(-0.25,  0.25, -0.25),
-        vec3<f32>(-0.25,  0.25,  0.25),
-        vec3<f32>( 0.25,  0.25, -0.25),
-        vec3<f32>( 0.25,  0.25,  0.25),
-        vec3<f32>( 0.25, -0.25, -0.25),
-        vec3<f32>( 0.25, -0.25,  0.25),
+        vec3(-0.25, -0.25, -0.25),
+        vec3(-0.25, -0.25,  0.25),
+        vec3(-0.25,  0.25, -0.25),
+        vec3(-0.25,  0.25,  0.25),
+        vec3( 0.25,  0.25, -0.25),
+        vec3( 0.25,  0.25,  0.25),
+        vec3( 0.25, -0.25, -0.25),
+        vec3( 0.25, -0.25,  0.25),
     );
     
     // Enters 2x2x2 subgroup of threads
@@ -505,7 +505,7 @@ fn process_root(in: ShaderInput) {
     workgroupBarrier();
     
     // Create root node
-    let node = Node(0u, 0u, 0u, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    let node = Node(0u, 0u, 0u, vec4(0.0, 0.0, 0.0, 1.0));
     
     // Evaluate root node
     let brick_evalutaion_result = evaluate_node_brick(in, node);

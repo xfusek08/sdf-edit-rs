@@ -59,7 +59,7 @@ impl BrickPoolFormat {
         self.padding
     }
     pub fn voxels_per_brick_in_one_dimension(&self) -> u32 {
-        Self::BRICK_SIZE + 2 * self.padding
+        Self::BRICK_SIZE + 2 * self.padding // NOTE: "+2" here signifies that there is padding on both sides of the brick actual brick is 10x10x10
     }
     pub fn ints_per_brick_in_one_dimension(&self) -> u32 {
         self.voxels_per_brick_in_one_dimension() * self.voxel_format.voxel_ints()
@@ -99,10 +99,6 @@ pub struct BrickPool {
     /// In this buffer number of bricks in SVO is stored.
     /// - It is used for atomic increments in shaders
     count_buffer: wgpu::Buffer,
-    
-    /// A bind group of this particular node pool.
-    /// - When accessed through a `bind_group` method it will bew created.
-    bind_group: Option<wgpu::BindGroup>,
 }
 
 // getters
@@ -208,7 +204,6 @@ impl BrickPool {
             side_size_buffer,
             count: Some(count),
             count_buffer,
-            bind_group: None,
             #[cfg(debug_assertions)]
             resource_labels,
         }

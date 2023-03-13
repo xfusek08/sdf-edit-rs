@@ -109,15 +109,9 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
     
     /// Returns how many items at most can be stored in this buffer.
-    pub fn max_capacity(gpu: &Context, usage: wgpu::BufferUsages) -> usize {
-        let max_capacity_bytes = if usage.contains(wgpu::BufferUsages::STORAGE) {
-            gpu.device.limits().max_storage_buffer_binding_size
-        } else if usage.contains(wgpu::BufferUsages::UNIFORM) {
-            gpu.device.limits().max_uniform_buffer_binding_size
-        } else {
-            0
-        } as usize;
-        max_capacity_bytes / std::mem::size_of::<I>()
+    pub fn max_capacity(&self, gpu: &Context) -> usize {
+        let max_size = gpu.device.limits().max_buffer_size as usize;
+        max_size / std::mem::size_of::<I>()
     }
     
     /// Be ware that this panics when MAP_READ is not valid usage for the buffer.
@@ -135,7 +129,7 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     }
     
     fn calculate_resize_capacity(&self, gpu: &Context, new_size: usize) -> usize {
-        let max_capacity = Self::max_capacity(gpu, self.usage);
+        let max_capacity = self.max_capacity(gpu);
         
         let new_capacity = if self.grow_rate > 0.0 && self.grow_rate != 1.0 {
             (new_size as f32 * self.grow_rate) as usize
@@ -200,13 +194,12 @@ impl<I: Debug + Copy + Clone + bytemuck::Pod + bytemuck::Zeroable> Buffer<I> {
     /// - Returns true if the buffer was resized and thus the old data is invalid.
     #[profiler::function]
     pub fn resize(&mut self, gpu: &Context, new_capacity: usize) -> bool {
-        
         // Reallocate if too small
         if new_capacity > self.capacity {
             let recalculated_capacity = self.calculate_resize_capacity(gpu, new_capacity);
             info!("Buffer \"{}\": Reallocating with new capacity {}/{} -> {}/{} (asked for {})", self.label(), self.size, self.capacity, self.size, recalculated_capacity, new_capacity);
             self.buffer = self.new_buffer(gpu, recalculated_capacity, false);
-            self.capacity = new_capacity;
+            self.capacity = recalculated_capacity;
             return true;
         }
         false

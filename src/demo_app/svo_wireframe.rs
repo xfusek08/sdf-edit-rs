@@ -63,11 +63,7 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
         
         // Lets ensure we have enough space in the buffer for all vertices by summing all node counts
         let total_count = values.iter().map(|(cnt, _)| cnt).sum::<u32>() as usize;
-        if total_count > self.pipeline.instance_buffer.capacity {
-            profiler::scope!("Resizing node vertex buffer");
-            encoder.insert_debug_marker("Resizing node vertex buffer");
-            self.pipeline.instance_buffer.resize(&context.gpu, total_count);
-        }
+        self.pipeline.instance_buffer.resize(&context.gpu, total_count);
         
         // Copy all vertices into the buffer from all node pools
         let mut vertices_copied = 0;
@@ -81,7 +77,7 @@ impl RenderModule<Scene> for SvoWireframeRenderModule {
                     0,
                     &self.pipeline.instance_buffer.buffer,
                     vertices_copied as u64,
-                    (cnt.clone() as usize * std::mem::size_of::<glam::Vec4>()) as u64
+                    ((cnt.clone() as usize) * std::mem::size_of::<glam::Vec4>()) as u64
                 );
                 self.pipeline.instance_buffer.size += cnt.clone() as usize;
                 vertices_copied += cnt.clone();

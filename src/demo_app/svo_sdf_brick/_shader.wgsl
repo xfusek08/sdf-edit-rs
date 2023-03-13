@@ -28,10 +28,10 @@ struct InstanceInput {
 // SVO: Node pool Read-only bind group
 // -----------------------------------------------------------------------------------
 
-@group(0) @binding(0) var<storage, read> node_count: u32;
-@group(0) @binding(1) var<storage, read> node_headers: array<u32>;
-@group(0) @binding(2) var<storage, read> node_payload: array<u32>;
-@group(0) @binding(3) var<storage, read> node_vertices: array<vec4<f32>>;
+@group(0) @binding(0) var<storage, read> node_count:         u32;
+@group(0) @binding(1) var<storage, read> node_headers:       array<u32>;
+@group(0) @binding(2) var<storage, read> node_payload:       array<u32>;
+@group(0) @binding(3) var<storage, read> node_vertices:      array<vec4<f32>>;
 @group(0) @binding(4) var<uniform>       node_pool_capacity: u32;
 
 
@@ -121,8 +121,8 @@ fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
     let x = (payload >> 20u) & 0x3FFu;
     let y = (payload >> 10u) & 0x3FFu;
     let z = payload & 0x3FFu;
-    let brick_coord = vec3<f32>(f32(x), f32(y), f32(z));
-    return (pc.brick_atlas_stride * brick_coord) + vec3<f32>(pc.brick_voxel_size);
+    let brick_coord = vec3(f32(x), f32(y), f32(z));
+    return (pc.brick_atlas_stride * brick_coord) + vec3(pc.brick_voxel_size);
 }
 
 fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
@@ -141,7 +141,7 @@ fn vs_main(vertex_input: VertexInput, instance_input: InstanceInput) -> VertexOu
     // TODO maybe make a directive in preprocessor and make two versions of the shader
     if (instance_input.node_index != ROOT_ID) {
         node_vertex = node_vertices[instance_input.node_index];
-        node_vertex = vec4<f32>(
+        node_vertex = vec4(
             (node_vertex.xyz * pc.domain.w) + pc.domain.xyz,
             node_vertex.w * pc.domain.w,
         );
@@ -203,8 +203,8 @@ struct Ray {
 fn get_distance_to_end_of_brick(position: vec3<f32>, direction: vec3<f32>) -> f32 {
     
     // prepare bb of current box
-    var maxCorner = vec3<f32>(1.0, 1.0, 1.0);
-    var minCorner = vec3<f32>(0.0, 0.0, 0.0);
+    var maxCorner = vec3(1.0, 1.0, 1.0);
+    var minCorner = vec3(0.0, 0.0, 0.0);
     
     var inverseRayDir = 1.0 / direction;
     var tMinV0 = (minCorner - position) * inverseRayDir;
@@ -228,8 +228,8 @@ const NORMAL_OFFSET = 0.05;
 /// Compute normal (gradient of sdf) for given point in volume
 /// see: https://iquilezles.org/articles/normalsSDF/
 fn get_normal(in: VertexOutput, act_position: vec3<f32>, current_distance: f32) -> vec3<f32> {
-    let e = vec2<f32>(NORMAL_OFFSET, 0.0);
-    let n = vec3<f32>(
+    let e = vec2(NORMAL_OFFSET, 0.0);
+    let n = vec3(
         sample_volume_distance(in, act_position + e.xyy),
         sample_volume_distance(in, act_position + e.yxy),
         sample_volume_distance(in, act_position + e.yyx)
@@ -237,14 +237,14 @@ fn get_normal(in: VertexOutput, act_position: vec3<f32>, current_distance: f32) 
     return normalize(n);
 }
 
-// Computing basic Phong lighting
+// Computes basic Phong lighting
 fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>) -> vec4<f32> {
-    let lightPos = (to_local_matrix * vec4<f32>(100.0, 100.0, 100.0, 1.0)).xyz;
+    let lightPos = (to_local_matrix * vec4(100.0, 100.0, 100.0, 1.0)).xyz;
     let local_camera_pos = (to_local_matrix * pc.camera_position).xyz;
-    let lightColor = vec3<f32>(1.0, 1.0, 1.0);
-    let ambient = vec3<f32>(1.0, 1.0, 1.0) * 0.25;
-    let objectColor = vec3<f32>(0.8, 0.5, 0.3); // TODO: get color from model/voxel ??
-    let specularStrength = 0.1; // TODO: get shader details from model
+    let lightColor = vec3(1.0, 1.0, 1.0);
+    let ambient = vec3(1.0, 1.0, 1.0) * 0.25;
+    let objectColor = vec3(0.8, 0.5, 0.3); // TODO: get color from model/voxel ??
+    let specularStrength = 0.6; // TODO: get shader details from model
     
     // diffuse
     let lightDir = normalize(lightPos);
@@ -258,7 +258,7 @@ fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>
     let specular = specularStrength * spec * lightColor;
     
     let result = (ambient + diffuse + specular) * objectColor;
-    return vec4<f32>(result, 1.0);
+    return vec4(result, 1.0);
 }
 
 const HIT_DISTANCE: f32 = 0.03;
@@ -281,10 +281,10 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
     
     var hit = HitResult(
         false,
-        vec4<f32>(0.0, 0.0, 0.0, 0.0),
-        vec3<f32>(0.0, 0.0, 0.0),
+        vec4(0.0, 0.0, 0.0, 0.0),
+        vec3(0.0, 0.0, 0.0),
         get_distance_to_end_of_brick(ray.origin, ray.direction),
-        vec3<f32>(0.0, 0.0, 0.0),
+        vec3(0.0, 0.0, 0.0),
         0u
     );
     
@@ -323,7 +323,7 @@ struct FragmentOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragmentOutput {
-    let brick_to_local_transform = mat4x4<f32>(
+    let brick_to_local_transform = mat4x4(
         in.brick_to_local_transform_1,
         in.brick_to_local_transform_2,
         in.brick_to_local_transform_3,
@@ -331,17 +331,17 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
     );
     
     var out = FragmentOutput(
-        vec4<f32>(0.0, 0.0, 0.0, 0.0),
+        vec4(0.0, 0.0, 0.0, 0.0),
         in.position.z,
     );
     
-    var fragment_pos = (brick_to_local_transform * vec4<f32>(in.frag_pos, 1.0)).xyz;
+    var fragment_pos = (brick_to_local_transform * vec4(in.frag_pos, 1.0)).xyz;
     
     // Solid brick rendering
     if ((pc.show_flags & SHOW_SOLID) != 0u) {
-        var col = vec4<f32>(fragment_pos, 1.0);
+        var col = vec4(fragment_pos, 1.0);
         if in.subdivided == 1u {
-            col = mix(col, vec4<f32>(1.0, 1.0, 0.0, 1.0), 0.5);
+            col = mix(col, vec4(1.0, 1.0, 0.0, 1.0), 0.5);
         }
         out.color = col;
         return out;
@@ -355,7 +355,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
         
         // Depth buffer value correction
         // see: https://stackoverflow.com/questions/53650693/opengl-impostor-sphere-problem-when-calculating-the-depth-value
-        let local_to_brick_transform = mat4x4<f32>(
+        let local_to_brick_transform = mat4x4(
             in.local_to_brick_transform_1,
             in.local_to_brick_transform_2,
             in.local_to_brick_transform_3,
@@ -368,13 +368,13 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
         var color = hit.color;
         if ((pc.show_flags & SHOW_DEPTH) != 0u) {
             let distnace = length(hit.position - fragment_pos);
-            color = mix(color, vec4<f32>(1.0, 0.0, 0.0, 1.0), distnace / hit.max_distance);
+            color = mix(color, vec4(1.0, 0.0, 0.0, 1.0), distnace / hit.max_distance);
         }
         if ((pc.show_flags & SHOW_NORMALS) != 0u) {
-            color = mix(color, vec4<f32>(hit.normal, 1.0), 0.5);
+            color = mix(color, vec4(hit.normal, 1.0), 0.5);
         }
         if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
-            color = mix(color, vec4<f32>(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
+            color = mix(color, vec4(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
         }
         out.color = color;
         return out;
