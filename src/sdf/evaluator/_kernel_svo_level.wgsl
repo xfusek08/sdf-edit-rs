@@ -228,7 +228,7 @@ fn ramp(v: f32, l: f32, h: f32) -> f32 {
     return v * (h - l) + l;
 }
 
-fn smooth_bolume_add(a: f32, b: f32, k: f32) -> f32 {
+fn smooth_volume_add(a: f32, b: f32, k: f32) -> f32 {
     let kk = ramp(max(k, 0.0), 0.01, 1.0);
     let e = max(kk - abs(a - b), 0.0);
     return min(a, b) - e * e * 0.25 / kk;
@@ -276,7 +276,7 @@ fn sample_sdf(position: vec3<f32>) -> f32 {
         // TODO Use preprocessor because constant are not yet supported in naga
         switch (edit.operation) {
             // EDIT_OPERATION_ADD
-            case 0u: { sdf_value = smooth_bolume_add(sdf_value, distance_to_primitive, edit.blending); }
+            case 0u: { sdf_value = smooth_volume_add(sdf_value, distance_to_primitive, edit.blending); }
             // EDIT_OPERATION_SUBTRACT
             case 1u: { sdf_value = smooth_volume_difference(sdf_value, distance_to_primitive, edit.blending); }
             // // EDIT_OPERATION_INTERSECT

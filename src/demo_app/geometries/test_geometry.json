@@ -1,1 +1,85 @@
-[{"primitive":{"Cone":{"diameter":0.53,"height":1.36}},"operation":"Add","transform":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.005235964,0.0,0.9999863],"scale":[1.0,1.0,1.0]},"blending":0.0},{"primitive":{"Capsule":{"radius":0.15,"height":0.56}},"operation":"Add","transform":{"position":[0.05,0.47,0.13],"rotation":[0.86689675,-3.4818972e-9,-6.055204e-9,0.49848783],"scale":[1.0,1.0,1.0]},"blending":0.02},{"primitive":{"Sphere":{"radius":0.05}},"operation":"Add","transform":{"position":[0.0,0.31,0.0],"rotation":[0.0,0.019197444,0.0,0.9998157],"scale":[1.0,1.0,1.0]},"blending":0.3}]
+[
+    {
+        "primitive": {
+            "Cone": {
+                "diameter": 0.53,
+                "height": 1.36
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.005235964,
+                0.0,
+                0.9999863
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0
+    },
+    {
+        "primitive": {
+            "Capsule": {
+                "radius": 0.15,
+                "height": 0.56
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.05,
+                0.47,
+                0.13
+            ],
+            "rotation": [
+                0.86689675,
+                -3.4818972e-9,
+                -6.055204e-9,
+                0.49848783
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.02
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.05
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.31,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.019197444,
+                0.0,
+                0.9998157
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.3
+    }
+]

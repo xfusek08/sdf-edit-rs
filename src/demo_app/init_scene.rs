@@ -25,7 +25,7 @@ use super::{
     },
     geometries::{
         bumpy_sphere,
-        test_geometry,
+        test_geometry, mickey_mouse,
     },
 };
 
@@ -65,15 +65,17 @@ pub fn init_scene(context: &Context) -> Scene {
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     let g1 = Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build());
     let g2 = Geometry::new(min_voxel_size).with_edits(test_geometry().build());
+    let g3 = Geometry::new(min_voxel_size).with_edits(mickey_mouse().build());
     
     let g1_id = geometry_pool.insert(g1);
     let g2_id = geometry_pool.insert(g2);
+    let g3_id = geometry_pool.insert(g3);
     
     // Create and register test model
     // ------------------------------
     
     let mut model_pool = ModelPool::new();
-    // model_pool.insert(Model::new(g1_id));
+    // model_pool.insert(Model::new(g3_id));
     
     // model_pool.insert(Model::new(g2_id)
     //     .with_transform(Transform::IDENTITY.translate((3.0, 0.0, 0.0).into())));
@@ -119,17 +121,22 @@ pub fn init_scene(context: &Context) -> Scene {
     for i in -50..=50 {
         for j in -50..=50 {
             model_pool.insert(
-                Model::new([g1_id, g2_id][rng.gen_range(0..=1)]).with_transform(
-                    Transform::IDENTITY
-                        .translate(((i * 2) as f32, 0.0, (j * 2) as f32).into())
-                        .scale(glam::Vec3::splat(rng.gen_range(0.5..=2.0)))
-                        .rotate(glam::Quat::from_euler(
-                            glam::EulerRot::XYZ,
-                            rng.gen_range(0.0..=360.0 as f32).to_radians(),
-                            rng.gen_range(0.0..=360.0 as f32).to_radians(),
-                            rng.gen_range(0.0..=360.0 as f32).to_radians()
-                        ))
-                )
+                Model::new([g1_id, g2_id, g3_id][rng.gen_range(2..=2)])
+                    .with_transform(
+                        Transform::IDENTITY
+                            .translate((
+                                (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
+                                0.0,
+                                (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
+                            ).into())
+                            .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
+                            .rotate(glam::Quat::from_euler(
+                                glam::EulerRot::XYZ,
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians()
+                            ))
+                    )
             );
         }
     }

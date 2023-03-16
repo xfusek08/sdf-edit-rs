@@ -5,14 +5,14 @@ use crate::{
     framework::math::Transform, sdf::geometry::{Primitive, Operation, Edit},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Shape {
     Primitive(Primitive),
     Composite(Vec<ShapeRecord>),
     PrimitiveComposite((Primitive, Vec<ShapeRecord>)),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ShapeRecord {
     pub shape:     Shape,
     pub operation: Operation,

@@ -26,9 +26,9 @@ impl FreeCameraRig {
         yaw_pitch.set_rotation_quat(camera.rotation);
         let rig = dolly::rig::CameraRig::builder()
             .with(yaw_pitch)
-            .with(Smooth::new_rotation(1.0))
+            .with(Smooth::new_rotation(0.8))
             .with(Position::new(camera.position))
-            .with(Smooth::new_position(1.0))
+            .with(Smooth::new_position(0.5))
             .build();
         
         Self { rig, camera, look_speed, move_speed }
@@ -59,8 +59,8 @@ impl FreeCameraRig {
         let backward = input.key_held(winit::event::VirtualKeyCode::S);
         let left = input.key_held(winit::event::VirtualKeyCode::A);
         let right = input.key_held(winit::event::VirtualKeyCode::D);
-        let up = input.key_held(winit::event::VirtualKeyCode::E);
-        let down = input.key_held(winit::event::VirtualKeyCode::Q);
+        let up = input.key_held(winit::event::VirtualKeyCode::Space);
+        let down = input.key_held(winit::event::VirtualKeyCode::LControl);
         
         let mut move_vector = glam::Vec3::ZERO;
         
@@ -73,8 +73,8 @@ impl FreeCameraRig {
             move_vector += if left { -dir } else { dir };
         }
         if up != down {
-            let dir = self.rig.final_transform.up();
-            move_vector += if up { -dir } else { dir };
+            let dir = glam::Vec3::Y;
+            move_vector += if up { dir } else { -dir };
         }
         
         if move_vector != glam::Vec3::ZERO {
