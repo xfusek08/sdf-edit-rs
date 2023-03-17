@@ -200,6 +200,26 @@ impl SvoSDFBrickPipeline {
         }
     }
     
+    /// Submits an SVO for rendering with the given GPU context and instance transforms.
+    ///
+    /// This function creates or modifies an entry in the `svos_to_render` map for the given
+    /// `GeometryID`, and returns references to the GPU buffers containing the geometry and
+    /// brick instances.
+    ///
+    /// # Arguments
+    ///
+    /// * `gpu` - The GPU context to use for rendering.
+    /// * `id` - The `GeometryID` of the SVO to render.
+    /// * `svo` - The SVO data to render.
+    /// * `instance_transforms` - A vector of transforms for the SVO instances to be rendered.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing references to the GPU buffers containing the geometry and brick
+    /// instances for the submitted SVO.
+    ///
+    ///   - The `GPUGeometryTransforms` buffer will be filled with the transforms for each instance.
+    ///   - The `BrickInstances` buffer will be empty and are expected to be filled with bricks that are supposed to be rendered.
     #[profiler::function]
     pub fn submit_svo(
         &mut self,

@@ -11,13 +11,14 @@ use crate::{
     demo_app::scene::Scene,
     sdf::geometry::{GeometryID, Geometry},
     framework::{
+        gui::Gui,
         math::{Transform, Frustum},
         renderer::{
             RenderModule,
             RenderContext,
             RenderPassContext,
             RenderPass,
-        }, gui::Gui,
+        },
     },
 };
 
@@ -78,7 +79,6 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             for (_, model) in scene.model_pool.iter() {
                 let (transform, geometry_id) = (&model.transform, &model.geometry_id);
                 let g_index = geometry_id_to_index(geometry_id);
-                
                 let Some(a) = buckets.get_mut(g_index) else {
                     error!("Cannot find geometry {:?} in the bucket", geometry_id);
                     continue;
@@ -105,24 +105,26 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         buckets.iter()
             .filter_map(|x| x.as_ref())
-            .filter_map(|(geometry_id, geometry, transforms)| {
+            .for_each(|(geometry_id, geometry, transforms)| {
+                
+                // this skips unseen instances
                 if transforms.is_empty() {
-                    return None;
+                    return;
                 }
                 
+                // this ensures that the geometry has a svo
                 let Some(svo) = &geometry.svo else {
                     error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
-                    return None;
+                    return;
                 };
                 
-                Some((geometry_id, svo, transforms))
-            })
-            .for_each(|(geometry_id, svo, transforms)| {
+                // submit instances of the svo to the render pipeline
                 let (
                     gpu_transforms,
                     brick_instances,
                 ) = self.render_pipeline.submit_svo(&context.gpu, geometry_id, svo, &transforms);
                 
+                // use the brick select compute pipeline to fill associated buffers
                 self.brick_select_compute_pipeline.run(
                     context,
                     svo,
