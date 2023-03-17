@@ -121,7 +121,7 @@ pub fn init_scene(context: &Context) -> Scene {
     for i in -50..=50 {
         for j in -50..=50 {
             model_pool.insert(
-                Model::new([g1_id, g2_id, g3_id][rng.gen_range(2..=2)])
+                Model::new([g1_id, g2_id, g3_id][rng.gen_range(0..=2)])
                     .with_transform(
                         Transform::IDENTITY
                             .translate((
