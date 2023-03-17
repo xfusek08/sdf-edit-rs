@@ -1,5 +1,5 @@
 
-use std::collections::HashMap;
+use slotmap::Key;
 
 use super::{
     SvoSDFBrickPipeline,
@@ -55,51 +55,82 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         let frustum_camera = scene.camera_rig.camera();
         let frustum = Frustum::from_camera(&frustum_camera);
         
+        #[inline]
+        fn geometry_id_to_index(id: &GeometryID) -> usize {
+            (id.data().as_ffi() & 0xffff_ffff) as usize - 1
+        }
+        
         // Gather transforms (instances) for each geometry in the view frustum
-        let mut geometry_instances: HashMap<GeometryID, (&Geometry, Vec<Transform>)> = HashMap::new();
+        let mut buckets: Vec<Option<(GeometryID, &Geometry, Vec<Transform>)>> = vec![None; scene.geometry_pool.capacity()];
         {
             profiler::scope!("Gather Geometry Instances, to be rendered", pinned);
+            
+            for (id, geometry) in scene.geometry_pool.iter() {
+                let index = geometry_id_to_index(&id);
+                buckets[index] = Some((id, geometry, vec![]));
+            }
+            
             counters::sample!("object_instance_counter", scene.model_pool.len() as f64);
+            
+            #[cfg(feature = "counters")]
+            let mut cnt: u32 = 0;
+            
             for (_, model) in scene.model_pool.iter() {
                 let (transform, geometry_id) = (&model.transform, &model.geometry_id);
-                let geometry = scene.geometry_pool.get(*geometry_id).expect("Unexpected Error: Geometry not found in pool");
+                let g_index = geometry_id_to_index(geometry_id);
+                
+                let Some(a) = buckets.get_mut(g_index) else {
+                    error!("Cannot find geometry {:?} in the bucket", geometry_id);
+                    continue;
+                };
+                
+                let Some((_, geometry, transforms)) = a else {
+                    error!("Cannot find geometry {:?} in the bucket", geometry_id);
+                    continue;
+                };
                 
                 // Frustum culling
                 if !geometry.total_aabb().transform(transform).in_frustum(&frustum) {
                     continue;
                 }
                 
-                geometry_instances.entry(*geometry_id)
-                    .and_modify(|(_, transforms)| { transforms.push(transform.clone()) })
-                    .or_insert_with(|| (geometry, vec![transform.clone()]));
+                #[cfg(feature = "counters")]
+                { cnt += 1; }
+                
+                transforms.push(transform.clone());
             }
-            counters::sample!(
-                "object_selected_counter",
-                geometry_instances.iter().fold(0, |acc, (_, (_, transforms))| acc + transforms.len()) as f64
-            );
+            
+            counters::sample!("object_selected_counter", cnt as f64);
         }
         
-        // For each geometry, select bricks to be rendered and submit them to the pipeline
-        for (geometry_id, (geometry, transforms)) in geometry_instances.iter() {
-            
-            let Some(svo) = &geometry.svo else {
-                error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
-                continue;
-            };
-            
-            let (
-                gpu_transforms,
-                brick_instances,
-            ) = self.render_pipeline.submit_svo(&context.gpu, geometry_id, svo, &transforms);
-            
-            self.brick_select_compute_pipeline.run(
-                context,
-                svo,
-                scene.brick_level_break_size,
-                brick_instances,
-                gpu_transforms,
-            );
-        }
+        buckets.iter()
+            .filter_map(|x| x.as_ref())
+            .filter_map(|(geometry_id, geometry, transforms)| {
+                if transforms.is_empty() {
+                    return None;
+                }
+                
+                let Some(svo) = &geometry.svo else {
+                    error!("Cannot instantiate Geometry {:?}, geometry has no SVO", geometry_id);
+                    return None;
+                };
+                
+                Some((geometry_id, svo, transforms))
+            })
+            .for_each(|(geometry_id, svo, transforms)| {
+                let (
+                    gpu_transforms,
+                    brick_instances,
+                ) = self.render_pipeline.submit_svo(&context.gpu, geometry_id, svo, &transforms);
+                
+                self.brick_select_compute_pipeline.run(
+                    context,
+                    svo,
+                    scene.brick_level_break_size,
+                    brick_instances,
+                    gpu_transforms,
+                );
+            });
         
         self.render_pipeline.load_counts(&context.gpu);
         
