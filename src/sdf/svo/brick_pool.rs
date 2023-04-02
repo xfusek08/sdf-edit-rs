@@ -7,7 +7,8 @@ use super::Capacity;
 #[cfg(debug_assertions)]
 #[derive(Debug)]
 struct ResourceLabels {
-    brick_atlas: String,
+    distance_atlas: String,
+    color_atlas: String,
     side_size_buffer: String,
     count_buffer: String,
 }
@@ -80,11 +81,17 @@ pub struct BrickPool {
     #[cfg(debug_assertions)]
     resource_labels: ResourceLabels,
     
-    /// A gpu texture that stores all the bricks.
-    brick_atlas: wgpu::Texture,
+    /// A gpu texture that stores distances of all the bricks.
+    distance_atlas: wgpu::Texture,
     
-    /// A Texture view for the brick atlas.
-    brick_atlas_view: wgpu::TextureView,
+    /// A Texture view for the distance atlas.
+    distance_atlas_view: wgpu::TextureView,
+    
+    /// A gpu texture that stores colors of all the bricks.
+    color_atlas: wgpu::Texture,
+    
+    /// A Texture view for the color atlas.
+    color_atlas_view: wgpu::TextureView,
     
     /// An amount of bricks that can be stored in this texture in each dimension.
     side_size: u32,
@@ -103,8 +110,8 @@ pub struct BrickPool {
 
 // getters
 impl BrickPool {
-    pub fn brick_atlas(&self) -> &wgpu::Texture {
-        &self.brick_atlas
+    pub fn distance_atlas(&self) -> &wgpu::Texture {
+        &self.distance_atlas
     }
     pub fn side_size(&self) -> &u32 {
         &self.side_size
@@ -148,23 +155,26 @@ impl BrickPool {
         
         #[cfg(debug_assertions)]
         let resource_labels = ResourceLabels {
-            brick_atlas: format!("{} - Brick Pool Texture", svo_name),
+            distance_atlas:   format!("{} - Brick Pool Texture", svo_name),
+            color_atlas:      format!("{} - Brick Pool Color Texture", svo_name),
             side_size_buffer: format!("{} - Brick Pool Side Size Buffer", svo_name),
-            count_buffer: format!("{} - Brick Pool Count Buffer", svo_name),
+            count_buffer:     format!("{} - Brick Pool Count Buffer", svo_name),
         };
         
         let side_size = Self::dimension_from_capacity(capacity.nodes());
+        let voxels_per_side = side_size * format.voxels_per_brick_in_one_dimension();
         warn!("Brick pool side size: {} makes {} total bricks", side_size, side_size * side_size * side_size);
-        let brick_atlas = gpu.device.create_texture(
+        
+        let distance_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
                 #[cfg(debug_assertions)]
-                label: Some(&resource_labels.brick_atlas),
+                label: Some(&resource_labels.distance_atlas),
                 #[cfg(not(debug_assertions))]
                 label: None,
                 size: wgpu::Extent3d {
-                    width:                 side_size * format.voxels_per_brick_in_one_dimension(),
-                    height:                side_size * format.voxels_per_brick_in_one_dimension(),
-                    depth_or_array_layers: side_size * format.voxels_per_brick_in_one_dimension(),
+                    width:                 voxels_per_side,
+                    height:                voxels_per_side,
+                    depth_or_array_layers: voxels_per_side,
                 },
                 mip_level_count: 1,
                 sample_count:    1,
@@ -174,8 +184,28 @@ impl BrickPool {
                 view_formats:    &[],
             }
         );
+        let distance_atlas_view = distance_atlas.create_view(&wgpu::TextureViewDescriptor::default());
         
-        let brick_atlas_view = brick_atlas.create_view(&wgpu::TextureViewDescriptor::default());
+        let color_atlas = gpu.device.create_texture(
+            &wgpu::TextureDescriptor {
+                #[cfg(debug_assertions)]
+                label: Some(&resource_labels.color_atlas),
+                #[cfg(not(debug_assertions))]
+                label: None,
+                size: wgpu::Extent3d {
+                    width:                 voxels_per_side,
+                    height:                voxels_per_side,
+                    depth_or_array_layers: voxels_per_side,
+                },
+                mip_level_count: 1,
+                sample_count:    1,
+                dimension:       wgpu::TextureDimension::D3,
+                format:          wgpu::TextureFormat::Rgba8Unorm,
+                usage:           wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats:    &[],
+            }
+        );
+        let color_atlas_view = color_atlas.create_view(&wgpu::TextureViewDescriptor::default());
         
         let side_size_buffer = gpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             #[cfg(debug_assertions)]
@@ -198,8 +228,10 @@ impl BrickPool {
         
         Self {
             svo_name,
-            brick_atlas,
-            brick_atlas_view,
+            distance_atlas,
+            distance_atlas_view,
+            color_atlas,
+            color_atlas_view,
             side_size,
             side_size_buffer,
             count: Some(count),
@@ -234,19 +266,24 @@ impl BrickPool {
             label: Some("SVO Node Pool Bind Group"),
             layout: layout,
             entries: &[
-                // brick_atlas
+                // distance_atlas
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.brick_atlas_view),
+                    resource: wgpu::BindingResource::TextureView(&self.distance_atlas_view),
+                },
+                // color_atlas
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.color_atlas_view),
                 },
                 // count_buffer
                 wgpu::BindGroupEntry {
-                    binding: 1,
+                    binding: 2,
                     resource: self.count_buffer().as_entire_binding(),
                 },
                 // side_size_buffer
                 wgpu::BindGroupEntry {
-                    binding: 2,
+                    binding: 3,
                     resource: self.side_size_buffer().as_entire_binding(),
                 },
             ],
@@ -269,24 +306,34 @@ impl BrickPool {
             label: Some("SVO Node Pool Bind Group"),
             layout: layout,
             entries: &[
-                // brick_atlas
+                // distance_atlas
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.brick_atlas_view),
+                    resource: wgpu::BindingResource::TextureView(&self.distance_atlas_view),
                 },
-                // brick_atlas sampler
+                // distance_atlas sampler
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
                 },
-                // count_buffer
+                // color_atlas
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&self.color_atlas_view),
+                },
+                // color_atlas sampler
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+                },
+                // count_buffer
+                wgpu::BindGroupEntry {
+                    binding: 4,
                     resource: self.count_buffer().as_entire_binding(),
                 },
                 // side_size_buffer
                 wgpu::BindGroupEntry {
-                    binding: 3,
+                    binding: 5,
                     resource: self.side_size_buffer().as_entire_binding(),
                 },
             ],
@@ -299,7 +346,7 @@ impl BrickPool {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Brick Pool Bind Group Write Layout"),
             entries: &[
-                // brick_atlas
+                // distance_atlas
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility,
@@ -310,9 +357,20 @@ impl BrickPool {
                         view_dimension: wgpu::TextureViewDimension::D3,
                     }
                 },
-                // count_buffer
+                // color_atlas
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                    }
+                },
+                // count_buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
@@ -323,7 +381,7 @@ impl BrickPool {
                 },
                 // side_size_buffer
                 wgpu::BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 3,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
@@ -341,7 +399,7 @@ impl BrickPool {
         gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SVO Brick Pool Bind Group Read Layout"),
             entries: &[
-                // brick_atlas
+                // distance_atlas
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility,
@@ -352,16 +410,34 @@ impl BrickPool {
                         multisampled: false,
                     }
                 },
-                // brick_atlas sampler
+                // distance_atlas sampler
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 },
-                // count_buffer
+                // color_atlas
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true }, // see
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    }
+                },
+                // color_atlas sampler
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility,
+                    count: None,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                },
+                // count_buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {
@@ -372,7 +448,7 @@ impl BrickPool {
                 },
                 // side_size_buffer
                 wgpu::BindGroupLayoutEntry {
-                    binding: 3,
+                    binding: 5,
                     visibility,
                     count: None,
                     ty: wgpu::BindingType::Buffer {

@@ -67,15 +67,15 @@ pub fn init_scene(context: &Context) -> Scene {
     let g2 = Geometry::new(min_voxel_size).with_edits(test_geometry().build());
     let g3 = Geometry::new(min_voxel_size).with_edits(mickey_mouse().build());
     
-    let g1_id = geometry_pool.insert(g1);
-    let g2_id = geometry_pool.insert(g2);
+    // let g1_id = geometry_pool.insert(g1);
+    // let g2_id = geometry_pool.insert(g2);
     let g3_id = geometry_pool.insert(g3);
     
     // Create and register test model
     // ------------------------------
     
     let mut model_pool = ModelPool::new();
-    // model_pool.insert(Model::new(g3_id));
+    model_pool.insert(Model::new(g3_id));
     
     // model_pool.insert(Model::new(g2_id)
     //     .with_transform(Transform::IDENTITY.translate((3.0, 0.0, 0.0).into())));
@@ -117,29 +117,29 @@ pub fn init_scene(context: &Context) -> Scene {
     //     );
     // }
     
-    let mut rng = rand::thread_rng();
-    for i in -50..=50 {
-        for j in -50..=50 {
-            model_pool.insert(
-                Model::new([g1_id, g2_id, g3_id][rng.gen_range(0..=2)])
-                    .with_transform(
-                        Transform::IDENTITY
-                            .translate((
-                                (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
-                                0.0,
-                                (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
-                            ).into())
-                            .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
-                            .rotate(glam::Quat::from_euler(
-                                glam::EulerRot::XYZ,
-                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                                rng.gen_range(-20.0..=20.0 as f32).to_radians()
-                            ))
-                    )
-            );
-        }
-    }
+    // let mut rng = rand::thread_rng();
+    // for i in -50..=50 {
+    //     for j in -50..=50 {
+    //         model_pool.insert(
+    //             Model::new([g1_id, g2_id, g3_id][rng.gen_range(0..=2)])
+    //                 .with_transform(
+    //                     Transform::IDENTITY
+    //                         .translate((
+    //                             (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
+    //                             0.0,
+    //                             (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
+    //                         ).into())
+    //                         .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
+    //                         .rotate(glam::Quat::from_euler(
+    //                             glam::EulerRot::XYZ,
+    //                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+    //                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+    //                             rng.gen_range(-20.0..=20.0 as f32).to_radians()
+    //                         ))
+    //                 )
+    //         );
+    //     }
+    // }
     
     Scene {
         camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(

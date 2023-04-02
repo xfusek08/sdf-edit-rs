@@ -1,7 +1,13 @@
-use crate::framework::{math::AABBAligned, gpu};
 
-use super::{Operation, Primitive, Edit};
-
+use crate::framework::{
+    math::AABBAligned,
+    gpu
+};
+use super::{
+    Operation,
+    Primitive,
+    Edit
+};
 
 // =================================================================================================
 // GPU Edit
@@ -11,19 +17,23 @@ use super::{Operation, Primitive, Edit};
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUEdit {
     /// Top 16 bits are the operation type and bottom 16 bits are the primitive type
+    color:               glam::Vec4,
     operation_primitive: u32,
-    blending: f32,
+    blending:            f32,
+    _padding:            [u32; 2],
 }
 
 impl GPUEdit {
-    pub fn new(operation: Operation, primitive: Primitive, blending: f32) -> Self {
+    pub fn new(operation: Operation, primitive: Primitive, color: glam::Vec4, blending: f32) -> Self {
         Self {
             operation_primitive: (operation.to_index()) << 16 | (primitive.to_index()),
             blending,
+            color,
+            _padding: [0; 2],
         }
     }
     pub fn from_edit(edit: &Edit) -> Self {
-        Self::new(edit.operation.clone(), edit.primitive.clone(), edit.blending)
+        Self::new(edit.operation.clone(), edit.primitive.clone(), edit.color, edit.blending)
     }
 }
 

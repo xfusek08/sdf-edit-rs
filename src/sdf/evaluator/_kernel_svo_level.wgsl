@@ -42,12 +42,18 @@ const HEADER_TILE_INDEX_MASK = 0x3FFFFFFFu;
 ///   - `is_subdivided` must have value 0 or 1
 ///   - `is_leaf` must have value 0 or 1
 fn create_node_header(value: u32, is_subdivided: u32, has_brick: u32) -> u32 {
-    return (value & HEADER_TILE_INDEX_MASK) | (is_subdivided << HEADER_IS_SUBDIVIDED_SHIFT) | (has_brick << HEADER_HAS_BRICK_SHIFT);
+    return
+        (value & HEADER_TILE_INDEX_MASK)
+        | (is_subdivided << HEADER_IS_SUBDIVIDED_SHIFT)
+        | (has_brick << HEADER_HAS_BRICK_SHIFT);
 }
 
 /// Encodes brick location into single integer
 fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
-    return ((brick_location.x & 0x3FFu) << 20u) | ((brick_location.y & 0x3FFu) << 10u) | (brick_location.z & 0x3FFu);
+    return
+        ((brick_location.x & 0x3FFu) << 20u)
+        | ((brick_location.y & 0x3FFu) << 10u)
+        | (brick_location.z & 0x3FFu);
 }
 
 
@@ -55,9 +61,10 @@ fn create_node_brick_payload(brick_location: vec3<u32>) -> u32 {
 // Bind group 1: SVO: Brick pool
 // =================================================================================================
 
-@group(1) @binding(0) var brick_atlas: texture_storage_3d<r16float, write>;
-@group(1) @binding(1) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
-@group(1) @binding(2) var<uniform> brick_pool_side_size: u32;            // Number of bricks in one side of the brick atlas texture
+@group(1) @binding(0) var distance_atlas: texture_storage_3d<r16float, write>;
+@group(1) @binding(1) var color_atlas: texture_storage_3d<rgba8unorm, write>;
+@group(1) @binding(2) var<storage, read_write> brick_count: atomic<u32>; // number of bricks in brick texture, use to atomically add new bricks
+@group(1) @binding(3) var<uniform> brick_pool_side_size: u32;            // Number of bricks in one side of the brick atlas texture
 
 /// Converts brick index to brick location in brick atlas texture
 fn brick_index_to_coords(index: u32) -> vec3<u32> {
@@ -78,35 +85,37 @@ fn brick_index_to_coords(index: u32) -> vec3<u32> {
 // =================================================================================================
 
 // TODO: Use preprocessor for constatns
-const EDIT_PRIMITIVE_SPHERE = 0u;
-const EDIT_PRIMITIVE_CUBE = 1u;
+const EDIT_PRIMITIVE_SPHERE   = 0u;
+const EDIT_PRIMITIVE_CUBE     = 1u;
 const EDIT_PRIMITIVE_CYLINDER = 2u;
-const EDIT_PRIMITIVE_TORUS = 3u;
-const EDIT_PRIMITIVE_CONE = 4u;
-const EDIT_PRIMITIVE_CAPSULE = 5u;
+const EDIT_PRIMITIVE_TORUS    = 3u;
+const EDIT_PRIMITIVE_CONE     = 4u;
+const EDIT_PRIMITIVE_CAPSULE  = 5u;
 
 // TODO: Use preprocessor for constatns
-const EDIT_OPERATION_ADD = 0u;
-const EDIT_OPERATION_SUBTRACT = 1u;
+const EDIT_OPERATION_ADD       = 0u;
+const EDIT_OPERATION_SUBTRACT  = 1u;
 const EDIT_OPERATION_INTERSECT = 2u;
-// ...
 
 struct EditPacked {
+    color:               vec4<f32>,
     operation_primitive: u32,
-    blending: f32,
+    blending:            f32,
 }
 
 struct Edit {
     operation: u32,
     primitive: u32,
-    blending: f32,
+    blending:  f32,
+    color:     vec4<f32>,
 }
 
 fn unpack_edit(packed_edit: EditPacked) -> Edit {
     return Edit(
         packed_edit.operation_primitive >> 16u,
         packed_edit.operation_primitive & 0xFFFFu,
-        packed_edit.blending
+        packed_edit.blending,
+        packed_edit.color
     );
 }
 
@@ -228,17 +237,35 @@ fn ramp(v: f32, l: f32, h: f32) -> f32 {
     return v * (h - l) + l;
 }
 
-fn smooth_volume_add(a: f32, b: f32, k: f32) -> f32 {
-    let kk = ramp(max(k, 0.0), 0.01, 1.0);
-    let e = max(kk - abs(a - b), 0.0);
-    return min(a, b) - e * e * 0.25 / kk;
+// "Polynomial smooth min 2" with mix factor result, for mixing the two materials
+// - Removed one multiplication
+//   (it is possible that empirically quiliez found that his version was faster but I did not test it)
+fn smooth_volume_add(a: f32, b: f32, k: f32) -> vec2<f32> {
+    let kk = ramp(max(k, 0.0), 0.01, 1.0); // scale K to avoid artifacts
+    let h = max(kk - abs(a - b), 0.0) / kk;
+    let m = h * h * 0.5;
+    let s = m * kk * 0.5;
+    return select(
+        vec2(b - s, 1.0 - m), // false
+        vec2(a - s, m),       // true
+        a < b
+    );
+    
+    // let e = max(kk - abs(a - b), 0.0) / kk ;
+    // return vec2(min(a, b) - e * e  * kk * 0.25, 1.0);
 }
 
-fn smooth_volume_difference(a: f32, b: f32, k: f32) -> f32 {
+fn smooth_volume_difference(a: f32, b: f32, k: f32) -> vec2<f32> {
     let bb = -b;
     let kk = ramp(max(k, 0.0), 0.025, 1.0);
-    let e = max(kk - abs(a - bb), 0.0);
-    return max(a, bb) - e * e * 0.25 / -kk;
+    let h = max(kk - abs(a - bb), 0.0) / kk;
+    let m = h * h * 0.5;
+    let s = m * kk * 0.5;
+    return select(
+        vec2(bb + s, 1.0 - m), // false
+        vec2(a + s, m),       // true
+        a > bb
+    );
 }
 
 fn distance_to_edit(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
@@ -264,28 +291,42 @@ fn distance_to_edit(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32
     }
 }
 
-fn sample_sdf(position: vec3<f32>) -> f32 {
+struct SDFSample {
+    distance: f32,
+    color:    vec4<f32>,
+}
+
+fn sample_sdf(position: vec3<f32>) -> SDFSample {
     // var was_in_aabb = false;
-    var sdf_value = 1000000.0;
+    var distance = 1000000.0;
+    var color = unpack_edit(edits[0]).color;
     for (var i = 0u; i < edit_count; i = i + 1u) {
         let aabb = edit_aabbs[i];
-        
         let edit = unpack_edit(edits[i]);
         let distance_to_primitive = distance_to_edit(position, edit, edit_data[i]);
+        var res: vec2<f32>;
         
         // TODO Use preprocessor because constant are not yet supported in naga
         switch (edit.operation) {
             // EDIT_OPERATION_ADD
-            case 0u: { sdf_value = smooth_volume_add(sdf_value, distance_to_primitive, edit.blending); }
+            case 0u: {
+                res = smooth_volume_add(distance, distance_to_primitive, edit.blending);
+            }
             // EDIT_OPERATION_SUBTRACT
-            case 1u: { sdf_value = smooth_volume_difference(sdf_value, distance_to_primitive, edit.blending); }
+            case 1u: {
+                res = smooth_volume_difference(distance, distance_to_primitive, edit.blending);
+            }
             // // EDIT_OPERATION_INTERSECT
-            // case 2u: { sdf_value = smooth_max(sdf_value, distance_to_primitive, edit.blending); }
-            
+            // case 2u: {
+            //     distance = smooth_max(distance, distance_to_primitive, edit.blending);
+            // }
             default: {} // to make naga happy
         }
+        
+        distance = res.x;
+        color = mix(color, edit.color, res.y);
     }
-    return sdf_value;
+    return SDFSample(distance, color);
 }
 
 
@@ -323,8 +364,9 @@ fn calculate_global_voxel(centered_voxel_index: vec3<i32>, node: Node) -> Global
     return GlobalVoxelDesc(voxel_center_global, voxel_size_global);
 }
 
-fn write_to_brick(voxel_coords: vec3<i32>, distance: f32) {
-    textureStore(brick_atlas, voxel_coords, vec4(distance, 0.0, 0.0, 0.0));
+fn write_to_brick(voxel_coords: vec3<i32>, sdf_sample: SDFSample) {
+    textureStore(distance_atlas, voxel_coords, vec4(sdf_sample.distance, 0.0, 0.0, 0.0));
+    textureStore(color_atlas, voxel_coords, sdf_sample.color);
 }
 
 fn in_voxel(voxel_size: f32, dinstance: f32) -> bool {
@@ -340,7 +382,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     
     let centered_voxel_index = vec3<i32>(in.local_invocation_id) - 4; // (0,0,0) - (7,7,7) => (-4,-4,-4) - (3,3,3)
     let voxel_global_desc = calculate_global_voxel(centered_voxel_index, node);
-    let sdf_value = sample_sdf(voxel_global_desc.center);
+    let sdf_sample = sample_sdf(voxel_global_desc.center);
     
     // vote if voxel intersects sdf surface
     if (in.local_invocation_index == 0u) {
@@ -348,7 +390,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
     }
     workgroupBarrier();
     
-    if (in_voxel(voxel_global_desc.size, sdf_value)) {
+    if (in_voxel(voxel_global_desc.size, sdf_sample.distance)) {
         atomicAdd(&divide, 1u);
     }
     workgroupBarrier(); // synchronize witing of whole group if to divide or not
@@ -370,16 +412,16 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         let voxel_coords = brick_coords_10 + in.local_invocation_id + 1u;
         
         // save voxel value
-        write_to_brick(vec3<i32>(voxel_coords), sdf_value);
+        write_to_brick(vec3<i32>(voxel_coords), sdf_sample);
         
         // Write padding
         if (in.local_invocation_index < 488u) {
             let padding_index = brick_padding_indices.data[in.local_invocation_index];
             let centered_voxel_index = vec3<i32>(padding_index) - 5;
             let voxel_global_desc = calculate_global_voxel(centered_voxel_index, node);
-            let sdf_value = sample_sdf(voxel_global_desc.center);
+            let sdf_sample = sample_sdf(voxel_global_desc.center);
             let voxel_coords = brick_coords_10 + padding_index;
-            write_to_brick(vec3<i32>(voxel_coords), sdf_value);
+            write_to_brick(vec3<i32>(voxel_coords), sdf_sample);
         }
         workgroupBarrier();  // wait for all threads to finish writing padding to brick
         
@@ -388,7 +430,7 @@ fn evaluate_node_brick(in: ShaderInput, node: Node) -> BrickEvaluationResult {
         result.brick_location = brick_coords;
     } else {
         // we suppose that when no boundary crossed any voxel then foolowing condition resolves same for all threads in group
-        if (sdf_value < 0.0) {
+        if (sdf_sample.distance < 0.0) {
             result.brick_type = BRICK_IS_FILLED;
         } else {
             result.brick_type = BRICK_IS_EMPTY;

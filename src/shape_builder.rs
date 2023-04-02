@@ -18,6 +18,7 @@ pub struct ShapeRecord {
     pub operation: Operation,
     pub transform: Transform,
     pub blending:  f32,
+    pub color:     glam::Vec4,
 }
 
 // API - Factories shortcuts
@@ -40,12 +41,12 @@ impl Default for Shape {
 
 // API - Construction Geometry
 impl Shape {
-    pub fn add(self, shape: Shape, transform: Transform, blending: f32) -> Self {
-        self.add_child_operation(Operation::Add, shape, transform, blending)
+    pub fn add(self, shape: Shape, transform: Transform, color: glam::Vec4, blending: f32) -> Self {
+        self.add_child_operation(Operation::Add, shape, transform, color, blending)
     }
     
-    pub fn subtract(self, shape: Shape, transform: Transform, blending: f32) -> Self {
-        self.add_child_operation(Operation::Subtract, shape, transform, blending)
+    pub fn subtract(self, shape: Shape, transform: Transform, color: glam::Vec4, blending: f32) -> Self {
+        self.add_child_operation(Operation::Subtract, shape, transform, color, blending)
     }
 }
 
@@ -60,6 +61,7 @@ impl Shape {
             &mut result,
             Transform::IDENTITY,
             Operation::Add,
+            glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
             0.0
         );
         result
@@ -70,7 +72,8 @@ impl Shape {
             shape:     Shape::Primitive(edit.primitive),
             operation: edit.operation,
             transform: edit.transform,
-            blending:  edit.blending
+            blending:  edit.blending,
+            color:     edit.color,
         }).collect())
     }
     
@@ -135,48 +138,82 @@ impl Shape {
 // Private
 impl Shape {
     #[inline]
-    fn add_child_operation(mut self, operation: Operation, shape: Shape, transform: Transform, blending: f32) -> Self {
+    fn add_child_operation(
+        mut self,
+        operation: Operation,
+        shape: Shape,
+        transform: Transform,
+        color: glam::Vec4,
+        blending: f32
+    ) -> Self {
         match self {
             Shape::Composite(ref mut children) => {
-                children.push(ShapeRecord { shape, operation, transform, blending });
+                children.push(ShapeRecord { shape, operation, transform, color, blending });
                 self
             },
             Shape::Primitive(primitive) => {
-                Shape::PrimitiveComposite((primitive, vec![ShapeRecord { shape, operation, transform, blending }]))
+                Shape::PrimitiveComposite((primitive, vec![ShapeRecord { shape, operation, transform, color, blending }]))
             },
             Shape::PrimitiveComposite((_, ref mut children)) => {
-                children.push(ShapeRecord { shape, operation, transform, blending });
+                children.push(ShapeRecord { shape, operation, transform, color, blending });
                 self
             },
         }
     }
     
-    fn add_primitive_to_list(primitive: &Primitive, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
-        target_list.push(Edit { primitive: primitive.clone(), operation, transform, blending });
+    fn add_primitive_to_list(
+        primitive: &Primitive,
+        target_list: &mut Vec<Edit>,
+        transform: Transform,
+        operation: Operation,
+        color: glam::Vec4,
+        blending: f32,
+    ) {
+        target_list.push(Edit {
+            primitive: primitive.clone(),
+            operation,
+            transform,
+            color,
+            blending,
+        });
     }
     
-    fn add_children_to_list(children: &Vec<ShapeRecord>, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
+    fn add_children_to_list(
+        children: &Vec<ShapeRecord>,
+        target_list: &mut Vec<Edit>,
+        transform: Transform,
+        operation: Operation,
+        blending: f32
+    ) {
         for child in children {
             Self::generate_flat_edits_recursive(
                 &child.shape,
                 target_list,
                 child.transform.add(&transform),
                 if operation == Operation::Add { child.operation.clone() } else { operation.clone() },
+                child.color,
                 if operation == Operation::Add { child.blending } else { blending }
             );
         }
     }
     
-    fn generate_flat_edits_recursive(shape: &Shape, target_list: &mut Vec<Edit>, transform: Transform, operation: Operation, blending: f32) {
+    fn generate_flat_edits_recursive(
+        shape: &Shape,
+        target_list: &mut Vec<Edit>,
+        transform: Transform,
+        operation: Operation,
+        color: glam::Vec4,
+        blending: f32
+    ) {
         match shape {
             Shape::Primitive(primitive) => {
-                Self::add_primitive_to_list(primitive, target_list, transform, operation, blending);
+                Self::add_primitive_to_list(primitive, target_list, transform, operation, color, blending);
             },
             Shape::Composite(children) => {
                 Self::add_children_to_list(children, target_list, transform, operation, blending);
             },
             Shape::PrimitiveComposite((primitive, children)) => {
-                Self::add_primitive_to_list(primitive, target_list, transform.clone(), operation.clone(), blending);
+                Self::add_primitive_to_list(primitive, target_list, transform.clone(), operation.clone(), color, blending);
                 Self::add_children_to_list(children, target_list, transform.clone(), operation.clone(), blending);
             },
         }

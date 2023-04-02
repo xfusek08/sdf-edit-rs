@@ -49,11 +49,11 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         self.render_pipeline.set_display_options(scene.display_toggles.brick_display_options);
         
+        let frustum_camera = scene.camera_rig.camera();
         // let frustum_camera = crate::framework::camera::Camera {
         //     position: (2.0, 0.0, 0.0).into(),
-        //     ..scene.camera_rig.camera
+        //     ..*scene.camera_rig.camera()
         // }.look_at((0.0, 0.0, 0.0).into());
-        let frustum_camera = scene.camera_rig.camera();
         let frustum = Frustum::from_camera(&frustum_camera);
         
         #[inline]

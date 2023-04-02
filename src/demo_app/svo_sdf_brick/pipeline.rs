@@ -5,6 +5,8 @@ use std::{
 };
 
 use crate::{
+    error,
+    info,
     sdf::{
         geometry::GeometryID,
         svo::{
@@ -21,8 +23,6 @@ use crate::{
         math,
         renderer::RenderContext,
     },
-    error,
-    info,
 };
 
 use super::{

@@ -11,6 +11,7 @@ pub struct Edit {
     pub operation: Operation,
     pub transform: Transform,
     pub blending:  f32,
+    pub color:     glam::Vec4,
 }
 
 impl Edit {

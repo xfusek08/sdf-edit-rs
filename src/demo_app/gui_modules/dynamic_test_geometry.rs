@@ -92,6 +92,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                 .column(Column::auto()) // Position
                 .column(Column::auto()) // Rotation
                 .column(Column::auto()) // Blending
+                .column(Column::auto()) // Color
                 .column(Column::auto())// Dimensions
                 .column(Column::auto())// delete action
                 .min_scrolled_height(0.0)
@@ -101,6 +102,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                     header.col(|ui| { ui.strong("Position"); });
                     header.col(|ui| { ui.strong("Rotation"); });
                     header.col(|ui| { ui.strong("Blending"); });
+                    header.col(|ui| { ui.strong("Color"); });
                     header.col(|ui| { ui.strong("Dimensions"); });
                 })
                 .body(|mut body| {
@@ -112,14 +114,16 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             operation,
                             transform,
                             blending,
+                            color,
                         ) = match shape_record {
                             ShapeRecord {
                                 shape: Shape::Primitive(p),
                                 operation: o,
                                 transform: t,
                                 blending: b,
+                                color: c,
                                 ..
-                            } => (p, o, t, b),
+                            } => (p, o, t, b, c),
                             _ => continue,
                         };
                         
@@ -175,6 +179,17 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                 let b = *blending;
                                 ui.add(egui::DragValue::new(blending).speed(0.01).max_decimals(3).min_decimals(3).clamp_range(0.0..=1.0));
                                 changed = changed || b != *blending;
+                            });
+                            
+                            // Color
+                            row.col(|ui| {
+                                let mut rgba = egui::Rgba::from_rgba_premultiplied(color.x, color.y, color.z, color.w);
+                                egui::color_picker::color_edit_button_rgba(ui, &mut rgba, egui::color_picker::Alpha::Opaque);
+                                let rgba = glam::Vec4::new(rgba[0], rgba[1], rgba[2], rgba[3]);
+                                if rgba != *color {
+                                    *color = rgba;
+                                    changed = true;
+                                }
                             });
                             
                             // Dimensions
@@ -235,7 +250,12 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                 }
                 
                 for new_child in to_add.drain(..) {
-                    shape = shape.add(new_child, Transform::default(), 0.0);
+                    shape = shape.add(
+                        new_child,
+                        Transform::default(),
+                        glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
+                        0.0
+                    );
                     changed = true;
                 }
                 

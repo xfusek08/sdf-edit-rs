@@ -18,6 +18,7 @@ fn spiral_bumps_on_sphere(number_of_bumps: u32, number_of_wraps: u32, bump_radiu
         shape = shape.add(
             Shape::sphere(bump_radius),
             Transform::from_polar(radius, theta, phi),
+            glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
             0.0
         );
     }
@@ -29,6 +30,7 @@ pub fn bumpy_sphere() -> Shape {
         .subtract(
             spiral_bumps_on_sphere(600, 77, 0.07, 1.02),
             Transform::IDENTITY,
+            glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
             0.01
         );
     result

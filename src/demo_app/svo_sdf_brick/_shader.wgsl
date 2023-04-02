@@ -5,7 +5,7 @@ struct PushConstants {
     domain:              vec4<f32>, // bounding cube
     camera_focal_length: f32,
     brick_scale:         f32,
-    brick_atlas_stride:  f32,
+    distance_atlas_stride:  f32,
     brick_voxel_size:    f32,
     show_flags:          u32,
 }
@@ -38,10 +38,12 @@ struct InstanceInput {
 // SVO: Brick pool Read-only bind group
 // -----------------------------------------------------------------------------------
 
-@group(1) @binding(0) var                brick_atlas:          texture_3d<f32>;
-@group(1) @binding(1) var                brick_atlas_sampler:  sampler;
-@group(1) @binding(2) var<storage, read> brick_count:          atomic<u32>; // Number of bricks in brick texture, use to atomically add new bricks
-@group(1) @binding(3) var<uniform>       brick_pool_side_size: u32;         // Number of bricks in one side of the brick atlas texture
+@group(1) @binding(0) var                distance_atlas:         texture_3d<f32>;
+@group(1) @binding(1) var                distance_atlas_sampler: sampler;
+@group(1) @binding(2) var                color_atlas:            texture_3d<f32>;
+@group(1) @binding(3) var                color_atlas_sampler:    sampler;
+@group(1) @binding(4) var<storage, read> brick_count:            atomic<u32>; // Number of bricks in brick texture, use to atomically add new bricks
+@group(1) @binding(5) var<uniform>       brick_pool_side_size:   u32;         // Number of bricks in one side of the brick atlas texture
 
 
 // Instance buffer where currently evaluated svo has one transform mer instance
@@ -122,7 +124,7 @@ fn calculate_atlas_lookup_shift(index: u32) -> vec3<f32> {
     let y = (payload >> 10u) & 0x3FFu;
     let z = payload & 0x3FFu;
     let brick_coord = vec3(f32(x), f32(y), f32(z));
-    return (pc.brick_atlas_stride * brick_coord) + vec3(pc.brick_voxel_size);
+    return (pc.distance_atlas_stride * brick_coord) + vec3(pc.brick_voxel_size);
 }
 
 fn bounding_cube_transform(bc: vec4<f32>, position: vec3<f32>) -> vec3<f32> {
@@ -217,10 +219,18 @@ fn get_distance_to_end_of_brick(position: vec3<f32>, direction: vec3<f32>) -> f3
 
 fn sample_volume_distance(in: VertexOutput, act_position: vec3<f32>,) -> f32 {
     return textureSample(
-        brick_atlas,
-        brick_atlas_sampler,
+        distance_atlas,
+        distance_atlas_sampler,
         act_position * pc.brick_scale + in.brick_lookup_shift
     ).r;
+}
+
+fn sample_volume_color(in: VertexOutput, act_position: vec3<f32>) -> vec4<f32> {
+    return textureSample(
+        color_atlas,
+        color_atlas_sampler,
+        act_position * pc.brick_scale + in.brick_lookup_shift
+    );
 }
 
 const NORMAL_OFFSET = 0.05;
@@ -238,12 +248,11 @@ fn get_normal(in: VertexOutput, act_position: vec3<f32>, current_distance: f32) 
 }
 
 // Computes basic Phong lighting
-fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, to_local_matrix: mat4x4<f32>) -> vec4<f32> {
+fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, objectColor: vec3<f32>, to_local_matrix: mat4x4<f32>) -> vec4<f32> {
     let lightPos = (to_local_matrix * vec4(100.0, 100.0, 100.0, 1.0)).xyz;
     let local_camera_pos = (to_local_matrix * pc.camera_position).xyz;
     let lightColor = vec3(1.0, 1.0, 1.0);
     let ambient = vec3(1.0, 1.0, 1.0) * 0.25;
-    let objectColor = vec3(0.8, 0.5, 0.3); // TODO: get color from model/voxel ??
     let specularStrength = 0.6; // TODO: get shader details from model
     
     // diffuse
@@ -298,6 +307,7 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
             hit.color = get_hit_color(
                 act_position,
                 hit.normal,
+                sample_volume_color(in, act_position).rgb,
                 brick_to_local_transform
             );
             break;

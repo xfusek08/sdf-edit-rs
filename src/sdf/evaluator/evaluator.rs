@@ -15,8 +15,10 @@ use crate::{
     },
 };
 
-use super::{KernelSVOLevel, EvaluationContext};
-
+use super::{
+    KernelSVOLevel,
+    EvaluationContext
+};
 pub struct Evaluator {
     gpu: Arc<gpu::Context>, // this is and Arc because in the future evaluator will run on a separate thread asynchronously
     level_evaluation_kernel: KernelSVOLevel,
