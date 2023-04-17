@@ -47,7 +47,7 @@ impl<S: SceneWithCamera> Renderer<S> {
         let surface_config = wgpu::SurfaceConfiguration {
             usage:        wgpu::TextureUsages::RENDER_ATTACHMENT, // texture will be used to draw on screen
             format:       swapchain_format,        // texture format - select first supported one
-            present_mode: wgpu::PresentMode::Fifo, // VSynch essentially - capping renders on display frame rate
+            present_mode: wgpu::PresentMode::Mailbox, // VSynch essentially - capping renders on display frame rate
             width:        window.inner_size().width,
             height:       window.inner_size().height,
             alpha_mode:   wgpu::CompositeAlphaMode::Auto,

@@ -184,7 +184,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             // Color
                             row.col(|ui| {
                                 let mut rgba = egui::Rgba::from_rgba_premultiplied(color.x, color.y, color.z, color.w);
-                                egui::color_picker::color_edit_button_rgba(ui, &mut rgba, egui::color_picker::Alpha::Opaque);
+                                egui::color_picker::color_edit_button_rgba(ui, &mut rgba, egui::color_picker::Alpha::BlendOrAdditive);
                                 let rgba = glam::Vec4::new(rgba[0], rgba[1], rgba[2], rgba[3]);
                                 if rgba != *color {
                                     *color = rgba;

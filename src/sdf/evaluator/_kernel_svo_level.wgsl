@@ -324,7 +324,7 @@ fn sample_sdf(position: vec3<f32>) -> SDFSample {
         }
         
         distance = res.x;
-        color = mix(color, edit.color, res.y);
+        color = mix(color, edit.color, res.y * edit.color.w);
     }
     return SDFSample(distance, color);
 }

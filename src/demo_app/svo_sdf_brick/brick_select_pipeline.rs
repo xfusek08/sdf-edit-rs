@@ -154,7 +154,19 @@ impl SvoBrickSelectPipeline {
                 ..Default::default()
             }]));
             
-            compute_pass.dispatch_workgroups(node_count, 1, 1);
+            // TODO (optimization): Use hierarchical dispatch pipeline with dispatch_workgroups_indirect
+            // We know how many levels the geometry has.
+            // Queue N indirect calls, where N is the number of levels.
+            // Each call will fill up the command buffer for next level.
+            //   1. dispatch - top level cubes are selected, if they are to be subdivided, they not written to out buffer but instance is added to the job buffer.
+            //   2. dispatch do the same for second level.
+            //   ...
+            //   n th dispatch for n th level.
+            // Advantages less work for large amount of objects in the scene.
+            // Disadvantages:
+            //   - The frustum culling will have to be performed for each brick for each level if not culled completely.
+            //   - Even when no objects left for evaluation
+            compute_pass.dispatch_workgroups((node_count + 128 - 1) / 128, 1, 1);
         }
         
         context.gpu.queue.submit(Some(encoder.finish()));

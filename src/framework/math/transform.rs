@@ -37,11 +37,15 @@ impl Transform {
         }
     }
     
-    pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
+    pub fn from_vec3(position: glam::Vec3) -> Self {
         Self {
-            position: glam::Vec3::new(x, y, z),
+            position,
             ..Self::IDENTITY
         }
+    }
+    
+    pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
+        Self::from_vec3(glam::Vec3::new(x, y, z))
     }
 }
 
