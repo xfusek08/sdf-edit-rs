@@ -9,7 +9,7 @@ mod svo_sdf_brick;
 mod tmp_evaluator_config;
 mod svo_evaluator;
 mod svo_wireframe;
-
+mod continuous_rotation;
 
 mod init_renderer;
 pub use init_renderer::init_renderer;

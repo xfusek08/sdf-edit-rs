@@ -9,9 +9,11 @@ use super::{
     scene::Scene,
     tmp_evaluator_config::TmpEvaluatorConfig,
     svo_evaluator::SvoEvaluatorUpdater,
+    continuous_rotation::ContinuousRotator,
     gui_modules::{
         LegacyAppsGui,
-        DynamicTestGeometry, CameraGuiModule
+        DynamicTestGeometry,
+        CameraGuiModule,
     },
 };
 
@@ -32,6 +34,7 @@ pub fn init_updater(context: &Context) -> Updater<Scene> {
             #[cfg(feature = "stats")]
             Box::new(StatsGui),
         ]))
+        .with_module(ContinuousRotator)
         .with_module(TmpEvaluatorConfig::default())
         .with_module(CameraUpdater)
         // .with_module(VoxelSizeReferenceDisplayer { visible: false })

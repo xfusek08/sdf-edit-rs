@@ -30,8 +30,9 @@ use super::{
     geometries::{
         bumpy_sphere,
         test_geometry,
-        mickey_mouse,
+        mouse,
     },
+    continuous_rotation::ContinuousRotation,
 };
 
 
@@ -83,7 +84,7 @@ pub fn init_scene(context: &Context) -> Scene {
         );
         
         let g3_id = geometry_pool.insert(
-            Geometry::new(min_voxel_size).with_edits(mickey_mouse().build())
+            Geometry::new(min_voxel_size).with_edits(mouse().build())
         );
         
         let mut rng = rand::thread_rng();
@@ -103,16 +104,19 @@ pub fn init_scene(context: &Context) -> Scene {
                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
                             rng.gen_range(-20.0..=20.0 as f32).to_radians()
-                        ))
+                        )),
+                    // ContinuousRotation::random()
                 ));
             }
         }
     }
     
     #[cfg(not(feature = "lod_test"))]
-    world.spawn((g1_id, Transform::IDENTITY));
-    
-    
+    world.spawn((
+        g1_id,
+        Transform::IDENTITY,
+        // ContinuousRotation::random(),
+    ));
     
     Scene {
         camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(
