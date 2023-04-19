@@ -31,6 +31,7 @@ use super::{
         bumpy_sphere,
         test_geometry,
         mouse,
+        demo_1,
     },
     continuous_rotation::ContinuousRotation,
 };
