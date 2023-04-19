@@ -230,6 +230,9 @@ name = "bitflags"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07d1372b52fa64b8af7cf6e3848cfa2dadb81c21e810f144bdd9c26e21895235"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "block"

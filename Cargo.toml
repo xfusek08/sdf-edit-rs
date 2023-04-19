@@ -34,7 +34,7 @@ bytemuck           = { version = "1.13.1", features = [ "derive" ] }            
 glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporing SIMD optimizations
 slotmap            = "1.0.6"                                                    # Efficient storage of entities
 hecs               = { version = "0.10.3", features = [ "macros" ] }            # A simple minimal ECS for scene object management
-bitflags           = "2.2.0"                                                    # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
+bitflags           = { version = "2.2.0", features = [ "bytemuck" ] }           # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
 rand               = "0.8.5"                                                    # Random number generator
 rfd                = "0.11.3"                                                   # File dialog
 

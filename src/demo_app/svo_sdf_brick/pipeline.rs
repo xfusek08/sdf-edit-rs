@@ -34,7 +34,7 @@ use super::{
 // bit flags for showing solid brick, normals,  step count and depth
 bitflags::bitflags! {
     #[repr(C)]
-    #[derive(bytemuck::Pod, bytemuck::Zeroable)]
+    #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DisplayOptions: u32 {
         const NONE       = 0;
         const SOLID      = 0b00000001;
