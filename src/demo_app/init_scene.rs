@@ -7,11 +7,15 @@ use crate::{
         gpu::vertices::ColorVertex,
         application::Context,
         math::Transform,
-        camera::{OrbitCameraRig, Camera, CameraRig},
+        camera::{
+            OrbitCameraRig,
+            Camera,
+            CameraRig
+        },
     },
-    sdf::{
-        model::{ModelPool, Model},
-        geometry::{GeometryPool, Geometry},
+    sdf::geometry::{
+        GeometryPool,
+        Geometry,
     },
 };
 
@@ -25,7 +29,8 @@ use super::{
     },
     geometries::{
         bumpy_sphere,
-        test_geometry, mickey_mouse,
+        test_geometry,
+        mickey_mouse,
     },
 };
 
@@ -64,48 +69,50 @@ pub fn init_scene(context: &Context) -> Scene {
     let min_voxel_size = 0.016;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     
-    let g1 = Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build());
-    let g1_id = geometry_pool.insert(g1);
+    let g1_id = geometry_pool.insert(
+        Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())
+    );
     
     // Create and register test model
     // ------------------------------
     
-    let mut model_pool = ModelPool::new();
-    
     #[cfg(feature = "lod_test")]
     {
-        let g2 = Geometry::new(min_voxel_size).with_edits(test_geometry().build());
-        let g2_id = geometry_pool.insert(g2);
-        let g3 = Geometry::new(min_voxel_size).with_edits(mickey_mouse().build());
-        let g3_id = geometry_pool.insert(g3);
+        let g2_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(test_geometry().build())
+        );
+        
+        let g3_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(mickey_mouse().build())
+        );
         
         let mut rng = rand::thread_rng();
         for i in -50..=50 {
             for j in -50..=50 {
-                model_pool.insert(
-                    Model::new([g1_id, g2_id, g3_id][rng.gen_range(0..=2)])
-                        .with_transform(
-                            Transform::IDENTITY
-                                .translate((
-                                    (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
-                                    0.0,
-                                    (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
-                                ).into())
-                                .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
-                                .rotate(glam::Quat::from_euler(
-                                    glam::EulerRot::XYZ,
-                                    rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                                    rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                                    rng.gen_range(-20.0..=20.0 as f32).to_radians()
-                                ))
-                        )
-                );
+                world.spawn((
+                    [g1_id, g2_id, g3_id][rng.gen_range(0..=2)],
+                    Transform::IDENTITY
+                        .translate((
+                            (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
+                            0.0,
+                            (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
+                        ).into())
+                        .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
+                        .rotate(glam::Quat::from_euler(
+                            glam::EulerRot::XYZ,
+                            rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                            rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                            rng.gen_range(-20.0..=20.0 as f32).to_radians()
+                        ))
+                ));
             }
         }
     }
     
     #[cfg(not(feature = "lod_test"))]
-    model_pool.insert(Model::new(g1_id));
+    world.spawn((g1_id, Transform::IDENTITY));
+    
+    
     
     Scene {
         camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(
@@ -120,7 +127,6 @@ pub fn init_scene(context: &Context) -> Scene {
             5.0,
         )),
         geometry_pool,
-        model_pool,
         world,
         counters: Default::default(),
         tmp_evaluator_config: TmpEvaluatorConfigProps {

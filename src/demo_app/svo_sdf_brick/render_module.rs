@@ -9,7 +9,10 @@ use super::{
 use crate::{
     error,
     demo_app::scene::Scene,
-    sdf::geometry::{GeometryID, Geometry},
+    sdf::geometry::{
+        GeometryID,
+        Geometry,
+    },
     framework::{
         gui::Gui,
         math::{Transform, Frustum},
@@ -71,13 +74,13 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 buckets[index] = Some((id, geometry, vec![]));
             }
             
-            counters::sample!("object_instance_counter", scene.model_pool.len() as f64);
+            // counters::sample!("object_instance_counter", scene.world.query::<(&Model)>().iter().count() as f64);
             
             #[cfg(feature = "counters")]
             let mut cnt: u32 = 0;
             
-            for (_, model) in scene.model_pool.iter() {
-                let (transform, geometry_id) = (&model.transform, &model.geometry_id);
+            for (_, (geometry_id, transform)) in scene.world.query::<(&GeometryID, &Transform)>().iter() {
+                
                 let g_index = geometry_id_to_index(geometry_id);
                 let Some(a) = buckets.get_mut(g_index) else {
                     error!("Cannot find geometry {:?} in the bucket", geometry_id);

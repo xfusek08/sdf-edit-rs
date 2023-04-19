@@ -5,10 +5,7 @@ use crate::{
         SceneWithCamera,
         CameraRig,
     },
-    sdf::{
-        geometry::GeometryPool,
-        model::ModelPool
-    },
+    sdf::geometry::GeometryPool,
 };
 
 use super::{
@@ -33,13 +30,12 @@ pub struct DisplayToggles {
 
 pub struct Scene {
     pub camera_rig: CameraRig,
+    pub world: World,
     pub geometry_pool: GeometryPool,
-    pub model_pool: ModelPool,
     pub display_toggles: DisplayToggles,
     pub brick_level_break_size: f32,
     
-    // tmp stuff
-    pub world: World,
+    // tmp?
     pub counters: SceneCounters,
     pub tmp_evaluator_config: TmpEvaluatorConfigProps,
 }
