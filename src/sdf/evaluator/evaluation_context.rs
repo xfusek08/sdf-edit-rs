@@ -7,6 +7,7 @@ use crate::{
 pub struct EvaluationContext {
     pub svo:         svo::Svo,
     pub edits:       geometry::GPUEdits,
+    pub layouts:     EvaluationContextLayouts,
     pub bind_groups: EvaluationContextBindGroups,
 }
 
@@ -31,7 +32,7 @@ impl EvaluationContext {
             brick_pool: svo.brick_pool.create_write_bind_group(gpu, &layouts.brick_pool),
             edits: edits.create_bind_group(gpu, &layouts.edits),
         };
-        Self { svo, edits, bind_groups }
+        Self { svo, edits, layouts, bind_groups }
     }
 }
 

@@ -74,7 +74,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                 buckets[index] = Some((id, geometry, vec![]));
             }
             
-            // counters::sample!("object_instance_counter", scene.world.query::<(&Model)>().iter().count() as f64);
+            counters::sample!("object_instance_counter", scene.world.query::<(&GeometryID, &Transform)>().iter().count() as f64);
             
             #[cfg(feature = "counters")]
             let mut cnt: u32 = 0;

@@ -194,7 +194,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             
                             // Dimensions
                             row.col(|ui| {
-                                let dimensions: glam::Vec4 = primitive.dimensions().into();
+                                let dimension_data: glam::Vec4 = primitive.dimension_data().into();
                                 match primitive {
                                     Primitive::Sphere { radius } => {
                                         ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
@@ -222,7 +222,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                         ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
                                     },
                                 }
-                                changed = changed || dimensions != primitive.dimensions().into();
+                                changed = changed || dimension_data != primitive.dimension_data().into();
                             });
                             
                             // delete button with gray x emoji

@@ -1,0 +1,105 @@
+[
+    {
+        "primitive": {
+            "Cube": {
+                "width": 1.0,
+                "height": 1.0,
+                "depth": 1.0,
+                "bevel": 0.0
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.08480425,
+            0.21958238,
+            0.5565279,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.5
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.66,
+                0.5,
+                0.61
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.36,
+        "color": [
+            0.19999999,
+            1.0,
+            0.29142874,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cylinder": {
+                "diameter": 1.25,
+                "height": 2.87
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                -0.1,
+                0.5,
+                0.8
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            1.0,
+            0.19999999,
+            0.19999999,
+            1.0
+        ]
+    }
+]

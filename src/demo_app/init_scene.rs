@@ -31,7 +31,8 @@ use super::{
         bumpy_sphere,
         test_geometry,
         mouse,
-        demo_1,
+        dip_demo_1_a,
+        dip_demo_1_b,
     },
     continuous_rotation::ContinuousRotation,
 };
@@ -71,15 +72,15 @@ pub fn init_scene(context: &Context) -> Scene {
     let min_voxel_size = 0.016;
     let mut geometry_pool: GeometryPool = SlotMap::with_key();
     
-    let g1_id = geometry_pool.insert(
-        Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())
-    );
-    
     // Create and register test model
     // ------------------------------
     
     #[cfg(feature = "lod_test")]
     {
+        let g1_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())
+        );
+        
         let g2_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(test_geometry().build())
         );
@@ -112,12 +113,53 @@ pub fn init_scene(context: &Context) -> Scene {
         }
     }
     
-    #[cfg(not(feature = "lod_test"))]
-    world.spawn((
-        g1_id,
-        Transform::IDENTITY,
-        // ContinuousRotation::random(),
-    ));
+    #[cfg(feature = "dip_demo_1")]
+    {
+        let g1_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(dip_demo_1_a().build())
+        );
+        
+        let g2_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(dip_demo_1_b().build())
+        );
+        
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let mut scaled_with_random_rot = |scale: f32| {
+            Transform::IDENTITY
+                .scale_evenly(scale)
+                .rotate(glam::Quat::from_euler(
+                    glam::EulerRot::XYZ,
+                    rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                    rng.gen_range(0.0..=360.0 as f32).to_radians(),
+                    rng.gen_range(0.0..=360.0 as f32).to_radians()
+                ))
+        };
+        
+        let cube_scale = 0.7;
+        
+        world.spawn((g2_id, scaled_with_random_rot(0.8).translate(cube_scale * glam::Vec3::new( 1.0, -1.0, -1.0))));
+        world.spawn((g1_id, scaled_with_random_rot(0.7).translate(cube_scale * glam::Vec3::new(-1.0, -1.0, -1.0))));
+        world.spawn((g1_id, scaled_with_random_rot(0.6).translate(cube_scale * glam::Vec3::new( 1.0,  1.0, -1.0))));
+        world.spawn((g2_id, scaled_with_random_rot(0.5).translate(cube_scale * glam::Vec3::new(-1.0,  1.0, -1.0))));
+        
+        world.spawn((g2_id, scaled_with_random_rot(0.4).translate(cube_scale * glam::Vec3::new(-1.0, -1.0,  1.0))));
+        world.spawn((g1_id, scaled_with_random_rot(0.3).translate(cube_scale * glam::Vec3::new( 1.0, -1.0,  1.0))));
+        world.spawn((g1_id, scaled_with_random_rot(0.2).translate(cube_scale * glam::Vec3::new(-1.0,  1.0,  1.0))));
+        world.spawn((g2_id, scaled_with_random_rot(0.1).translate(cube_scale * glam::Vec3::new( 1.0,  1.0,  1.0))));
+    }
+    
+    #[cfg(not(any(feature = "lod_test", feature = "dip_demo_1")))]
+    {
+        let g1_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())
+        );
+        
+        world.spawn((
+            g1_id,
+            Transform::IDENTITY,
+            // ContinuousRotation::random(),
+        ));
+    }
     
     Scene {
         camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(

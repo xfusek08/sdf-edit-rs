@@ -57,14 +57,20 @@ impl Primitive {
         }
     }
     
-    pub fn dimensions(&self) -> [f32;4] {
+    pub fn dimension_data(&self) -> [f32;4] {
         match self {
-            Primitive::Sphere   { radius } => [*radius, 0.0, 0.0, 0.0],
-            Primitive::Cube     { width, height, depth, bevel } => [*width, *height, *depth, *bevel],
-            Primitive::Cylinder { diameter, height } => [*diameter, *height, 0.0, 0.0],
-            Primitive::Torus    { inner_radius, outer_radius } => [*inner_radius, *outer_radius, 0.0, 0.0],
-            Primitive::Cone     { diameter, height } => [*diameter, *height, 0.0, 0.0],
-            Primitive::Capsule  { radius, height } => [*radius, *height, 0.0, 0.0],
+            Primitive::Sphere   { radius } =>
+                [*radius, 0.0, 0.0, 0.0],
+            Primitive::Cube     { width, height, depth, bevel } =>
+                [*width, *height, *depth, *bevel],
+            Primitive::Cylinder { diameter, height } =>
+                [*diameter, *height, 0.0, 0.0],
+            Primitive::Torus    { inner_radius, outer_radius } =>
+                [*inner_radius, *outer_radius, 0.0, 0.0],
+            Primitive::Cone     { diameter, height } =>
+                [*diameter, *height, 0.0, 0.0],
+            Primitive::Capsule  { radius, height } =>
+                [*radius, *height, 0.0, 0.0],
         }
     }
     

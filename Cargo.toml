@@ -58,5 +58,9 @@ json_trace = [ "profiler/json_trace" ]
 stats      = [ "profiler/stats" ]
 counters   = [ "counters/enabled" ]
 log        = [ "dep:log", "dep:env_logger" ]
-lod_test   = []
-white_bg   = []
+
+# Toggles to avoid commenting out code
+lod_test   = [] # Demo scene to test LOD with large number of objects
+white_bg   = [] # Sets white background
+dip_demo_1 = [] # Demo scene to generate image for diploma thesis
+no_vsync   = [] # Disables vsync

@@ -65,7 +65,7 @@ impl GPUEditData {
     pub fn from_edit(edit: &Edit) -> Self {
         Self::new(
             edit.transform.as_mat().inverse(),
-            edit.primitive.dimensions()
+            edit.primitive.dimension_data()
         )
     }
 }

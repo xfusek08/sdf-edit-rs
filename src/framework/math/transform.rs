@@ -94,6 +94,11 @@ impl Transform {
     }
     
     #[inline]
+    pub fn scale_evenly(&self, scale: f32) -> Self {
+        self.scale(glam::Vec3::splat(scale))
+    }
+    
+    #[inline]
     pub fn add(&self, other: &Self) -> Self {
         Self {
             position: self.position + other.position,
