@@ -52,7 +52,7 @@ There are a several cargo features affecting the final executable.
 To build/run the application with a feature enabled, use the `--features` flag:
 
 ```bash
-cargo (build|run) --release --features <feature1> <feature2> ...
+cargo run --release --features <feature1>,<feature2>
 ```
 
 The features regarding the performance measurements and runtime statistics are:
@@ -60,7 +60,9 @@ The features regarding the performance measurements and runtime statistics are:
 - `json_trace`: Enables tracing in the `profiler` crate.
   When this feature is enabled, a file called `sdf-editor-app.json` is generated in the `profile/` directory after the application ends.
   The profile file is in [Json Trace Event format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.lenwiilchoxp) an to explore it you can open it in web browser by navigating to `chrome://tracing/` and loading the file or in the more feature rich application https://ui.perfetto.dev/.
+  
 - `stats`: When enabled, the `profiler` crate gathers runtime durations of each instrumented code block and function and makes it available as a table in its own window, called the "Statistics" window, in the GUI.
+  
 - `counters`: Enables the `counters` crate, which allows custom named counters to be defined and their values to be recorded at runtime.
   Use this feature to see counted runtime information in the application GUI su as:
   - FPS (frames per second),
@@ -69,6 +71,7 @@ The features regarding the performance measurements and runtime statistics are:
   - number of object in the scene and how many are currently being rendered,
   - number of bricks currently being rendered,
   - ...
+  
 - `log`: Enables logging across the application using the [log](https://github.com/rust-lang/log) crate.
   To see the log, run the application with `RUST_LOG` environment variable set to desired [log level](https://docs.rs/log/latest/log/enum.Level.html).
   ```bash
