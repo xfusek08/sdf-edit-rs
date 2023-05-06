@@ -107,7 +107,7 @@ pub fn init_scene(context: &Context) -> Scene {
                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
                             rng.gen_range(-20.0..=20.0 as f32).to_radians()
                         )),
-                    // ContinuousRotation::random()
+                    ContinuousRotation::random()
                 ));
             }
         }

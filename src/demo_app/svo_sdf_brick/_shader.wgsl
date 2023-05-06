@@ -1,13 +1,13 @@
 
 struct PushConstants {
-    view_projection:     mat4x4<f32>,
-    camera_position:     vec4<f32>,
-    domain:              vec4<f32>, // bounding cube
-    camera_focal_length: f32,
-    brick_scale:         f32,
-    distance_atlas_stride:  f32,
-    brick_voxel_size:    f32,
-    show_flags:          u32,
+    view_projection:       mat4x4<f32>,
+    camera_position:       vec4<f32>,
+    domain:                vec4<f32>, // bounding cube
+    camera_focal_length:   f32,
+    brick_scale:           f32,
+    distance_atlas_stride: f32,
+    brick_voxel_size:      f32,
+    show_flags:            u32,
 }
 var<push_constant> pc: PushConstants;
 

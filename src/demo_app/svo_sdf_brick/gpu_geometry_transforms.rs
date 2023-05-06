@@ -28,15 +28,6 @@ pub struct GPUGeometryTransforms {
 }
 
 impl GPUGeometryTransforms {
-    fn map_transforms(transforms: &[Transform]) -> (Vec<glam::Mat4>, Vec<glam::Mat4>) {
-        transforms.iter()
-            .map(|t| {
-                let m = glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-                let mi = m.inverse();
-                (m, mi)
-            })
-            .unzip()
-    }
     
     #[profiler::function]
     pub fn from_transforms(gpu: &gpu::Context, transforms: &[Transform]) -> Self {
@@ -116,5 +107,15 @@ impl GPUGeometryTransforms {
                 },
             ],
         })
+    }
+    
+    fn map_transforms(transforms: &[Transform]) -> (Vec<glam::Mat4>, Vec<glam::Mat4>) {
+        transforms.iter()
+            .map(|t| {
+                let m = glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+                let mi = m.inverse();
+                (m, mi)
+            })
+            .unzip()
     }
 }
