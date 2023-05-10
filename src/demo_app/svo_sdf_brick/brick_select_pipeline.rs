@@ -13,6 +13,7 @@ use crate::{
         Svo,
     },
     framework::{
+        gpu,
         math,
         renderer::RenderContext,
     },
@@ -38,6 +39,7 @@ pub struct SvoBrickSelectPipeline {
     node_pool_bind_group_layout:                     wgpu::BindGroupLayout,
     brick_instances_bind_group_layout:               wgpu::BindGroupLayout,
     geometry_instances_transforms_bind_group_layout: wgpu::BindGroupLayout,
+    frustum_uniform:                                 FrustumUniform,
 }
 
 impl SvoBrickSelectPipeline {
@@ -62,6 +64,8 @@ impl SvoBrickSelectPipeline {
             wgpu::ShaderStages::COMPUTE,
         );
         
+        let frustum_uniform = FrustumUniform::new(&context.gpu, wgpu::ShaderStages::COMPUTE);
+        
         let pipeline = {
             profiler::scope!("Create brick select pipeline");
             context.gpu.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -75,6 +79,7 @@ impl SvoBrickSelectPipeline {
                             &node_pool_bind_group_layout,
                             &brick_instances_bind_group_layout,
                             &geometry_instances_transforms_bind_group_layout,
+                            &frustum_uniform.bind_group_layout,
                         ],
                         // set camera transform matrix as shader push constant
                         push_constant_ranges: &[wgpu::PushConstantRange {
@@ -95,6 +100,7 @@ impl SvoBrickSelectPipeline {
             node_pool_bind_group_layout,
             brick_instances_bind_group_layout,
             geometry_instances_transforms_bind_group_layout,
+            frustum_uniform,
         }
     }
     
@@ -106,6 +112,7 @@ impl SvoBrickSelectPipeline {
         level_break_size: f32,
         brick_instances:  &BrickInstances,
         transforms:       &GPUGeometryTransforms,
+        frustum:          &math::Frustum,
     ) {
         
         let Some(node_count) = svo.node_pool.count() else {
@@ -129,23 +136,17 @@ impl SvoBrickSelectPipeline {
                 label: Some("Brick select pass"),
             });
             
+            self.frustum_uniform.update(&context.gpu, frustum);
+            
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &node_bind_group, &[]);
             compute_pass.set_bind_group(1, &brick_instances_bind_group, &[]);
             compute_pass.set_bind_group(2, &geometry_instances_transforms_bind_group, &[]);
-            
-            let frustum_camera = crate::framework::camera::Camera {
-                position: (2.0, 0.0, 0.0).into(),
-                ..context.camera.camera
-            }.look_at((0.0, 0.0, 0.0).into());
+            compute_pass.set_bind_group(3, &self.frustum_uniform.bind_group, &[]);
             
             compute_pass.set_push_constants(0, bytemuck::cast_slice(&[PushConstants {
                 node_count,
                 level_break_size,
-                // camera_projection_matrix: frustum_camera.view_projection_matrix(),
-                // camera_focal_length:      frustum_camera.focal_length(),
-                // camera_far:               frustum_camera.far,
-                // camera_near:              frustum_camera.near,
                 camera_projection_matrix: context.camera.view_projection_matrix,
                 camera_focal_length:      context.camera.camera.focal_length(),
                 camera_far:               context.camera.camera.far,
@@ -170,5 +171,57 @@ impl SvoBrickSelectPipeline {
         }
         
         context.gpu.queue.submit(Some(encoder.finish()));
+    }
+}
+
+
+#[derive(Debug)]
+struct FrustumUniform {
+    buffer: gpu::Buffer<math::Plane>,
+    bind_group: wgpu::BindGroup,
+    bind_group_layout: wgpu::BindGroupLayout,
+}
+
+impl FrustumUniform {
+    fn new(gpu: &gpu::Context, stages: wgpu::ShaderStages) -> Self {
+        let bind_group_layout = gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Frustum Uniform Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: stages,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        
+        let buffer = gpu::Buffer::<math::Plane>::new_empty(
+            gpu,
+            Some("Frustum Uniform Buffer"),
+            6,
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        );
+        
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Frustum Uniform Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.buffer.as_entire_binding(),
+            }],
+        });
+        
+        Self {
+            buffer,
+            bind_group,
+            bind_group_layout,
+        }
+    }
+    
+    fn update(&mut self, gpu: &gpu::Context, frustum: &math::Frustum) {
+        self.buffer.queue_update(gpu, frustum.planes());
     }
 }

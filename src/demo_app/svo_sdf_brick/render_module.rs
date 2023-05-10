@@ -54,24 +54,23 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         let frustum_camera = scene.camera_rig.camera();
         // let frustum_camera = crate::framework::camera::Camera {
-        //     position: (2.0, 0.0, 0.0).into(),
+        //     position: (0.0, 00.0, 0.0).into(),
         //     ..*scene.camera_rig.camera()
-        // }.look_at((0.0, 0.0, 0.0).into());
+        // }.look_at((1.0, 0.0, 1.0).into());
         let frustum = Frustum::from_camera(&frustum_camera);
         
-        #[inline]
-        fn geometry_id_to_index(id: &GeometryID) -> usize {
-            (id.data().as_ffi() & 0xffff_ffff) as usize - 1
-        }
-        
-        // Gather transforms (instances) for each geometry in the view frustum
+        // Gather transforms (instances) for each geometry in the view frustum into buckets, basically a map where each index corresponds to a geometry id
         let mut buckets: Vec<Option<(GeometryID, &Geometry, Vec<Transform>)>> = vec![None; scene.geometry_pool.capacity()];
         {
+            #[inline]
+            fn geometry_id_to_index(id: &GeometryID) -> usize {
+                (id.data().as_ffi() & 0xffff_ffff) as usize - 1
+            }
+            
             profiler::scope!("Gather Geometry Instances, to be rendered", pinned);
             
             for (id, geometry) in scene.geometry_pool.iter() {
-                let index = geometry_id_to_index(&id);
-                buckets[index] = Some((id, geometry, vec![]));
+                buckets[geometry_id_to_index(&id)] = Some((id, geometry, vec![]));
             }
             
             counters::sample!("object_instance_counter", scene.world.query::<(&GeometryID, &Transform)>().iter().count() as f64);
@@ -81,13 +80,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             
             for (_, (geometry_id, transform)) in scene.world.query::<(&GeometryID, &Transform)>().iter() {
                 
-                let g_index = geometry_id_to_index(geometry_id);
-                let Some(a) = buckets.get_mut(g_index) else {
-                    error!("Cannot find geometry {:?} in the bucket", geometry_id);
-                    continue;
-                };
-                
-                let Some((_, geometry, transforms)) = a else {
+                let Some((_, geometry, transforms)) = &mut buckets[geometry_id_to_index(geometry_id)] else {
                     error!("Cannot find geometry {:?} in the bucket", geometry_id);
                     continue;
                 };
@@ -134,6 +127,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
                     scene.brick_level_break_size,
                     brick_instances,
                     gpu_transforms,
+                    &frustum,
                 );
             });
         

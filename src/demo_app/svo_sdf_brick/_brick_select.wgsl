@@ -73,6 +73,26 @@ fn extract_scaling(m: mat4x4<f32>) -> f32 {
     return max(x, max(y, z));
 }
 
+
+// View Frustum
+// -----------------------------------------------------------------------------------
+@group(3) @binding(0) var<uniform> frustum_planes: array<vec4<f32>,6>;
+
+fn point_to_plane(plane: vec4<f32>, point: vec3<f32>) -> f32 {
+    return dot(vec4(point, 1.0), plane);
+}
+
+// Bounding Sphere Frustum Culling
+// Creatits to Timur Gagiev https://gist.github.com/XProger
+// on: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
+fn in_frustum(position: vec3<f32>, diameter: f32) -> bool {
+    let dist01 = min(point_to_plane(frustum_planes[0], position), point_to_plane(frustum_planes[1], position));
+    let dist23 = min(point_to_plane(frustum_planes[2], position), point_to_plane(frustum_planes[3], position));
+    let dist45 = min(point_to_plane(frustum_planes[4], position), point_to_plane(frustum_planes[5], position));
+    
+    return min(min(dist01, dist23), dist45) + (diameter * 0.5) > 0.0;
+}
+
 // -----------------------------------------------------------------------------------
 
 /// Compute the screen size of a bounding cube
@@ -115,14 +135,6 @@ fn compute_parent_position(node_id: u32, node_position: vec3<f32>, node_diameter
     return node_position + (shift_vector[child_index] * node_diameter);
 }
 
-fn in_frustum(position: vec3<f32>, diameter: f32) -> bool {
-    let p = (pc.camera_projection_matrix * vec4(position, 1.0));
-    let ndc = p.xyz / p.w;
-    let low = -1.0 - diameter * 0.5;
-    let high = 1.0 + diameter * 0.5;
-    return p.w > 0.0 && ndc.x > low && ndc.x < high && ndc.y > low && ndc.y < high && ndc.z > low && ndc.z < high;
-}
-
 const WORKGROUP_SIZE = 128u;
 @compute
 @workgroup_size(128u, 1, 1)
@@ -133,21 +145,20 @@ fn main(in: ShaderInput) {
     }
     
     let header = deconstruct_node_header(node_headers[node_id]);
+    if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
+        return; // No brick
+    }
+    
     let vertex = node_vertices[node_id];
     let treshhold = 0.1 * pc.level_break_size;
     
     // compute size on screen of current node
     let me_position = (vertex.xyz * pc.domain.w) + pc.domain.xyz;
     let me_size = vertex.w * pc.domain.w;
-    let me_position_transformed = (pc.camera_projection_matrix * vec4(me_position, 1.0)).xyz;
     
     // compute size on screen of parent node
     let parent_position = compute_parent_position(node_id, me_position, me_size);
     let parent_size = me_size * 2.0;
-    
-    if (header.has_brick != HEADER_HAS_BRICK_FLAG) {
-        return; // No brick
-    }
     
     for (var i = 0u; i < instance_count; i = i + 1u) {
         let transform = instance_transforms[i];

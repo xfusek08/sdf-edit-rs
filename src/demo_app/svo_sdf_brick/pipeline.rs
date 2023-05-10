@@ -238,7 +238,7 @@ impl SvoSDFBrickPipeline {
         let node_count = bottom_level.node_count;
         
         // TODO: this number is absurdly large, the more instance_transforms, the more likely they are further away,
-        //       hence only a few nodes per instance will be used and there are no way, space for the whole bottom
+        //       hence only a few nodes per instance will be used and there is no way space for the whole bottom
         //       level will be need.
         let brick_count = instance_transforms.len() * node_count as usize;
         

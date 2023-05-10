@@ -228,9 +228,6 @@ fn sd_capsule(position: vec3<f32>, edit: Edit, edit_data: EditData) -> f32 {
 }
 
 /// Smooth min/max functions
-// This is implementation designed for Dreams by David Smith
-// This implementation is slightly more effitient and offers better continuity
-// so it is less prone to lighting artifacts.
 // [https://iquilezles.org/articles/smin/]
 
 fn ramp(v: f32, l: f32, h: f32) -> f32 {
@@ -263,7 +260,7 @@ fn smooth_volume_difference(a: f32, b: f32, k: f32) -> vec2<f32> {
     let s = m * kk * 0.5;
     return select(
         vec2(bb + s, 1.0 - m), // false
-        vec2(a + s, m),       // true
+        vec2(a + s, m),        // true
         a > bb
     );
 }

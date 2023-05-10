@@ -64,6 +64,8 @@ impl Frustum {
     
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Plane {
     data: glam::Vec4,
 }
