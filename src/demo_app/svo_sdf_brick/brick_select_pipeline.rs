@@ -144,9 +144,18 @@ impl SvoBrickSelectPipeline {
             compute_pass.set_bind_group(2, &geometry_instances_transforms_bind_group, &[]);
             compute_pass.set_bind_group(3, &self.frustum_uniform.bind_group, &[]);
             
+            // let frustum_camera = crate::framework::camera::Camera {
+            //     position: (0.0, 0.0, 0.0).into(),
+            //     ..context.camera.camera
+            // }.look_at((1.0, 0.0, 1.0).into());
+            
             compute_pass.set_push_constants(0, bytemuck::cast_slice(&[PushConstants {
                 node_count,
                 level_break_size,
+                // camera_projection_matrix: frustum_camera.view_projection_matrix(),
+                // camera_focal_length:      frustum_camera.focal_length(),
+                // camera_far:               frustum_camera.far,
+                // camera_near:              frustum_camera.near,
                 camera_projection_matrix: context.camera.view_projection_matrix,
                 camera_focal_length:      context.camera.camera.focal_length(),
                 camera_far:               context.camera.camera.far,

@@ -49,7 +49,7 @@ impl RenderPass {
 }
 
 impl RenderPass {
-    pub fn resize(&mut self, context: &RenderContext, scale_factor: f64) {
+    pub fn resize(&mut self, context: &RenderContext) {
         match self {
             Self::Base { depth_texture, .. } => {
                 *depth_texture = gpu::DepthStencilTexture::new(

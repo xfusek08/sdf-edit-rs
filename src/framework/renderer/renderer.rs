@@ -121,14 +121,13 @@ impl<S: SceneWithCamera> Renderer<S> {
             
             // resize all passes
             for RegisteredRenderPass { pass, .. } in self.passes.values_mut() {
-                pass.resize(&self.context, scale_factor);
+                pass.resize(&self.context);
             }
         }
     }
     
     #[profiler::function(pinned)]
     pub fn prepare(&mut self, gui: &Gui, scene: &S) {
-        
         // Update shared GPU resource outside of individual render module scopes
         
         // update camera
@@ -144,7 +143,6 @@ impl<S: SceneWithCamera> Renderer<S> {
     
     #[profiler::function(pinned)]
     pub fn render(&mut self)  {
-        
         // ask surface to provide us a texture we will draw into
         let output = profiler::call!(
             self.context.gpu

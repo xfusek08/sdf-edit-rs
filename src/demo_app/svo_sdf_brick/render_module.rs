@@ -54,7 +54,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
         
         let frustum_camera = scene.camera_rig.camera();
         // let frustum_camera = crate::framework::camera::Camera {
-        //     position: (0.0, 00.0, 0.0).into(),
+        //     position: (0.0, 0.0, 0.0).into(),
         //     ..*scene.camera_rig.camera()
         // }.look_at((1.0, 0.0, 1.0).into());
         let frustum = Frustum::from_camera(&frustum_camera);

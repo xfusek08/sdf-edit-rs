@@ -110,12 +110,14 @@ impl GPUGeometryTransforms {
     }
     
     fn map_transforms(transforms: &[Transform]) -> (Vec<glam::Mat4>, Vec<glam::Mat4>) {
-        transforms.iter()
-            .map(|t| {
-                let m = glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-                let mi = m.inverse();
-                (m, mi)
-            })
-            .unzip()
+        let transform_matrices = transforms.iter()
+            .map(|t| glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position))
+            .collect::<Vec<_>>();
+        
+        let inverse_transforms = transform_matrices.iter()
+            .map(|m| m.inverse())
+            .collect::<Vec<_>>();
+        
+        return (transform_matrices, inverse_transforms);
     }
 }

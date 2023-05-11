@@ -299,6 +299,7 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
     
     loop {
         let act_position = ray.dist * ray.direction + ray.origin;
+        
         let dist_to_volume = sample_volume_distance(in, act_position);
         
         if (dist_to_volume < HIT_DISTANCE) {
