@@ -115,7 +115,7 @@ pub fn init_scene(context: &Context) -> Scene {
         }
     }
     
-    #[cfg(feature = "dip_demo_1")]
+    #[cfg(feature = "dip_demo")]
     {
         let g1_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(perforated_cube().build())
@@ -150,7 +150,7 @@ pub fn init_scene(context: &Context) -> Scene {
         world.spawn((g2_id, scaled_with_random_rot(0.1).translate(cube_scale * glam::Vec3::new( 1.0,  1.0,  1.0))));
     }
     
-    #[cfg(not(any(feature = "lod_test", feature = "dip_demo_1")))]
+    #[cfg(not(any(feature = "lod_test", feature = "dip_demo")))]
     {
         let g1_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())

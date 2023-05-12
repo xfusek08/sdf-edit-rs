@@ -63,8 +63,8 @@ counters   = [ "counters/enabled" ]
 log        = [ "dep:log", "dep:env_logger" ]
 
 # Toggles to avoid commenting out code
-lod_test   = [] # Demo scene to test LOD with large number of objects
-white_bg   = [] # Sets white background
-dip_demo_1 = [] # Demo scene to generate image for diploma thesis
-no_vsync   = [] # Disables vsync
-rotation   = [] # gives each model a random roation velocity
+lod_test = [] # Demo scene to test LOD with large number of objects
+white_bg = [] # Sets white background
+dip_demo = [] # Demo scene to generate image for diploma thesis
+no_vsync = [] # Disables vsync
+rotation = [] # gives each model a random roation velocity

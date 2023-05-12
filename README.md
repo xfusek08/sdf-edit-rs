@@ -81,8 +81,9 @@ The features regarding the performance measurements and runtime statistics are:
 The features configuring behavior or content of the application are:
 - `lod_test`: Loads a demo scene with a large number of objects to test its LOD capabilities and performance.
 - `white_bg`: Sets the background to white. This feature was mainly used for taking screenshots for the thesis.
-- `dip_demo_1`: Loads a demo scene which was used to generate an image in the thesis.
+- `dip_demo`: Loads a demo scene which was used to generate an image in the thesis.
 - `no_vsync`: Disables vertical synchronization and allows the application to run as fast as possible.
+- `rotation`: Assigns a random rotational velocity to all objects in the scene.
 
 ## Controls
 
@@ -103,19 +104,44 @@ When free camera is enabled:
 - <kbd>Space</kbd> - move up.
 - <kbd>Left Ctrl</kbd> - move down.
 
-## About
+## Tested on:
 
+* Pop!_OS 22.04 LTS 64bit
+  * Wayland and X11
+  * AMD® Ryzen 7 5800u with radeon graphics
+* Windows 10 64bit
+  * Intel Core i7-8565U
+  * NVIDIA GeForce GTX 1050 Ti with Max-Q design
 
-### Introduction
+## Potential Problems
+  * On the windows machine, when iGPU used, the application crashes on startup. I'm not entirely sure why, but it appears that atomic operations in the shaders do not update buffers correctly.
 
+## Screenshots
+### Modeling mouse model
 
-### Motivation
+The mouse model imported from `models/mouse_color.json`.
+![Modeling using edit list](./screenshots/mouse_edit_list.png)
+The octree preview for current model using "Wireframe" display toggle.
+![Wireframe preview](./screenshots/mouse_wireframe.png)
+Bricks rendered from the octree using "Solid" display toggle.
+![Bricks](./screenshots/mouse_wireframe_bricks.png)
 
+### Multiple transformed instances
 
-### Goals
+The scene enabled by `dip_demo` feature.
+<p float="left">
+  <img src="./screenshots/demo.png" width="50%" min-width="100px" />
+  <img src="./screenshots/demo_bricks.png" width="50%" min-width="100px" />
+</p>
 
+### LOD Experiments
 
-### Screenshots
+The benchmark scene enabled by `lod_test` feature.
+![LOD test scene](./screenshots/lod_test.png)
+
+The bricks LOD of the scene.
+![LOD test scene](./screenshots/lod_test_bricks.png)
+
 
 ## Authors
 [Petr Fusek](https://github.com/xfusek08)
