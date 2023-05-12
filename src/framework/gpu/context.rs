@@ -29,7 +29,7 @@ impl Context {
         let adapter = profiler::call!(
             instance.request_adapter(
                 &wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::default(),
+                    power_preference: wgpu::PowerPreference::HighPerformance, // integrated intel graphics has probably a bug and does not work
                     force_fallback_adapter: false,
                     compatible_surface: Some(&surface),
                 }

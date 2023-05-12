@@ -46,7 +46,7 @@ impl<Scene> UpdaterModule<Scene> for GuiUpdateModule<Scene>
         // Run gui
         let egui::FullOutput {
             platform_output,
-            repaint_after: _,
+            repaint_after,
             textures_delta,
             shapes,
         } = profiler::call!(
@@ -81,13 +81,17 @@ impl<Scene> UpdaterModule<Scene> for GuiUpdateModule<Scene>
         
         gui.data_to_render = Some(GuiDataToRender { textures_delta, shapes });
         
-        UpdateResultAction::None
+        if repaint_after.is_zero() {
+            UpdateResultAction::Redraw
+        } else {
+            UpdateResultAction::None
+        }
     }
     
     #[profiler::function]
     fn resize(&mut self, context: &mut ResizeContext<Scene>) -> UpdateResultAction {
         context.gui.egui_ctx.set_pixels_per_point(context.scale_factor as f32);
-        UpdateResultAction::None
+        UpdateResultAction::Redraw
     }
     
     /// After frame is renderer clean render data

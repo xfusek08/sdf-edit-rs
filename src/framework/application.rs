@@ -182,9 +182,6 @@ where
                 });
                 
                 counters::sample!("frame_counter", 1.0);
-                
-                // Request redraw after immediately after frame is rendered, to let it run as fast as possible and let vSync to limit FPS by blocking
-                flow_result_action = flow_result_action.combine(UpdateResultAction::Redraw);
             },
             _ => {} // Ignore other events
         }

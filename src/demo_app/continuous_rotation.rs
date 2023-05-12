@@ -48,10 +48,16 @@ impl UpdaterModule<Scene> for ContinuousRotator {
 
     fn update(&mut self, context: &mut crate::framework::updater::UpdateContext<Scene>) -> crate::framework::updater::UpdateResultAction {
         
+        let mut cnt = 0;
         for (_, (transform, continuous_rotation)) in context.scene.world.query_mut::<(&mut Transform, &ContinuousRotation)>() {
             *transform = continuous_rotation.increment(&transform);
+            cnt += 1;
         }
-        crate::framework::updater::UpdateResultAction::None
+        if cnt > 0 {
+            crate::framework::updater::UpdateResultAction::Redraw
+        } else {
+            crate::framework::updater::UpdateResultAction::None
+        }
     }
 
     fn resize(&mut self, _: &mut crate::framework::updater::ResizeContext<Scene>) -> crate::framework::updater::UpdateResultAction {
