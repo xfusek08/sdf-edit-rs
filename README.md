@@ -130,8 +130,8 @@ Bricks rendered from the octree using "Solid" display toggle.
 
 The scene enabled by `dip_demo` feature.
 <p float="left">
-  <img src="./screenshots/demo.png" width="40%" min-width="100px" />
-  <img src="./screenshots/demo_bricks.png" width="40%" min-width="100px" />
+  <img src="./screenshots/demo.png" width="49%" min-width="100px" />
+  <img src="./screenshots/demo_bricks.png" width="49%" min-width="100px" />
 </p>
 
 ### LOD Experiments
