@@ -116,7 +116,12 @@ where
                         // rest of the events are handled by egui
                         _ => {
                             profiler::scope!("Processing input event by GUI");
-                            event_consumed_by_gui = gui.on_event(&event).consumed;
+                            
+                            let gui_res = gui.on_event(&event);
+                            event_consumed_by_gui = gui_res.consumed;
+                            if gui_res.repaint {
+                                flow_result_action = flow_result_action.combine(UpdateResultAction::Redraw);
+                            }
                         },
                     }
                 }
@@ -179,20 +184,20 @@ where
                 counters::sample!("frame_counter", 1.0);
                 
                 // Request redraw after immediately after frame is rendered, to let it run as fast as possible and let vSync to limit FPS by blocking
-                flow_result_action = UpdateResultAction::Redraw;
+                flow_result_action = flow_result_action.combine(UpdateResultAction::Redraw);
             },
             _ => {} // Ignore other events
         }
         
         // Update application only when is its time to do so
         if clock.tick() {
-            updater.update(UpdateContext {
+            flow_result_action = flow_result_action.combine(updater.update(UpdateContext {
                 gui:    &mut gui,
                 scene:  &mut scene,
                 input:  &input,
                 tick:   clock.current_tick(),
                 window: &window,
-            });
+            }));
             counters::sample!("update_counter", 1.0);
         } else {
             // Schedule next tick as a time to wake up in case of idling

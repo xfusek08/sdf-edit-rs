@@ -54,11 +54,11 @@ impl<S: SceneWithCamera> Renderer<S> {
             
             // no VSync - renders as fast as possible
             #[cfg(feature = "no_vsync")]
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode: wgpu::PresentMode::AutoNoVsync,
             
             // VSync essentially - capping renders on display frame rate
             #[cfg(not(feature = "no_vsync"))]
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::AutoVsync,
         };
         gpu.surface.configure(&gpu.device, &surface_config);
         
