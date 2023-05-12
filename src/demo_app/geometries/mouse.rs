@@ -2,5 +2,6 @@
 use crate::shape_builder::Shape;
 
 pub fn mouse() -> Shape {
-    Shape::from_string(include_str!("mouse.json")).expect("Failed to load test geometry")
+    let json_string = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/models/mouse_color.json"));
+    Shape::from_string(json_string).expect("Failed to load dip_demo_1 geometry")
 }

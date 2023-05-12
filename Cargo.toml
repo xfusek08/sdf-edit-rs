@@ -14,6 +14,9 @@ name = "sdf-edit-rs"
 version = "0.0.1"
 edition = "2021"
 
+[profile.release-lto]
+inherits = "release"
+lto = true
 
 [dependencies]
 
@@ -64,3 +67,4 @@ lod_test   = [] # Demo scene to test LOD with large number of objects
 white_bg   = [] # Sets white background
 dip_demo_1 = [] # Demo scene to generate image for diploma thesis
 no_vsync   = [] # Disables vsync
+rotation   = [] # gives each model a random roation velocity

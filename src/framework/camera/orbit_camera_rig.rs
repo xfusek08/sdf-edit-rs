@@ -24,7 +24,7 @@ pub struct OrbitCameraRig {
 
 impl OrbitCameraRig {
     
-    pub fn from_camera(camera: Camera, target: glam::Vec3, distance: f32) -> Self {
+    pub fn from_camera(camera: Camera, target: glam::Vec3) -> Self {
         let mut yaw_pitch = YawPitch::new();
         let current_distance_to_target = glam::Vec3::distance(camera.position, target);
         yaw_pitch.set_rotation_quat(camera.rotation);
@@ -35,7 +35,7 @@ impl OrbitCameraRig {
             .with(SmoothZoom::new(current_distance_to_target, 0.8))
             .build();
         
-        rig.driver_mut::<SmoothZoom<RightHanded>>().zoom(-(current_distance_to_target - distance));
+        // rig.driver_mut::<SmoothZoom<RightHanded>>().zoom(distance - current_distance_to_target);
         rig.driver_mut::<Position>().position = target;
         
         Self { rig, camera }

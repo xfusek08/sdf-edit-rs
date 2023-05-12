@@ -25,8 +25,7 @@ impl CameraGuiModule {
     fn create_orbit_camera_rig(&self, scene: &Scene) -> CameraRig {
         CameraRig::Orbit(OrbitCameraRig::from_camera(
             scene.camera_rig.camera().clone(),
-            glam::Vec3::ZERO,
-            10.0,
+            glam::Vec3::ZERO
         ))
     }
 }

@@ -1,0 +1,71 @@
+[
+    {
+        "primitive": {
+            "Cube": {
+                "width": 3.86,
+                "height": 0.82,
+                "depth": 4.2,
+                "bevel": 0.0
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.078185126,
+            0.049659025,
+            0.54886276,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.5
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                1.17,
+                0.26
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.6,
+        "color": [
+            1.0,
+            0.19999999,
+            0.19999999,
+            1.0
+        ]
+    }
+]

@@ -1,9 +1,11 @@
 [
     {
         "primitive": {
-            "Cone": {
-                "diameter": 0.53,
-                "height": 1.36
+            "Cube": {
+                "width": 1.0,
+                "height": 1.0,
+                "depth": 1.0,
+                "bevel": 0.0
             }
         },
         "operation": "Add",
@@ -15,9 +17,9 @@
             ],
             "rotation": [
                 0.0,
-                0.005235964,
                 0.0,
-                0.9999863
+                0.0,
+                1.0
             ],
             "scale": [
                 1.0,
@@ -27,64 +29,31 @@
         },
         "blending": 0.0,
         "color": [
+            0.9085716,
             1.0,
-            0.5,
-            0.2,
+            0.19999999,
             1.0
         ]
     },
     {
         "primitive": {
-            "Capsule": {
-                "radius": 0.15,
-                "height": 0.56
+            "Cylinder": {
+                "diameter": 0.75,
+                "height": 4.2
             }
         },
-        "operation": "Add",
-        "transform": {
-            "position": [
-                0.05,
-                0.47,
-                0.13
-            ],
-            "rotation": [
-                0.86689675,
-                -3.4818972e-9,
-                -6.055204e-9,
-                0.49848783
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "blending": 0.02,
-        "color": [
-            1.0,
-            0.5,
-            0.2,
-            1.0
-        ]
-    },
-    {
-        "primitive": {
-            "Sphere": {
-                "radius": 0.05
-            }
-        },
-        "operation": "Add",
+        "operation": "Subtract",
         "transform": {
             "position": [
                 0.0,
-                0.31,
+                0.7,
                 0.0
             ],
             "rotation": [
                 0.0,
-                0.019197444,
                 0.0,
-                0.9998157
+                0.0,
+                1.0
             ],
             "scale": [
                 1.0,
@@ -92,11 +61,45 @@
                 1.0
             ]
         },
-        "blending": 0.3,
+        "blending": 0.0,
         "color": [
-            1.0,
-            0.5,
-            0.2,
+            0.1499494,
+            0.21573828,
+            0.53371817,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cylinder": {
+                "diameter": 0.75,
+                "height": 1.26
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.7083398,
+                0.0,
+                0.0,
+                0.7058716
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.10232402,
+            0.15725587,
+            0.3769832,
             1.0
         ]
     }

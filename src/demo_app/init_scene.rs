@@ -15,7 +15,7 @@ use crate::{
     },
     sdf::geometry::{
         GeometryPool,
-        Geometry,
+        Geometry, GeometryID,
     },
 };
 
@@ -29,10 +29,9 @@ use super::{
     },
     geometries::{
         bumpy_sphere,
-        test_geometry,
         mouse,
-        dip_demo_1_a,
-        dip_demo_1_b,
+        perforated_cube,
+        simple_edit_list_example,
     },
     continuous_rotation::ContinuousRotation,
 };
@@ -82,18 +81,22 @@ pub fn init_scene(context: &Context) -> Scene {
         );
         
         let g2_id = geometry_pool.insert(
-            Geometry::new(min_voxel_size).with_edits(test_geometry().build())
+            Geometry::new(min_voxel_size).with_edits(perforated_cube().build())
         );
         
-        let g3_id = geometry_pool.insert(
+        let g3_id: GeometryID = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(mouse().build())
+        );
+        
+        let g4_id = geometry_pool.insert(
+            Geometry::new(min_voxel_size).with_edits(simple_edit_list_example().build())
         );
         
         let mut rng = rand::thread_rng();
         for i in -50..=50 {
             for j in -50..=50 {
                 world.spawn((
-                    [g1_id, g2_id, g3_id][rng.gen_range(0..=2)],
+                    [g1_id, g2_id, g3_id, g4_id][rng.gen_range(0..=3)],
                     Transform::IDENTITY
                         .translate((
                             (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
@@ -107,7 +110,6 @@ pub fn init_scene(context: &Context) -> Scene {
                             rng.gen_range(-20.0..=20.0 as f32).to_radians(),
                             rng.gen_range(-20.0..=20.0 as f32).to_radians()
                         )),
-                    // ContinuousRotation::random()
                 ));
             }
         }
@@ -116,11 +118,11 @@ pub fn init_scene(context: &Context) -> Scene {
     #[cfg(feature = "dip_demo_1")]
     {
         let g1_id = geometry_pool.insert(
-            Geometry::new(min_voxel_size).with_edits(dip_demo_1_a().build())
+            Geometry::new(min_voxel_size).with_edits(perforated_cube().build())
         );
         
         let g2_id = geometry_pool.insert(
-            Geometry::new(min_voxel_size).with_edits(dip_demo_1_b().build())
+            Geometry::new(min_voxel_size).with_edits(simple_edit_list_example().build())
         );
         
         let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
@@ -157,8 +159,20 @@ pub fn init_scene(context: &Context) -> Scene {
         world.spawn((
             g1_id,
             Transform::IDENTITY,
-            // ContinuousRotation::random(),
         ));
+    }
+    
+    
+    // If rotation feature is enabled, give all entities a random rotation
+    #[cfg(feature = "rotation")]
+    {
+        let entities = world.query::<(&GeometryID, &Transform)>().iter()
+            .map(|(e,_)| e)
+            .collect::<Vec<_>>();
+        
+        for e in entities {
+            world.insert_one(e, ContinuousRotation::random());
+        }
     }
     
     Scene {
@@ -170,8 +184,7 @@ pub fn init_scene(context: &Context) -> Scene {
                 position:     glam::vec3(5.0, 5.0, 5.0),
                 ..Default::default()
             },
-            glam::Vec3::ZERO,
-            5.0,
+            glam::Vec3::ZERO
         )),
         geometry_pool,
         world,

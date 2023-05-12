@@ -1,0 +1,869 @@
+[
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.5
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.7,
+                0.08
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.75943875,
+            0.52889484,
+            0.39056852,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cylinder": {
+                "diameter": 0.6,
+                "height": 0.9
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.24761905,
+            0.123809524,
+            0.049523808,
+            0.24761905
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.35
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.55,
+                1.3,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.08,
+        "color": [
+            0.02882694,
+            0.022649739,
+            0.01894342,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.35
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -0.55,
+                1.3,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.06,
+        "color": [
+            0.027477207,
+            0.020280797,
+            0.015962949,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.42
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                -0.3,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.25,
+        "color": [
+            0.72305524,
+            0.43383324,
+            0.0,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Torus": {
+                "inner_radius": 0.8,
+                "outer_radius": 0.06
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.0,
+                -0.25,
+                0.65
+            ],
+            "rotation": [
+                0.23004974,
+                0.0,
+                0.0,
+                0.97317886
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.05,
+        "color": [
+            0.07090327,
+            0.056131758,
+            0.04726885,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cube": {
+                "width": 2.2,
+                "height": 2.35,
+                "depth": 1.01,
+                "bevel": 0.05
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.0,
+                0.0,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.65
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                -1.12,
+                -0.07,
+                0.42
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.5
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.97,
+                0.0,
+                0.53
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cylinder": {
+                "diameter": 0.11,
+                "height": 0.47
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.62,
+                -0.21,
+                0.25
+            ],
+            "rotation": [
+                -0.25544578,
+                0.0,
+                0.0,
+                0.9668234
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.05,
+        "color": [
+            0.06415947,
+            0.04506439,
+            0.03360734,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.02
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.62,
+                -0.03,
+                0.18
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.06,
+        "color": [
+            0.036150098,
+            0.03055544,
+            0.027198646,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Cylinder": {
+                "diameter": 0.15,
+                "height": 0.55
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -0.8,
+                0.1,
+                0.18
+            ],
+            "rotation": [
+                0.10017298,
+                0.0768902,
+                0.44062102,
+                0.88876677
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.1,
+        "color": [
+            0.05988054,
+            0.044553973,
+            0.035358034,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.13
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -1.08,
+                0.32,
+                0.27
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.03,
+        "color": [
+            0.7052532,
+            0.65068,
+            0.61793613,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.12
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.62,
+                -0.55,
+                0.45
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.03,
+        "color": [
+            0.69644904,
+            0.6487754,
+            0.62017125,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Torus": {
+                "inner_radius": 0.8,
+                "outer_radius": 0.08
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.26,
+                -1.01,
+                -0.45
+            ],
+            "rotation": [
+                0.07216219,
+                -0.0710826,
+                0.74557096,
+                0.6586835
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.05,
+        "color": [
+            0.044457164,
+            0.038767707,
+            0.03535403,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.56
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.27,
+                -0.12,
+                -0.91
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 1.07
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.0,
+                -2.0,
+                -0.61
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.65
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                0.0,
+                -1.03,
+                -1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            1.0,
+            0.5,
+            0.19999999,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Torus": {
+                "inner_radius": 0.8,
+                "outer_radius": 0.08
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -0.25,
+                -1.01,
+                -0.45
+            ],
+            "rotation": [
+                0.08770798,
+                -0.053373065,
+                0.6611529,
+                0.74319273
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.05,
+        "color": [
+            0.04806327,
+            0.03805009,
+            0.032042183,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.56
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                -0.27,
+                -0.12,
+                -0.91
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 1.07
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                -0.4,
+                -2.0,
+                -0.61
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.5
+            }
+        },
+        "operation": "Subtract",
+        "transform": {
+            "position": [
+                -0.28,
+                -0.98,
+                -1.35
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.0,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.17
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -0.25,
+                -1.55,
+                0.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.06,
+        "color": [
+            0.8159781,
+            0.07771219,
+            0.1409925,
+            1.0
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.17
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.32,
+                -1.55,
+                0.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.06,
+        "color": [
+            0.7871903,
+            0.09371315,
+            0.15315442,
+            0.97619045
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.08
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                0.38,
+                -1.61,
+                0.4
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.21,
+        "color": [
+            0.033333335,
+            0.016666668,
+            0.006666667,
+            0.033333335
+        ]
+    },
+    {
+        "primitive": {
+            "Sphere": {
+                "radius": 0.08
+            }
+        },
+        "operation": "Add",
+        "transform": {
+            "position": [
+                -0.38,
+                -1.61,
+                0.4
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "blending": 0.21,
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    }
+]
