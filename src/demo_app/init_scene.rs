@@ -23,6 +23,7 @@ use super::{
     scene::Scene,
     line::LineMesh,
     tmp_evaluator_config::TmpEvaluatorConfigProps,
+    continuous_rotation::ContinuousRotation,
     components::{
         AxisMesh,
         Active,
@@ -33,7 +34,6 @@ use super::{
         perforated_cube,
         simple_edit_list_example,
     },
-    continuous_rotation::ContinuousRotation,
 };
 
 
