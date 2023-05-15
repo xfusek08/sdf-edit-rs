@@ -31,6 +31,10 @@ The final executable is statically linked with all its dependencies.
 ```bash
 cargo build
 ```
+To build in release mode with link-time-optimization enabled:
+```bash
+cargo build --profile release-lto
+```
 
 By convention the the executable is located in `target/debug/sdf-edit-rs`.
 
