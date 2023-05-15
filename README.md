@@ -10,7 +10,10 @@ This program was developed as a diploma thesis on [Brno University Of Technology
 
 ### Prerequisites
 
-- Rust tool chain: https://www.rust-lang.org/learn/get-started
+- Rust tool chain at version 1.65 or newer:
+  
+  https://www.rust-lang.org/learn/get-started
+  
   includes tools: `rustc`, `cargo`, `rustup`
 - Vulkan capable GPU with up-to-date drivers
 

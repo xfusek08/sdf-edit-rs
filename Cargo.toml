@@ -1,5 +1,4 @@
 
-
 [workspace]
 members = [
     ".",
@@ -7,7 +6,6 @@ members = [
     "crates/enum_utils",
     "crates/counters",
 ]
-
 
 [package]
 name = "sdf-edit-rs"
