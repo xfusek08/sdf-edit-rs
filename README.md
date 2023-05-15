@@ -1,4 +1,4 @@
-# An SDF Scene Renderer in Rust
+# SDF Scene Renderer in Rust
 
 This repo contains an application implementing a renderer and manipulator of SDF-based 3d models implemented in [Rust](https://www.rust-lang.org/) using the [wgpu](https://wgpu.rs/) graphical API.
 
