@@ -66,3 +66,4 @@ white_bg = [] # Sets white background
 dip_demo = [] # Demo scene to generate image for diploma thesis
 no_vsync = [] # Disables vsync
 rotation = [] # gives each model a random roation velocity
+all_fps  = [] # updates as fast as possible

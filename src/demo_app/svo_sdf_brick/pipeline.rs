@@ -59,7 +59,9 @@ struct PushConstants {
     brick_atlas_stride: f32,
     brick_voxel_size:   f32,
     display_options:    DisplayOptions,
-    _padding:           [u32; 3],
+    hit_distance:       f32,
+    max_step_count:     u32,
+    _padding:           [u32; 1],
 }
 
 #[derive(Debug)]
@@ -85,6 +87,8 @@ pub struct SvoSDFBrickPipeline {
     cube_solid_mesh:              CubeSolidMesh,
     svos_to_render:               HashMap<GeometryID, SVORenderRecord>,
     display_options:              DisplayOptions,
+    hit_distance:                 f32,
+    max_step_count:               u32,
 }
 
 impl SvoSDFBrickPipeline {
@@ -197,6 +201,8 @@ impl SvoSDFBrickPipeline {
             cube_solid_mesh: CubeSolidMesh::new(&context.gpu.device),
             svos_to_render:  HashMap::new(),
             display_options: DisplayOptions::default(),
+            hit_distance:    0.01,
+            max_step_count:  100,
         }
     }
     
@@ -281,6 +287,14 @@ impl SvoSDFBrickPipeline {
     
     pub fn set_display_options(&mut self, options: DisplayOptions) {
         self.display_options = options;
+    }
+    
+    pub fn set_hit_distance(&mut self, hit_distance: f32) {
+        self.hit_distance = hit_distance;
+    }
+    
+    pub fn set_max_step_count(&mut self, max_step_count: u32) {
+        self.max_step_count = max_step_count;
     }
     
     /// This function loads all counter buffers by issuing async map requests and then waiting for them to complete.
@@ -372,6 +386,8 @@ impl SvoSDFBrickPipeline {
                 brick_atlas_stride: record.brick_atlas_stride,
                 brick_voxel_size:   record.brick_voxel_size,
                 display_options:    self.display_options,
+                hit_distance:       self.hit_distance,
+                max_step_count:     self.max_step_count,
                 ..Default::default()
             };
             

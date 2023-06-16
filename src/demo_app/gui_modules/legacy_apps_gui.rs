@@ -51,11 +51,25 @@ impl GuiModule<Scene> for LegacyAppsGui {
                     ..*scene.camera_rig.camera()
                 });
                 ui.end_row();
-                ui.label("Brick Level Break Size:");
-                ui.add(egui::Slider::new(&mut scene.brick_level_break_size, 0.0..=5.0)
-                    .step_by(0.001)
+                
+                ui.label("Brick Level Break Size (/10):");
+                let mut break_size = scene.brick_level_break_size * 10.0;
+                ui.add(egui::Slider::new(&mut break_size, 0.01..=3.0)
+                    .step_by(0.01)
                     .clamp_to_range(true)
                 );
+                scene.brick_level_break_size = break_size / 10.0;
+                ui.end_row();
+                
+                ui.label("Hit Distance:");
+                ui.add(egui::Slider::new(&mut scene.hit_distance, 0.00001..=0.1)
+                    .step_by(0.00001)
+                    .clamp_to_range(true)
+                );
+                ui.end_row();
+                
+                ui.label("Max Step Count:");
+                ui.add(egui::Slider::new(&mut scene.max_step_count, 3..=300).clamp_to_range(true));
         });
         
         ui.separator();

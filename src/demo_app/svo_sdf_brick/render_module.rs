@@ -51,6 +51,8 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         
         self.render_pipeline.set_display_options(scene.display_toggles.brick_display_options);
+        self.render_pipeline.set_hit_distance(scene.hit_distance);
+        self.render_pipeline.set_max_step_count(scene.max_step_count);
         
         let frustum_camera = scene.camera_rig.camera();
         // let frustum_camera = crate::framework::camera::Camera {

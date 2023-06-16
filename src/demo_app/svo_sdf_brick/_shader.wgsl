@@ -8,6 +8,8 @@ struct PushConstants {
     distance_atlas_stride: f32,
     brick_voxel_size:      f32,
     show_flags:            u32,
+    hit_distance:          f32,
+    max_step_count:        u32,
 }
 var<push_constant> pc: PushConstants;
 
@@ -270,9 +272,6 @@ fn get_hit_color(pos: vec3<f32>, normal: vec3<f32>, objectColor: vec3<f32>, to_l
     return vec4(result, 1.0);
 }
 
-const HIT_DISTANCE: f32 = 0.03;
-const MAX_STEPS: u32 = 40u;
-
 struct HitResult {
     hit:          bool,
     color:        vec4<f32>,
@@ -288,6 +287,22 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
     ray.direction = normalize(origin - in.brick_local_camera_pos.xyz);
     ray.dist = 0.0;
     
+    // // https://www.desmos.com/calculator/an6acz0bex
+    // let distSquared = dot(in.brick_local_camera_pos.xyz, in.brick_local_camera_pos.xyz);
+    // var b = 1.0;
+    // let s = 10000.0;
+    // let d = 0.0;
+    // let c = 5.0;
+    // let d2 = d * d;
+    // if (2.0 * s < distSquared) {
+    //     b = c;
+    // } else if (distSquared > d2) {
+    //     let a = (distSquared - s) / (d2 -s);
+    //     b = 0.5 + a * (1.0 - abs(a) * 0.5);
+    //     b = 1.0 + (c - 1.0) * (0.5 - a * (1.0 - abs(a) * 0.5));
+    // }
+    // let hit_distance = b * pc.hit_distance;
+    
     var hit = HitResult(
         false,
         vec4(0.0, 0.0, 0.0, 0.0),
@@ -302,7 +317,7 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
         
         let dist_to_volume = sample_volume_distance(in, act_position);
         
-        if (dist_to_volume < HIT_DISTANCE) {
+        if (dist_to_volume < pc.hit_distance) {
             hit.hit = true;
             hit.normal = get_normal(in, act_position, dist_to_volume);
             hit.color = get_hit_color(
@@ -320,7 +335,7 @@ fn ray_march(in: VertexOutput, origin: vec3<f32>, brick_to_local_transform: mat4
         }
         
         hit.steps += 1u;
-        if (hit.steps > MAX_STEPS) {
+        if (hit.steps > pc.max_step_count) {
             break;
         }
     }
@@ -385,7 +400,11 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
             color = mix(color, vec4(hit.normal, 1.0), 0.5);
         }
         if ((pc.show_flags & SHOW_STEP_COUNT) != 0u) {
-            color = mix(color, vec4(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(MAX_STEPS));
+            if (hit.steps > pc.max_step_count - 1u) {
+                color = vec4(1.0, 0.0, 0.0, 1.0);
+            } else {
+                color = mix(color, vec4(0.0, 0.0, 1.0, 1.0), f32(hit.steps) / f32(pc.max_step_count));
+            }
         }
         out.color = color;
         return out;

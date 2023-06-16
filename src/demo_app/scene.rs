@@ -34,6 +34,8 @@ pub struct Scene {
     pub geometry_pool: GeometryPool,
     pub display_toggles: DisplayToggles,
     pub brick_level_break_size: f32,
+    pub hit_distance: f32,
+    pub max_step_count: u32,
     
     // tmp?
     pub counters: SceneCounters,

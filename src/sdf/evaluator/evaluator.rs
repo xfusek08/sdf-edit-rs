@@ -65,7 +65,7 @@ impl Evaluator {
         
         // Extract svo from geometry
         let svo = geometry.svo.take().unwrap_or_else(|| {
-            svo::Svo::new(svo_label, &self.gpu, svo::Capacity::Nodes(20_000))
+            svo::Svo::new(svo_label, &self.gpu, svo::Capacity::Nodes(100_000))
         });
         
         // Prepare level evaluation kernel for this run

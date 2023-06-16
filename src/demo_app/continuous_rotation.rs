@@ -1,7 +1,6 @@
 /// Updater module that will rotate entities that has transform and geometry id in random direction
 /// the random rotation will be attached as a component to the entity in the scene
 
-
 use crate::{
     framework::{
         updater::UpdaterModule,

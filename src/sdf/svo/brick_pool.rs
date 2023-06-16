@@ -186,6 +186,8 @@ impl BrickPool {
         );
         let distance_atlas_view = distance_atlas.create_view(&wgpu::TextureViewDescriptor::default());
         
+        crate::error!("Creating brick bool of size: {}^3, {}B", voxels_per_side, voxels_per_side * voxels_per_side * voxels_per_side * 2);
+        
         let color_atlas = gpu.device.create_texture(
             &wgpu::TextureDescriptor {
                 #[cfg(debug_assertions)]

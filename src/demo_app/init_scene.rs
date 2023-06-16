@@ -1,11 +1,9 @@
 
 use slotmap::SlotMap;
-use rand::Rng;
 
 use crate::{
     framework::{
-        gpu::vertices::ColorVertex,
-        application::Context,
+        application,
         math::Transform,
         camera::{
             OrbitCameraRig,
@@ -15,28 +13,23 @@ use crate::{
     },
     sdf::geometry::{
         GeometryPool,
-        Geometry, GeometryID,
+        Geometry,
     },
 };
 
 use super::{
+    geometries::*, // Load all geometries
     scene::Scene,
     line::LineMesh,
     tmp_evaluator_config::TmpEvaluatorConfigProps,
-    continuous_rotation::ContinuousRotation,
     components::{
         AxisMesh,
         Active,
     },
-    geometries::{
-        bumpy_sphere,
-        mouse,
-        perforated_cube,
-        simple_edit_list_example,
-    },
 };
 
 
+use crate::framework::gpu::vertices::ColorVertex;
 const LINE_VERTICES: &[ColorVertex] = &[
     ColorVertex { position: glam::Vec3::new(-2.0, 0.0, 0.0), color: glam::Vec3::new(2.0, 0.0, 0.0) },
     ColorVertex { position: glam::Vec3::new(2.0, 0.0, 0.0),  color: glam::Vec3::new(2.0, 0.0, 0.0) },
@@ -46,7 +39,7 @@ const LINE_VERTICES: &[ColorVertex] = &[
     ColorVertex { position: glam::Vec3::new(0.0, 0.0, 2.0),  color: glam::Vec3::new(0.0, 0.0, 2.0) },
 ];
 
-pub fn init_scene(context: &Context) -> Scene {
+pub fn init_scene(context: &application::Context) -> Scene {
     // Create ECS world
     // ----------------
     //   - TODO: Add transform component to each entity in the world
@@ -76,6 +69,8 @@ pub fn init_scene(context: &Context) -> Scene {
     
     #[cfg(feature = "lod_test")]
     {
+        use rand::Rng;
+        
         let g1_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(bumpy_sphere().build())
         );
@@ -84,7 +79,7 @@ pub fn init_scene(context: &Context) -> Scene {
             Geometry::new(min_voxel_size).with_edits(perforated_cube().build())
         );
         
-        let g3_id: GeometryID = geometry_pool.insert(
+        let g3_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(mouse().build())
         );
         
@@ -93,10 +88,10 @@ pub fn init_scene(context: &Context) -> Scene {
         );
         
         let mut rng = rand::thread_rng();
-        for i in -50..=50 {
-            for j in -50..=50 {
+        for i in -20..=20 {
+            for j in -20..=20 {
                 world.spawn((
-                    [g1_id, g2_id, g3_id, g4_id][rng.gen_range(0..=3)],
+                    [g1_id, g2_id, g3_id, g4_id][rng.gen_range(0..=0)],
                     Transform::IDENTITY
                         .translate((
                             (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
@@ -117,6 +112,8 @@ pub fn init_scene(context: &Context) -> Scene {
     
     #[cfg(feature = "dip_demo")]
     {
+        use rand::Rng;
+        
         let g1_id = geometry_pool.insert(
             Geometry::new(min_voxel_size).with_edits(perforated_cube().build())
         );
@@ -125,7 +122,7 @@ pub fn init_scene(context: &Context) -> Scene {
             Geometry::new(min_voxel_size).with_edits(simple_edit_list_example().build())
         );
         
-        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        let mut rng = rand::thread_rng();
         let mut scaled_with_random_rot = |scale: f32| {
             Transform::IDENTITY
                 .scale_evenly(scale)
@@ -162,16 +159,21 @@ pub fn init_scene(context: &Context) -> Scene {
         ));
     }
     
-    
     // If rotation feature is enabled, give all entities a random rotation
     #[cfg(feature = "rotation")]
     {
+        use crate::sdf::geometry::GeometryID;
+        use crate::demo_app::continuous_rotation::ContinuousRotation;
+        
         let entities = world.query::<(&GeometryID, &Transform)>().iter()
             .map(|(e,_)| e)
             .collect::<Vec<_>>();
         
         for e in entities {
-            world.insert_one(e, ContinuousRotation::random());
+            let res = world.insert_one(e, ContinuousRotation::random());
+            if let Err(e) = res {
+                crate::error!("Failed to insert RotationUpdateRequest: {}", e);
+            }
         }
     }
     
@@ -195,5 +197,9 @@ pub fn init_scene(context: &Context) -> Scene {
         },
         display_toggles: Default::default(),
         brick_level_break_size: 0.03,
+        
+        // Empirically obtained rendering settings
+        hit_distance:   0.01, // not terribly tight and accurate but visually non distracting (0.001 would be better but more expensive as it would require about 180 steps)
+        max_step_count: 130, // for 0.01 130 seems to be enough
     }
 }

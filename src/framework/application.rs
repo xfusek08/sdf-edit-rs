@@ -207,6 +207,14 @@ where
             UpdateResultAction::Redraw => window.request_redraw(),
             _ => {},
         }
+        
+        #[cfg(feature = "all_fps")]
+        {
+            if *control_flow != ControlFlow::Exit {
+                *control_flow = ControlFlow::Poll;
+                window.request_redraw();
+            }
+        }
     });
     
 }
