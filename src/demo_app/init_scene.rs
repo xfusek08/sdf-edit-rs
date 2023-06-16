@@ -8,7 +8,7 @@ use crate::{
         camera::{
             OrbitCameraRig,
             Camera,
-            CameraRig
+            CameraRig, FreeCameraRig
         },
     },
     sdf::geometry::{
@@ -87,25 +87,27 @@ pub fn init_scene(context: &application::Context) -> Scene {
             Geometry::new(min_voxel_size).with_edits(simple_edit_list_example().build())
         );
         
-        let mut rng = rand::thread_rng();
-        for i in -20..=20 {
-            for j in -20..=20 {
-                world.spawn((
-                    [g1_id, g2_id, g3_id, g4_id][rng.gen_range(0..=0)],
-                    Transform::IDENTITY
-                        .translate((
-                            (i * 3) as f32 + rng.gen_range(-0.3..=0.3),
-                            0.0,
-                            (j * 3) as f32 + rng.gen_range(-0.3..=0.3)
-                        ).into())
-                        .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
-                        .rotate(glam::Quat::from_euler(
-                            glam::EulerRot::XYZ,
-                            rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                            rng.gen_range(-20.0..=20.0 as f32).to_radians(),
-                            rng.gen_range(-20.0..=20.0 as f32).to_radians()
-                        )),
-                ));
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+        for i in 0..=15 {
+            for j in 0..=15 {
+                for k in 0..=15 {
+                    world.spawn((
+                        [g1_id, g2_id, g3_id, g4_id][rng.gen_range(0..=3)],
+                        Transform::IDENTITY
+                            .translate((
+                                (i * 5) as f32, // + rng.gen_range(-0.3..=0.3),
+                                (k * 5) as f32, // + rng.gen_range(-0.3..=0.3),
+                                (j * 5) as f32, // + rng.gen_range(-0.3..=0.3)
+                            ).into())
+                            .scale(glam::Vec3::splat(rng.gen_range(0.5..=1.5)))
+                            .rotate(glam::Quat::from_euler(
+                                glam::EulerRot::XYZ,
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians(),
+                                rng.gen_range(-20.0..=20.0 as f32).to_radians()
+                            )),
+                    ));
+                }
             }
         }
     }
@@ -177,16 +179,19 @@ pub fn init_scene(context: &application::Context) -> Scene {
         }
     }
     
+    let cam = Camera {
+        fov:          60.0,
+        far:          10000.0,
+        aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
+        position:     glam::vec3(0.0, 7.0, 0.0),
+        ..Default::default()
+    };
+    
     Scene {
-        camera_rig: CameraRig::Orbit(OrbitCameraRig::from_camera(
-            Camera {
-                fov:          60.0,
-                far:          10000.0,
-                aspect_ratio: context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
-                position:     glam::vec3(5.0, 5.0, 5.0),
-                ..Default::default()
-            },
-            glam::Vec3::ZERO
+        camera_rig: CameraRig::Free(FreeCameraRig::from_camera(
+            cam.look_at((-100.0, 0.0, 100.0).into()),
+            0.2,
+            0.1,
         )),
         geometry_pool,
         world,
