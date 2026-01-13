@@ -13,14 +13,15 @@ macro_rules! profiled_log {
 #[cfg(feature = "log")]
 #[macro_export(local_inner_macros)]
 macro_rules! log_init {
-    () => { env_logger::init(); };
+    () => {
+        env_logger::init();
+    };
 }
 #[cfg(not(feature = "log"))]
 #[macro_export(local_inner_macros)]
 macro_rules! log_init {
     () => {};
 }
-
 
 #[cfg(feature = "log")]
 #[macro_export(local_inner_macros)]

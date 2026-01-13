@@ -1,5 +1,4 @@
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transform {
@@ -13,7 +12,7 @@ impl Transform {
     pub const IDENTITY: Self = Self {
         position: glam::Vec3::ZERO,
         rotation: glam::Quat::IDENTITY,
-        scale: glam::Vec3::ONE
+        scale: glam::Vec3::ONE,
     };
 }
 
@@ -25,7 +24,7 @@ impl Transform {
             ..Self::IDENTITY
         }
     }
-    
+
     pub fn from_polar(radius: f32, theta: f32, phi: f32) -> Self {
         Self {
             position: glam::Vec3::new(
@@ -36,14 +35,14 @@ impl Transform {
             ..Self::IDENTITY
         }
     }
-    
+
     pub fn from_vec3(position: glam::Vec3) -> Self {
         Self {
             position,
             ..Self::IDENTITY
         }
     }
-    
+
     pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
         Self::from_vec3(glam::Vec3::new(x, y, z))
     }
@@ -51,7 +50,9 @@ impl Transform {
 
 // Getters
 impl Transform {
-    pub fn as_mat(&self)   -> glam::Mat4 { glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.position) }
+    pub fn as_mat(&self) -> glam::Mat4 {
+        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.position)
+    }
 }
 
 // Builders
@@ -76,7 +77,7 @@ impl Transform {
             ..*self
         }
     }
-    
+
     #[inline]
     pub fn rotate(&self, rotation: glam::Quat) -> Self {
         Self {
@@ -84,7 +85,7 @@ impl Transform {
             ..*self
         }
     }
-    
+
     #[inline]
     pub fn scale(&self, scale: glam::Vec3) -> Self {
         Self {
@@ -92,12 +93,12 @@ impl Transform {
             ..*self
         }
     }
-    
+
     #[inline]
     pub fn scale_evenly(&self, scale: f32) -> Self {
         self.scale(glam::Vec3::splat(scale))
     }
-    
+
     #[inline]
     pub fn add(&self, other: &Self) -> Self {
         Self {
@@ -110,5 +111,7 @@ impl Transform {
 
 // Default
 impl Default for Transform {
-    fn default() -> Self { Self::IDENTITY }
+    fn default() -> Self {
+        Self::IDENTITY
+    }
 }

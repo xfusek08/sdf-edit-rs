@@ -1,11 +1,10 @@
-
-pub mod vertices;
 pub mod utils;
+pub mod vertices;
 
-mod context;
 mod buffers;
+mod context;
 mod textures;
 
-pub use context::*;
 pub use buffers::*;
+pub use context::*;
 pub use textures::*;

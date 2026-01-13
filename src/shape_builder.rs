@@ -1,8 +1,11 @@
-
-use std::{io::{Write, Read}, path::Path};
+use std::{
+    io::{Read, Write},
+    path::Path,
+};
 
 use crate::{
-    framework::math::Transform, sdf::geometry::{Primitive, Operation, Edit},
+    framework::math::Transform,
+    sdf::geometry::{Edit, Operation, Primitive},
 };
 
 #[derive(Debug, Clone)]
@@ -14,22 +17,44 @@ pub enum Shape {
 
 #[derive(Debug, Clone)]
 pub struct ShapeRecord {
-    pub shape:     Shape,
+    pub shape: Shape,
     pub operation: Operation,
     pub transform: Transform,
-    pub blending:  f32,
-    pub color:     glam::Vec4,
+    pub blending: f32,
+    pub color: glam::Vec4,
 }
 
 // API - Factories shortcuts
 impl Shape {
-    pub fn empty() -> Self                                               { Shape::Composite(vec![]) }
-    pub fn sphere(radius: f32) -> Self                                   { Shape::Primitive(Primitive::Sphere { radius }) }
-    pub fn cube(width: f32, height: f32, depth: f32, bevel: f32) -> Self { Shape::Primitive(Primitive::Cube { width, height, depth, bevel }) }
-    pub fn cylinder(diameter: f32, height: f32) -> Self                  { Shape::Primitive(Primitive::Cylinder { diameter, height }) }
-    pub fn torus(inner_radius: f32, outer_radius: f32) -> Self           { Shape::Primitive(Primitive::Torus { inner_radius, outer_radius }) }
-    pub fn cone(diameter: f32, height: f32) -> Self                      { Shape::Primitive(Primitive::Cone { diameter, height }) }
-    pub fn capsule(radius: f32, height: f32) -> Self                     { Shape::Primitive(Primitive::Capsule { radius, height }) }
+    pub fn empty() -> Self {
+        Shape::Composite(vec![])
+    }
+    pub fn sphere(radius: f32) -> Self {
+        Shape::Primitive(Primitive::Sphere { radius })
+    }
+    pub fn cube(width: f32, height: f32, depth: f32, bevel: f32) -> Self {
+        Shape::Primitive(Primitive::Cube {
+            width,
+            height,
+            depth,
+            bevel,
+        })
+    }
+    pub fn cylinder(diameter: f32, height: f32) -> Self {
+        Shape::Primitive(Primitive::Cylinder { diameter, height })
+    }
+    pub fn torus(inner_radius: f32, outer_radius: f32) -> Self {
+        Shape::Primitive(Primitive::Torus {
+            inner_radius,
+            outer_radius,
+        })
+    }
+    pub fn cone(diameter: f32, height: f32) -> Self {
+        Shape::Primitive(Primitive::Cone { diameter, height })
+    }
+    pub fn capsule(radius: f32, height: f32) -> Self {
+        Shape::Primitive(Primitive::Capsule { radius, height })
+    }
 }
 
 // API - Default
@@ -44,8 +69,14 @@ impl Shape {
     pub fn add(self, shape: Shape, transform: Transform, color: glam::Vec4, blending: f32) -> Self {
         self.add_child_operation(Operation::Add, shape, transform, color, blending)
     }
-    
-    pub fn subtract(self, shape: Shape, transform: Transform, color: glam::Vec4, blending: f32) -> Self {
+
+    pub fn subtract(
+        self,
+        shape: Shape,
+        transform: Transform,
+        color: glam::Vec4,
+        blending: f32,
+    ) -> Self {
         self.add_child_operation(Operation::Subtract, shape, transform, color, blending)
     }
 }
@@ -62,74 +93,77 @@ impl Shape {
             Transform::IDENTITY,
             Operation::Add,
             glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
-            0.0
+            0.0,
         );
         result
     }
-    
+
     pub fn composite_from_edits(edits: Vec<Edit>) -> Self {
-        Shape::Composite(edits.into_iter().map(|edit| ShapeRecord {
-            shape:     Shape::Primitive(edit.primitive),
-            operation: edit.operation,
-            transform: edit.transform,
-            blending:  edit.blending,
-            color:     edit.color,
-        }).collect())
+        Shape::Composite(
+            edits
+                .into_iter()
+                .map(|edit| ShapeRecord {
+                    shape: Shape::Primitive(edit.primitive),
+                    operation: edit.operation,
+                    transform: edit.transform,
+                    blending: edit.blending,
+                    color: edit.color,
+                })
+                .collect(),
+        )
     }
-    
+
     pub fn store_flat_edits<P>(&self, file_name: P) -> Result<(), String>
     where
-        P: AsRef<Path>
+        P: AsRef<Path>,
     {
-        
         // Serialize edits
         let edits = self.build();
         let str = match serde_json::to_string(&edits) {
             Ok(str) => str,
-            Err(err) => return Err(format!("Failed to serialize edits: {}", err))
+            Err(err) => return Err(format!("Failed to serialize edits: {}", err)),
         };
-        
+
         // Create file
         let mut file = match std::fs::File::create(file_name) {
             Ok(file) => file,
-            Err(err) => return Err(format!("Failed to create file: {}", err))
+            Err(err) => return Err(format!("Failed to create file: {}", err)),
         };
-        
+
         // Write to file
         match file.write(str.as_bytes()) {
             Ok(_) => Ok(()),
-            Err(err) => Err(format!("Failed to write to file: {}", err))
+            Err(err) => Err(format!("Failed to write to file: {}", err)),
         }
     }
-    
+
     pub fn load_store_edits<P>(file_name: P) -> Result<Self, String>
     where
-        P: AsRef<Path>
+        P: AsRef<Path>,
     {
         // Open file
         let mut file = match std::fs::File::open(file_name) {
             Ok(file) => file,
-            Err(err) => return Err(format!("Failed to open file: {}", err))
+            Err(err) => return Err(format!("Failed to open file: {}", err)),
         };
-        
+
         // Read file
         let mut str = String::new();
         match file.read_to_string(&mut str) {
-            Ok(_) => {},
-            Err(err) => return Err(format!("Failed to read file: {}", err))
+            Ok(_) => {}
+            Err(err) => return Err(format!("Failed to read file: {}", err)),
         }
-        
+
         Self::from_string(&str)
     }
-    
-    pub fn from_string(str: &str) -> Result<Self, String>
-    {
+
+    pub fn from_string(str: &str) -> Result<Self, String> {
         // Deserialize edits
         let edits: Vec<Edit> = match serde_json::from_str(&str) {
             Ok(edits) => edits,
-            Err(err) => return Err(format!("Failed to deserialize edits: {}", err))
+            Err(err) => return Err(format!("Failed to deserialize edits: {}", err)),
         };
-        
+
         // Build composite
         Ok(Shape::composite_from_edits(edits))
     }
@@ -144,23 +178,42 @@ impl Shape {
         shape: Shape,
         transform: Transform,
         color: glam::Vec4,
-        blending: f32
+        blending: f32,
     ) -> Self {
         match self {
             Shape::Composite(ref mut children) => {
-                children.push(ShapeRecord { shape, operation, transform, color, blending });
+                children.push(ShapeRecord {
+                    shape,
+                    operation,
+                    transform,
+                    color,
+                    blending,
+                });
                 self
-            },
-            Shape::Primitive(primitive) => {
-                Shape::PrimitiveComposite((primitive, vec![ShapeRecord { shape, operation, transform, color, blending }]))
-            },
+            }
+            Shape::Primitive(primitive) => Shape::PrimitiveComposite((
+                primitive,
+                vec![ShapeRecord {
+                    shape,
+                    operation,
+                    transform,
+                    color,
+                    blending,
+                }],
+            )),
             Shape::PrimitiveComposite((_, ref mut children)) => {
-                children.push(ShapeRecord { shape, operation, transform, color, blending });
+                children.push(ShapeRecord {
+                    shape,
+                    operation,
+                    transform,
+                    color,
+                    blending,
+                });
                 self
-            },
+            }
         }
     }
-    
+
     fn add_primitive_to_list(
         primitive: &Primitive,
         target_list: &mut Vec<Edit>,
@@ -177,46 +230,73 @@ impl Shape {
             blending,
         });
     }
-    
+
     fn add_children_to_list(
         children: &Vec<ShapeRecord>,
         target_list: &mut Vec<Edit>,
         transform: Transform,
         operation: Operation,
-        blending: f32
+        blending: f32,
     ) {
         for child in children {
             Self::generate_flat_edits_recursive(
                 &child.shape,
                 target_list,
                 child.transform.add(&transform),
-                if operation == Operation::Add { child.operation.clone() } else { operation.clone() },
+                if operation == Operation::Add {
+                    child.operation.clone()
+                } else {
+                    operation.clone()
+                },
                 child.color,
-                if operation == Operation::Add { child.blending } else { blending }
+                if operation == Operation::Add {
+                    child.blending
+                } else {
+                    blending
+                },
             );
         }
     }
-    
+
     fn generate_flat_edits_recursive(
         shape: &Shape,
         target_list: &mut Vec<Edit>,
         transform: Transform,
         operation: Operation,
         color: glam::Vec4,
-        blending: f32
+        blending: f32,
     ) {
         match shape {
             Shape::Primitive(primitive) => {
-                Self::add_primitive_to_list(primitive, target_list, transform, operation, color, blending);
-            },
+                Self::add_primitive_to_list(
+                    primitive,
+                    target_list,
+                    transform,
+                    operation,
+                    color,
+                    blending,
+                );
+            }
             Shape::Composite(children) => {
                 Self::add_children_to_list(children, target_list, transform, operation, blending);
-            },
+            }
             Shape::PrimitiveComposite((primitive, children)) => {
-                Self::add_primitive_to_list(primitive, target_list, transform.clone(), operation.clone(), color, blending);
-                Self::add_children_to_list(children, target_list, transform.clone(), operation.clone(), blending);
-            },
+                Self::add_primitive_to_list(
+                    primitive,
+                    target_list,
+                    transform.clone(),
+                    operation.clone(),
+                    color,
+                    blending,
+                );
+                Self::add_children_to_list(
+                    children,
+                    target_list,
+                    transform.clone(),
+                    operation.clone(),
+                    blending,
+                );
+            }
         }
     }
-    
 }

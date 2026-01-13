@@ -1,4 +1,3 @@
-
 use glam::Vec4Swizzles;
 use std::ops::{Deref, DerefMut};
 
@@ -16,52 +15,80 @@ pub enum PositionRelativeToFrustum {
 }
 
 impl Frustum {
-    pub const LEFT:   usize = 0;
-    pub const RIGHT:  usize = 1;
-    pub const TOP:    usize = 2;
+    pub const LEFT: usize = 0;
+    pub const RIGHT: usize = 1;
+    pub const TOP: usize = 2;
     pub const BOTTOM: usize = 3;
-    pub const NEAR:   usize = 4;
-    pub const FAR:    usize = 5;
-    
-    pub fn planes(&self) -> &[Plane; 6] { &self.planes }
-    pub fn vertices(&self) -> &[glam::Vec3; 8] { &self.vertices }
-    
-    pub fn left(&self)   -> &Plane { &self.planes[Self::LEFT] }
-    pub fn right(&self)  -> &Plane { &self.planes[Self::RIGHT] }
-    pub fn top(&self)    -> &Plane { &self.planes[Self::TOP] }
-    pub fn bottom(&self) -> &Plane { &self.planes[Self::BOTTOM] }
-    pub fn near(&self)   -> &Plane { &self.planes[Self::NEAR] }
-    pub fn far(&self)    -> &Plane { &self.planes[Self::FAR] }
-    
-    pub fn left_mut(&mut self)   -> &mut Plane { &mut self.planes[Self::LEFT] }
-    pub fn right_mut(&mut self)  -> &mut Plane { &mut self.planes[Self::RIGHT] }
-    pub fn top_mut(&mut self)    -> &mut Plane { &mut self.planes[Self::TOP] }
-    pub fn bottom_mut(&mut self) -> &mut Plane { &mut self.planes[Self::BOTTOM] }
-    pub fn near_mut(&mut self)   -> &mut Plane { &mut self.planes[Self::NEAR] }
-    pub fn far_mut(&mut self)    -> &mut Plane { &mut self.planes[Self::FAR] }
-    
+    pub const NEAR: usize = 4;
+    pub const FAR: usize = 5;
+
+    pub fn planes(&self) -> &[Plane; 6] {
+        &self.planes
+    }
+    pub fn vertices(&self) -> &[glam::Vec3; 8] {
+        &self.vertices
+    }
+
+    pub fn left(&self) -> &Plane {
+        &self.planes[Self::LEFT]
+    }
+    pub fn right(&self) -> &Plane {
+        &self.planes[Self::RIGHT]
+    }
+    pub fn top(&self) -> &Plane {
+        &self.planes[Self::TOP]
+    }
+    pub fn bottom(&self) -> &Plane {
+        &self.planes[Self::BOTTOM]
+    }
+    pub fn near(&self) -> &Plane {
+        &self.planes[Self::NEAR]
+    }
+    pub fn far(&self) -> &Plane {
+        &self.planes[Self::FAR]
+    }
+
+    pub fn left_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::LEFT]
+    }
+    pub fn right_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::RIGHT]
+    }
+    pub fn top_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::TOP]
+    }
+    pub fn bottom_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::BOTTOM]
+    }
+    pub fn near_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::NEAR]
+    }
+    pub fn far_mut(&mut self) -> &mut Plane {
+        &mut self.planes[Self::FAR]
+    }
+
     /// http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
     /// Note: Copilot generated top and bottom planes are swapped
     #[profiler::function]
     pub fn from_camera(camera: &Camera) -> Self {
         let matrix = camera.view_projection_matrix();
-        
-        let vertices = compute_frustum_vertices(camera.near, camera.far, camera.fov, camera.aspect_ratio)
-            .map(|v| { matrix.project_point3(v) });
-        
+
+        let vertices =
+            compute_frustum_vertices(camera.near, camera.far, camera.fov, camera.aspect_ratio)
+                .map(|v| matrix.project_point3(v));
+
         // Planes from view matrix
         let planes = [
-            /* LEFT */   Plane::from(matrix.row(3) + matrix.row(0)).normalize(),
-            /* RIGHT */  Plane::from(matrix.row(3) - matrix.row(0)).normalize(),
-            /* TOP */    Plane::from(matrix.row(3) - matrix.row(1)).normalize(),
+            /* LEFT */ Plane::from(matrix.row(3) + matrix.row(0)).normalize(),
+            /* RIGHT */ Plane::from(matrix.row(3) - matrix.row(0)).normalize(),
+            /* TOP */ Plane::from(matrix.row(3) - matrix.row(1)).normalize(),
             /* BOTTOM */ Plane::from(matrix.row(3) + matrix.row(1)).normalize(),
-            /* NEAR */   Plane::from(matrix.row(3) + matrix.row(2)).normalize(),
-            /* FAR */    Plane::from(matrix.row(3) - matrix.row(2)).normalize(),
+            /* NEAR */ Plane::from(matrix.row(3) + matrix.row(2)).normalize(),
+            /* FAR */ Plane::from(matrix.row(3) - matrix.row(2)).normalize(),
         ];
-        
+
         Self { planes, vertices }
     }
-    
 }
 
 #[repr(C)]
@@ -82,27 +109,29 @@ pub enum HalfSpace {
 
 impl Plane {
     pub fn new(normal: glam::Vec3, distance: f32) -> Self {
-        Self { data: glam::Vec4::new(normal.x, normal.y, normal.z, distance) }
+        Self {
+            data: glam::Vec4::new(normal.x, normal.y, normal.z, distance),
+        }
     }
-    
+
     pub fn as_vec4(&self) -> glam::Vec4 {
         self.data
     }
-    
+
     /// A plane normalization function according to:
     /// http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
     pub fn normalize(self) -> Self {
         let length = self.data.xyz().length();
         Self::new(self.data.xyz() / length, self.data.w / length)
     }
-    
+
     /// Returns the signed  distance from the plane to the point
     /// http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
     #[inline]
     pub fn distance(&self, point: &glam::Vec3) -> f32 {
         self.dot(point.extend(1.0))
     }
-    
+
     /// Returns the half space that the point is in
     /// http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
     pub fn classify_point(&self, point: &glam::Vec3) -> HalfSpace {

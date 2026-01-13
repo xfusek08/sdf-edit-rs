@@ -3,8 +3,7 @@ use std::mem::size_of;
 use glam::Vec3;
 
 /// A trait which each vertex type must implement.
-pub trait Vertex: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable {
-}
+pub trait Vertex: Copy + Clone + bytemuck::Pod + bytemuck::Zeroable {}
 
 /// Simple Vertex
 /// A vertex holding just a position.

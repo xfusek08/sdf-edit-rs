@@ -1,23 +1,16 @@
-
 use winit_input_helper::WinitInputHelper;
 
-use dolly::{
-    prelude::{
-        YawPitch,
-        Smooth,
-        Position
-    },
-};
+use dolly::prelude::{Position, Smooth, YawPitch};
 
 use crate::framework::math::Transform;
 
 use super::Camera;
 
 pub struct FreeCameraRig {
-    rig:    dolly::rig::CameraRig,
+    rig: dolly::rig::CameraRig,
     camera: Camera,
-    pub look_speed:  f32,
-    pub move_speed:  f32,
+    pub look_speed: f32,
+    pub move_speed: f32,
 }
 
 impl FreeCameraRig {
@@ -30,14 +23,19 @@ impl FreeCameraRig {
             .with(Position::new(camera.position))
             .with(Smooth::new_position(0.5))
             .build();
-        
-        Self { rig, camera, look_speed, move_speed }
+
+        Self {
+            rig,
+            camera,
+            look_speed,
+            move_speed,
+        }
     }
-    
+
     pub fn camera(&self) -> &Camera {
         &self.camera
     }
-    
+
     pub fn set_camera(&mut self, camera: Camera) {
         self.camera.fov = camera.fov;
         self.camera.aspect_ratio = camera.aspect_ratio;
@@ -53,7 +51,7 @@ impl FreeCameraRig {
                 .rotate_yaw_pitch(-dx * self.look_speed, -dy * self.look_speed);
         }
     }
-    
+
     pub fn update(&mut self, delta_time_seconds: f32, input: &WinitInputHelper) -> Transform {
         let forward = input.key_held(winit::event::VirtualKeyCode::W);
         let backward = input.key_held(winit::event::VirtualKeyCode::S);
@@ -61,9 +59,9 @@ impl FreeCameraRig {
         let right = input.key_held(winit::event::VirtualKeyCode::D);
         let up = input.key_held(winit::event::VirtualKeyCode::Space);
         let down = input.key_held(winit::event::VirtualKeyCode::LControl);
-        
+
         let mut move_vector = glam::Vec3::ZERO;
-        
+
         if forward != backward {
             let dir = self.rig.final_transform.forward();
             move_vector += if forward { dir } else { -dir };
@@ -76,11 +74,11 @@ impl FreeCameraRig {
             let dir = glam::Vec3::Y;
             move_vector += if up { dir } else { -dir };
         }
-        
+
         if move_vector != glam::Vec3::ZERO {
             self.rig.driver_mut::<Position>().position += move_vector * self.move_speed;
         }
-        
+
         let res = self.rig.update(delta_time_seconds);
         self.camera.position = res.position;
         self.camera.rotation = res.rotation;

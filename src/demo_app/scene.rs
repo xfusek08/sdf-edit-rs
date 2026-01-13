@@ -1,18 +1,11 @@
 use hecs::World;
 
 use crate::{
-    framework::camera::{
-        SceneWithCamera,
-        CameraRig,
-    },
+    framework::camera::{CameraRig, SceneWithCamera},
     sdf::geometry::GeometryPool,
 };
 
-use super::{
-    svo_sdf_brick::DisplayOptions,
-    tmp_evaluator_config::TmpEvaluatorConfigProps
-};
-
+use super::{svo_sdf_brick::DisplayOptions, tmp_evaluator_config::TmpEvaluatorConfigProps};
 
 #[derive(Debug, Default)]
 pub struct SceneCounters {
@@ -36,7 +29,7 @@ pub struct Scene {
     pub brick_level_break_size: f32,
     pub hit_distance: f32,
     pub max_step_count: u32,
-    
+
     // tmp?
     pub counters: SceneCounters,
     pub tmp_evaluator_config: TmpEvaluatorConfigProps,
@@ -46,7 +39,7 @@ impl SceneWithCamera for Scene {
     fn get_camera_rig(&self) -> &CameraRig {
         &self.camera_rig
     }
-    
+
     fn get_camera_mut(&mut self) -> &mut CameraRig {
         &mut self.camera_rig
     }

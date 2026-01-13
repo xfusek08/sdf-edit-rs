@@ -1,17 +1,15 @@
+use serde::{Deserialize, Serialize};
 
-use serde::{Serialize, Deserialize};
-
+use super::{Operation, Primitive};
 use crate::framework::math::{Transform, AABB};
-use super::{Primitive, Operation};
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edit {
     pub primitive: Primitive,
     pub operation: Operation,
     pub transform: Transform,
-    pub blending:  f32,
-    pub color:     glam::Vec4,
+    pub blending: f32,
+    pub color: glam::Vec4,
 }
 
 impl Edit {

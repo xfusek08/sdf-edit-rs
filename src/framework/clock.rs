@@ -1,5 +1,4 @@
-
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 use crate::info;
 
@@ -20,7 +19,7 @@ pub struct Clock {
     update_time_window: Duration,
     next_tick_scheduled: Instant,
     current_tick: Tick,
-    
+
     // FPS measurement
     elapsed_seconds: f32,
     tick_counter: u32,
@@ -40,7 +39,7 @@ impl Clock {
             tick_counter: 0,
         }
     }
-    
+
     /// Returns true if tick was performed
     /// Tick is performed when current time is greater than next tick scheduled
     /// If this clock ticks it updates current tick and schedules next tick
@@ -49,15 +48,15 @@ impl Clock {
         if self.next_tick_scheduled <= time {
             // Get real elapsed time
             let time_difference = time - self.next_tick_scheduled;
-            
+
             // Update current tick
             self.current_tick.order = self.current_tick.order + 1;
             self.current_tick.delta = time - self.current_tick.time;
-            self.current_tick.time  = time;
-            
+            self.current_tick.time = time;
+
             // Schedule next tick
             self.next_tick_scheduled = time + self.update_time_window - time_difference;
-            
+
             // FPS measurement
             self.elapsed_seconds += self.current_tick.delta.as_secs_f32();
             self.tick_counter += 1;
@@ -66,20 +65,19 @@ impl Clock {
                 self.elapsed_seconds -= 1.0;
                 self.tick_counter = 0;
             }
-            
+
             // Clock ticked
             return true;
         }
-        
+
         false
     }
-    
+
     pub fn current_tick(&self) -> &Tick {
         &self.current_tick
     }
-    
+
     pub fn next_scheduled_tick(&self) -> &Instant {
         &self.next_tick_scheduled
     }
-    
 }

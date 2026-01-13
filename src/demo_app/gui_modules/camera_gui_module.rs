@@ -1,19 +1,14 @@
-
 use crate::{
     demo_app::scene::Scene,
     framework::{
+        camera::{CameraRig, FreeCameraRig, OrbitCameraRig},
         gui::GuiModule,
-        camera::{
-            OrbitCameraRig,
-            FreeCameraRig, CameraRig
-        },
     },
 };
 
 pub struct CameraGuiModule;
 
 impl CameraGuiModule {
-    
     fn create_free_camera_rig(&self, scene: &Scene) -> CameraRig {
         CameraRig::Free(FreeCameraRig::from_camera(
             scene.camera_rig.camera().clone(),
@@ -21,11 +16,11 @@ impl CameraGuiModule {
             1.0,
         ))
     }
-    
+
     fn create_orbit_camera_rig(&self, scene: &Scene) -> CameraRig {
         CameraRig::Orbit(OrbitCameraRig::from_camera(
             scene.camera_rig.camera().clone(),
-            glam::Vec3::ZERO
+            glam::Vec3::ZERO,
         ))
     }
 }
@@ -39,12 +34,12 @@ impl GuiModule<Scene> for CameraGuiModule {
             _ => false,
         };
         let was_free = is_free;
-        
+
         ui.horizontal(|ui| {
             ui.label("Camera");
             ui.checkbox(&mut is_free, "Free");
         });
-        
+
         match &mut scene.camera_rig {
             CameraRig::Free(rig) => {
                 ui.horizontal(|ui| {
@@ -55,10 +50,10 @@ impl GuiModule<Scene> for CameraGuiModule {
                     ui.label("Move Speed");
                     ui.add(egui::Slider::new(&mut rig.move_speed, 0.0..=5.0));
                 });
-            },
-            _ => {},
+            }
+            _ => {}
         }
-        
+
         if was_free != is_free {
             scene.camera_rig = if is_free {
                 self.create_free_camera_rig(scene)

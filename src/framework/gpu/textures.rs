@@ -1,4 +1,3 @@
-
 use std::num::NonZeroU32;
 
 #[derive(Debug)]
@@ -14,7 +13,7 @@ pub struct Texture {
 //         let img = profiler::call!(image::load_from_memory(bytes).expect("Failed fo load texture image."));
 //         return Self::from_image(device, queue, &img, label);
 //     }
-    
+
 //     #[profiler::function]
 //     pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, label: Option<&str>) -> Self {
 //         let dimensions = wgpu::Extent3d {
@@ -22,7 +21,7 @@ pub struct Texture {
 //             height: img.height(),
 //             depth_or_array_layers: 1, // 2D texture is just special case of flat 3d texture
 //         };
-        
+
 //         let texture = profiler::call!(
 //             device.create_texture(
 //                 &wgpu::TextureDescriptor {
@@ -36,15 +35,15 @@ pub struct Texture {
 //                 }
 //             )
 //         );
-        
+
 //         let rgba8 = profiler::call!(
 //             img.to_rgba8()
 //         );
-        
+
 //         // copy data from cpu to gpu
 //         profiler::call!(
 //             queue.write_texture(
-                
+
 //                 // This target of byte transfer with configuration what will be copied
 //                 wgpu::ImageCopyTexture {
 //                     texture: &texture,
@@ -52,23 +51,23 @@ pub struct Texture {
 //                     origin: wgpu::Origin3d::ZERO,
 //                     aspect: wgpu::TextureAspect::All
 //                 },
-                
+
 //                 // this is source of bytes
 //                 &rgba8,
-                
+
 //                 // how to read data from source
 //                 wgpu::ImageDataLayout {
 //                     offset: 0,
 //                     bytes_per_row: NonZeroU32::new(4 * img.width()),
 //                     rows_per_image: NonZeroU32::new(img.height()),
 //                 },
-                
+
 //                 dimensions
 //             )
 //         );
-        
+
 //         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        
+
 //         let sampler = profiler::call!(
 //             device.create_sampler(&wgpu::SamplerDescriptor {
 //                 label: Some("Texture Sampler"),
@@ -81,10 +80,10 @@ pub struct Texture {
 //                 ..wgpu::SamplerDescriptor::default()
 //             })
 //         );
-        
+
 //         Self{ texture, view, sampler }
 //     }
-    
+
 // }
 
 /// A construction of depth buffer texture according to: https://sotrh.github.io/learn-wgpu/beginner/tutorial8-depth/#a-pixels-depth
@@ -95,51 +94,52 @@ pub struct DepthStencilTexture {
 
 impl DepthStencilTexture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24PlusStencil8;
-    
+
     #[profiler::function]
     pub fn new(label: &str, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
-        let texture = profiler::call!(
-            device.create_texture(&wgpu::TextureDescriptor {
-                format: Self::DEPTH_FORMAT,
-                // view_formats: &[Self::DEPTH_FORMAT], // TODO: wgpu 15
-                label: Some(label),
-                size: wgpu::Extent3d {
-                    width: config.width,
-                    height: config.height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[]
-            })
-        );
-        
+        let texture = profiler::call!(device.create_texture(&wgpu::TextureDescriptor {
+            format: Self::DEPTH_FORMAT,
+            // view_formats: &[Self::DEPTH_FORMAT], // TODO: wgpu 15
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: config.width,
+                height: config.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[]
+        }));
+
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        
-        let sampler = device.create_sampler(
-            &wgpu::SamplerDescriptor { // 4.
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                compare: Some(wgpu::CompareFunction::LessEqual), // 5.
-                ..Default::default()
-            }
-        );
-        
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            // 4.
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            compare: Some(wgpu::CompareFunction::LessEqual), // 5.
+            ..Default::default()
+        });
+
         Self {
-            texture: Texture { texture, view, sampler },
+            texture: Texture {
+                texture,
+                view,
+                sampler,
+            },
         }
     }
-    
+
     pub fn texture(&self) -> &Texture {
         &self.texture
     }
-    
+
     pub fn stencil() -> wgpu::DepthStencilState {
         wgpu::DepthStencilState {
             format: Self::DEPTH_FORMAT,

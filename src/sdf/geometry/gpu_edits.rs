@@ -1,13 +1,5 @@
-
-use crate::framework::{
-    math::AABBAligned,
-    gpu
-};
-use super::{
-    Operation,
-    Primitive,
-    Edit
-};
+use super::{Edit, Operation, Primitive};
+use crate::framework::{gpu, math::AABBAligned};
 
 // =================================================================================================
 // GPU Edit
@@ -17,14 +9,19 @@ use super::{
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GPUEdit {
     /// Top 16 bits are the operation type and bottom 16 bits are the primitive type
-    color:               glam::Vec4,
+    color: glam::Vec4,
     operation_primitive: u32,
-    blending:            f32,
-    _padding:            [u32; 2],
+    blending: f32,
+    _padding: [u32; 2],
 }
 
 impl GPUEdit {
-    pub fn new(operation: Operation, primitive: Primitive, color: glam::Vec4, blending: f32) -> Self {
+    pub fn new(
+        operation: Operation,
+        primitive: Primitive,
+        color: glam::Vec4,
+        blending: f32,
+    ) -> Self {
         Self {
             operation_primitive: (operation.to_index()) << 16 | (primitive.to_index()),
             blending,
@@ -33,10 +30,14 @@ impl GPUEdit {
         }
     }
     pub fn from_edit(edit: &Edit) -> Self {
-        Self::new(edit.operation.clone(), edit.primitive.clone(), edit.color, edit.blending)
+        Self::new(
+            edit.operation.clone(),
+            edit.primitive.clone(),
+            edit.color,
+            edit.blending,
+        )
     }
 }
-
 
 // =================================================================================================
 // GPU Edit Data
@@ -52,51 +53,63 @@ pub struct GPUEditData {
 }
 
 impl GPUEditData {
-    pub fn new(
-        transform_inverse: glam::Mat4,
-        dimensions: [f32; 4],
-    ) -> Self {
+    pub fn new(transform_inverse: glam::Mat4, dimensions: [f32; 4]) -> Self {
         Self {
             transform_inverse,
             dimensions,
         }
     }
-    
+
     pub fn from_edit(edit: &Edit) -> Self {
         Self::new(
             edit.transform.as_mat().inverse(),
-            edit.primitive.dimension_data()
+            edit.primitive.dimension_data(),
         )
     }
 }
-
 
 // =================================================================================================
 // GPU Edit List
 // =================================================================================================
 
 pub struct GPUEdits {
-    pub edits:     gpu::Buffer<GPUEdit>,
+    pub edits: gpu::Buffer<GPUEdit>,
     pub edit_data: gpu::Buffer<GPUEditData>,
-    pub aabbs:     gpu::Buffer<AABBAligned>,
-    pub count:     gpu::Buffer<u32>,
+    pub aabbs: gpu::Buffer<AABBAligned>,
+    pub count: gpu::Buffer<u32>,
 }
 
 // Constructors
 impl GPUEdits {
     #[profiler::function]
     pub fn from_edit_list(gpu: &gpu::Context, edits: &[Edit]) -> Self {
-        let (
-            gpu_edits,
-            gpu_edit_data,
-            aabbs,
-        ) = Self::map_data(edits);
-        
+        let (gpu_edits, gpu_edit_data, aabbs) = Self::map_data(edits);
+
         Self {
-            edits:     gpu::Buffer::new(gpu, Some("Geometry edits"), &gpu_edits, wgpu::BufferUsages::STORAGE),
-            edit_data: gpu::Buffer::new(gpu, Some("Geometry edit Data"), &gpu_edit_data, wgpu::BufferUsages::STORAGE),
-            aabbs:     gpu::Buffer::new(gpu, Some("Geometry edit AABBs"), &aabbs, wgpu::BufferUsages::STORAGE),
-            count:     gpu::Buffer::new(gpu, Some("Geometry edit count"), &[edits.len() as u32], wgpu::BufferUsages::UNIFORM),
+            edits: gpu::Buffer::new(
+                gpu,
+                Some("Geometry edits"),
+                &gpu_edits,
+                wgpu::BufferUsages::STORAGE,
+            ),
+            edit_data: gpu::Buffer::new(
+                gpu,
+                Some("Geometry edit Data"),
+                &gpu_edit_data,
+                wgpu::BufferUsages::STORAGE,
+            ),
+            aabbs: gpu::Buffer::new(
+                gpu,
+                Some("Geometry edit AABBs"),
+                &aabbs,
+                wgpu::BufferUsages::STORAGE,
+            ),
+            count: gpu::Buffer::new(
+                gpu,
+                Some("Geometry edit count"),
+                &[edits.len() as u32],
+                wgpu::BufferUsages::UNIFORM,
+            ),
         }
     }
 }
@@ -104,60 +117,68 @@ impl GPUEdits {
 // Bind Groups
 impl GPUEdits {
     #[profiler::function]
-    pub fn create_bind_group_layout(gpu: &gpu::Context, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
-        gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Geometry edits bind group layout"),
-            entries: &[
-                // Buffer with edits
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+    pub fn create_bind_group_layout(
+        gpu: &gpu::Context,
+        visibility: wgpu::ShaderStages,
+    ) -> wgpu::BindGroupLayout {
+        gpu.device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Geometry edits bind group layout"),
+                entries: &[
+                    // Buffer with edits
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Buffer with edits data
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Buffer with edits data
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Buffer with edits AABBs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Buffer with edits AABBs
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Buffer with edits count
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Buffer with edits count
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        })
+                ],
+            })
     }
-    
+
     #[profiler::function]
-    pub fn create_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+    pub fn create_bind_group(
+        &self,
+        gpu: &gpu::Context,
+        layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Geometry edits bind group"),
             layout,
@@ -190,13 +211,13 @@ impl GPUEdits {
         let mut gpu_edits = vec![];
         let mut gpu_edit_data = vec![];
         let mut aabbs = vec![];
-        
+
         for edit in edits {
             gpu_edits.push(GPUEdit::from_edit(edit));
             gpu_edit_data.push(GPUEditData::from_edit(edit));
             aabbs.push(AABBAligned::from_aabb(&edit.aabb()));
         }
-        
+
         (gpu_edits, gpu_edit_data, aabbs)
     }
 }

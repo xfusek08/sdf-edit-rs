@@ -1,20 +1,13 @@
 use crate::framework::{
-    application::Context,
-    updater::Updater,
-    gui::GuiUpdateModule,
-    camera::CameraUpdater,
+    application::Context, camera::CameraUpdater, gui::GuiUpdateModule, updater::Updater,
 };
 
 use super::{
-    scene::Scene,
-    tmp_evaluator_config::TmpEvaluatorConfig,
-    svo_evaluator::SvoEvaluatorUpdater,
     continuous_rotation::ContinuousRotator,
-    gui_modules::{
-        LegacyAppsGui,
-        DynamicTestGeometry,
-        CameraGuiModule,
-    },
+    gui_modules::{CameraGuiModule, DynamicTestGeometry, LegacyAppsGui},
+    scene::Scene,
+    svo_evaluator::SvoEvaluatorUpdater,
+    tmp_evaluator_config::TmpEvaluatorConfig,
 };
 
 #[cfg(feature = "stats")]

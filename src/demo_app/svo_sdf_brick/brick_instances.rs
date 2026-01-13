@@ -1,8 +1,4 @@
-
-use crate::{
-    warn,
-    framework::gpu,
-};
+use crate::{framework::gpu, warn};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -30,9 +26,9 @@ impl BrickInstances {
                 capacity,
                 wgpu::BufferUsages::VERTEX
                     | wgpu::BufferUsages::COPY_DST
-                    | wgpu::BufferUsages::STORAGE
-                    
-            ).with_grow_rate(1.5),
+                    | wgpu::BufferUsages::STORAGE,
+            )
+            .with_grow_rate(1.5),
             count_buffer: gpu::Buffer::new(
                 &gpu,
                 Some("Brick instances counter buffer"),
@@ -43,26 +39,30 @@ impl BrickInstances {
             ),
         }
     }
-    
+
     #[profiler::function]
     pub fn clear(&mut self, gpu: &gpu::Context) {
         self.count = None;
         self.count_buffer.queue_update(gpu, &[0]);
     }
-    
+
     /// Returns true if any of the buffers was recreated.
     #[profiler::function]
     pub fn clear_resize(&mut self, gpu: &gpu::Context, capacity: usize) -> bool {
         self.clear(gpu);
         self.buffer.resize(gpu, capacity)
     }
-    
+
     /// Returns existing bind group or creates a new one with given layout.
     #[profiler::function]
-    pub fn create_bind_group(&self, gpu: &gpu::Context, layout: &wgpu::BindGroupLayout) -> wgpu::BindGroup {
+    pub fn create_bind_group(
+        &self,
+        gpu: &gpu::Context,
+        layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::BindGroup {
         let max_binding_size_bytes = gpu.device.limits().max_storage_buffer_binding_size as usize;
         let capacity_bytes = self.buffer.capacity_bytes();
-        
+
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Brick instance buffer bind group"),
             layout: layout,
@@ -89,36 +89,41 @@ impl BrickInstances {
             ],
         })
     }
-    
+
     /// Creates and returns a custom binding for the node pool.
     #[profiler::function]
-    pub fn create_bind_group_layout(gpu: &gpu::Context, visibility: wgpu::ShaderStages, read_only: bool) -> wgpu::BindGroupLayout {
-        gpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Brick instance buffer bind group layout"),
-            entries: &[
-                // Buffer with brick instances
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+    pub fn create_bind_group_layout(
+        gpu: &gpu::Context,
+        visibility: wgpu::ShaderStages,
+        read_only: bool,
+    ) -> wgpu::BindGroupLayout {
+        gpu.device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Brick instance buffer bind group layout"),
+                entries: &[
+                    // Buffer with brick instances
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Buffer with brick instances count
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Buffer with brick instances count
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        })
+                ],
+            })
     }
 }

@@ -1,4 +1,3 @@
-
 pub use instrumentation_macro::*;
 
 #[cfg(feature = "stats")]
@@ -9,7 +8,9 @@ pub use json_trace::*;
 
 #[macro_export]
 macro_rules! add_file_line {
-    ($a:expr) => { concat!($a, " (", file!(), ":", line!() ,")") }
+    ($a:expr) => {
+        concat!($a, " (", file!(), ":", line!(), ")")
+    };
 }
 
 #[macro_export]
@@ -26,15 +27,23 @@ macro_rules! session_begin {
 macro_rules! scope {
     ($a:expr) => {
         #[cfg(feature = "json_trace")]
-        let _guard = profiler::EventGuard::new::<()>(add_file_line!($a), profiler::EventCategory::Performance, None);
-        
+        let _guard = profiler::EventGuard::new::<()>(
+            add_file_line!($a),
+            profiler::EventCategory::Performance,
+            None,
+        );
+
         #[cfg(feature = "stats")]
         let _stat_guar = profiler::TimedScope::new(add_file_line!($a), false);
     };
     ($a:expr, pinned) => {
         #[cfg(feature = "json_trace")]
-        let _guard = profiler::EventGuard::new::<()>(add_file_line!($a), profiler::EventCategory::Performance, None);
-        
+        let _guard = profiler::EventGuard::new::<()>(
+            add_file_line!($a),
+            profiler::EventCategory::Performance,
+            None,
+        );
+
         #[cfg(feature = "stats")]
         let _stat_guar = profiler::TimedScope::new(add_file_line!($a), true);
     };

@@ -1,14 +1,13 @@
-
-use egui::{Layout, Align};
-use egui_extras::{TableBuilder, Column};
+use egui::{Align, Layout};
+use egui_extras::{Column, TableBuilder};
 use strum::IntoEnumIterator;
 
 use crate::{
-    warn,
     demo_app::scene::Scene,
+    framework::{gui::GuiModule, math::Transform},
+    sdf::geometry::{Operation, Primitive, PrimitiveType},
     shape_builder::{Shape, ShapeRecord},
-    sdf::geometry::{Primitive, PrimitiveType, Operation},
-    framework::{math::Transform, gui::GuiModule},
+    warn,
 };
 
 /// This module controls first geometry in geometry pool
@@ -19,13 +18,12 @@ pub struct DynamicTestGeometry {
 }
 
 impl DynamicTestGeometry {
-    
     pub fn new() -> Self {
         Self {
-            shape: Some(Shape::default())
+            shape: Some(Shape::default()),
         }
     }
-    
+
     fn update_geometry(&self, scene: &mut Scene) {
         // Replace first unit geometry in scene
         let Some((_, geometry)) = scene.geometry_pool.iter_mut().next() else {
@@ -42,20 +40,19 @@ impl DynamicTestGeometry {
 
 impl GuiModule<Scene> for DynamicTestGeometry {
     fn gui_window(&mut self, scene: &mut Scene, egui_ctx: &egui::Context) {
-        
         let mut changed = false;
         let mut to_delete_indices: Vec<usize> = vec![];
         let mut to_add: Vec<Shape> = vec![];
-        
+
         // Open window for this shape composite
         egui::Window::new("Dynamic geometry").show(egui_ctx, |ui| {
             let Some(mut shape) = self.shape.take() else {
                 return;
             };
-            
+
             ui.horizontal(|ui| {
                 let fd = rfd::FileDialog::new().add_filter("json", &["json", "JSON"]);
-                    
+
                 if ui.button("Import").clicked() {
                     if let Some(file_name) = fd.clone().pick_file() {
                         if let Ok(new_shape) = Shape::load_store_edits(file_name) {
@@ -66,7 +63,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                         }
                     }
                 }
-                
+
                 if ui.button("Export").clicked() {
                     if let Some(file_name) = fd.save_file() {
                         if let Err(e) = shape.store_flat_edits(file_name) {
@@ -75,16 +72,16 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                     }
                 }
             });
-            
+
             // Obtain list of shapes
             let shapes = match &mut shape {
                 Shape::Composite(a) => a,
                 _ => {
                     warn!("shape_composite_window_gui called on non-composite shape");
                     return;
-                },
+                }
             };
-            
+
             TableBuilder::new(ui)
                 .cell_layout(Layout::left_to_right(Align::Center))
                 .column(Column::auto()) // Primitive
@@ -93,29 +90,37 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                 .column(Column::auto()) // Rotation
                 .column(Column::auto()) // Blending
                 .column(Column::auto()) // Color
-                .column(Column::auto())// Dimensions
-                .column(Column::auto())// delete action
+                .column(Column::auto()) // Dimensions
+                .column(Column::auto()) // delete action
                 .min_scrolled_height(0.0)
                 .header(20.0, |mut header| {
-                    header.col(|ui| { ui.strong("Primitive"); });
-                    header.col(|ui| { ui.strong("Operation"); });
-                    header.col(|ui| { ui.strong("Position"); });
-                    header.col(|ui| { ui.strong("Rotation"); });
-                    header.col(|ui| { ui.strong("Blending"); });
-                    header.col(|ui| { ui.strong("Color"); });
-                    header.col(|ui| { ui.strong("Dimensions"); });
+                    header.col(|ui| {
+                        ui.strong("Primitive");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Operation");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Position");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Rotation");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Blending");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Color");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Dimensions");
+                    });
                 })
                 .body(|mut body| {
                     for (i, shape_record) in shapes.iter_mut().enumerate() {
-                        
                         // Deconstruct shape record
-                        let (
-                            primitive,
-                            operation,
-                            transform,
-                            blending,
-                            color,
-                        ) = match shape_record {
+                        let (primitive, operation, transform, blending, color) = match shape_record
+                        {
                             ShapeRecord {
                                 shape: Shape::Primitive(p),
                                 operation: o,
@@ -126,9 +131,8 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                             } => (p, o, t, b, c),
                             _ => continue,
                         };
-                        
+
                         body.row(20.0, |mut row| {
-                        
                             // Primitive selector
                             row.col(|ui| {
                                 let mut p_type = primitive.as_type();
@@ -138,7 +142,7 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                     changed = true;
                                 }
                             });
-                            
+
                             // Operation selector
                             row.col(|ui| {
                                 let mut op = operation.clone();
@@ -148,126 +152,254 @@ impl GuiModule<Scene> for DynamicTestGeometry {
                                     changed = true;
                                 }
                             });
-                            
+
                             // Position
                             row.col(|ui| {
                                 let pos = transform.position.clone();
-                                ui.add(egui::DragValue::new(&mut transform.position.x).speed(0.01).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut transform.position.y).speed(0.01).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut transform.position.z).speed(0.01).max_decimals(3).min_decimals(3));
+                                ui.add(
+                                    egui::DragValue::new(&mut transform.position.x)
+                                        .speed(0.01)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
+                                ui.add(
+                                    egui::DragValue::new(&mut transform.position.y)
+                                        .speed(0.01)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
+                                ui.add(
+                                    egui::DragValue::new(&mut transform.position.z)
+                                        .speed(0.01)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
                                 changed = changed || pos != transform.position;
                             });
-                            
+
                             // Rotation
                             row.col(|ui| {
-                                let orig_radians: glam::Vec3 = transform.rotation.to_euler(glam::EulerRot::XYZ).into();
-                                
-                                let (mut x_deg, mut y_deg, mut z_deg) = (orig_radians.x.to_degrees(), orig_radians.y.to_degrees(), orig_radians.z.to_degrees());
-                                ui.add(egui::DragValue::new(&mut x_deg).speed(0.1).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut y_deg).speed(0.1).max_decimals(3).min_decimals(3));
-                                ui.add(egui::DragValue::new(&mut z_deg).speed(0.1).max_decimals(3).min_decimals(3));
-                                
-                                let new_radians: glam::Vec3 = (x_deg.to_radians(), y_deg.to_radians(), z_deg.to_radians()).into();
-                                if new_radians.distance_squared(orig_radians) > 0.0001 { // TODO: Magic squared error constant
-                                    transform.rotation = glam::Quat::from_euler(glam::EulerRot::XYZ, new_radians.x, new_radians.y, new_radians.z);
+                                let orig_radians: glam::Vec3 =
+                                    transform.rotation.to_euler(glam::EulerRot::XYZ).into();
+
+                                let (mut x_deg, mut y_deg, mut z_deg) = (
+                                    orig_radians.x.to_degrees(),
+                                    orig_radians.y.to_degrees(),
+                                    orig_radians.z.to_degrees(),
+                                );
+                                ui.add(
+                                    egui::DragValue::new(&mut x_deg)
+                                        .speed(0.1)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
+                                ui.add(
+                                    egui::DragValue::new(&mut y_deg)
+                                        .speed(0.1)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
+                                ui.add(
+                                    egui::DragValue::new(&mut z_deg)
+                                        .speed(0.1)
+                                        .max_decimals(3)
+                                        .min_decimals(3),
+                                );
+
+                                let new_radians: glam::Vec3 =
+                                    (x_deg.to_radians(), y_deg.to_radians(), z_deg.to_radians())
+                                        .into();
+                                if new_radians.distance_squared(orig_radians) > 0.0001 {
+                                    // TODO: Magic squared error constant
+                                    transform.rotation = glam::Quat::from_euler(
+                                        glam::EulerRot::XYZ,
+                                        new_radians.x,
+                                        new_radians.y,
+                                        new_radians.z,
+                                    );
                                     changed = true;
                                 }
                             });
-                            
+
                             // Blending
                             row.col(|ui| {
                                 let b = *blending;
-                                ui.add(egui::DragValue::new(blending).speed(0.01).max_decimals(3).min_decimals(3).clamp_range(0.0..=1.0));
+                                ui.add(
+                                    egui::DragValue::new(blending)
+                                        .speed(0.01)
+                                        .max_decimals(3)
+                                        .min_decimals(3)
+                                        .clamp_range(0.0..=1.0),
+                                );
                                 changed = changed || b != *blending;
                             });
-                            
+
                             // Color
                             row.col(|ui| {
-                                let mut rgba = egui::Rgba::from_rgba_premultiplied(color.x, color.y, color.z, color.w);
-                                egui::color_picker::color_edit_button_rgba(ui, &mut rgba, egui::color_picker::Alpha::BlendOrAdditive);
+                                let mut rgba = egui::Rgba::from_rgba_premultiplied(
+                                    color.x, color.y, color.z, color.w,
+                                );
+                                egui::color_picker::color_edit_button_rgba(
+                                    ui,
+                                    &mut rgba,
+                                    egui::color_picker::Alpha::BlendOrAdditive,
+                                );
                                 let rgba = glam::Vec4::new(rgba[0], rgba[1], rgba[2], rgba[3]);
                                 if rgba != *color {
                                     *color = rgba;
                                     changed = true;
                                 }
                             });
-                            
+
                             // Dimensions
                             row.col(|ui| {
                                 let dimension_data: glam::Vec4 = primitive.dimension_data().into();
                                 match primitive {
                                     Primitive::Sphere { radius } => {
-                                        ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
-                                    },
-                                    Primitive::Cube { width, height, depth, bevel } => {
-                                        ui.add(egui::DragValue::new(width).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(depth).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(bevel).speed(0.01).max_decimals(3).min_decimals(3).clamp_range(0.0..=0.45));
-                                    },
+                                        ui.add(
+                                            egui::DragValue::new(radius)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                    }
+                                    Primitive::Cube {
+                                        width,
+                                        height,
+                                        depth,
+                                        bevel,
+                                    } => {
+                                        ui.add(
+                                            egui::DragValue::new(width)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(height)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(depth)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(bevel)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3)
+                                                .clamp_range(0.0..=0.45),
+                                        );
+                                    }
                                     Primitive::Cylinder { diameter, height } => {
-                                        ui.add(egui::DragValue::new(diameter).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
-                                    },
-                                    Primitive::Torus { inner_radius, outer_radius } => {
-                                        ui.add(egui::DragValue::new(inner_radius).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(outer_radius).speed(0.01).max_decimals(3).min_decimals(3));
-                                    },
+                                        ui.add(
+                                            egui::DragValue::new(diameter)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(height)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                    }
+                                    Primitive::Torus {
+                                        inner_radius,
+                                        outer_radius,
+                                    } => {
+                                        ui.add(
+                                            egui::DragValue::new(inner_radius)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(outer_radius)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                    }
                                     Primitive::Cone { diameter, height } => {
-                                        ui.add(egui::DragValue::new(diameter).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
-                                    },
+                                        ui.add(
+                                            egui::DragValue::new(diameter)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(height)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                    }
                                     Primitive::Capsule { radius, height } => {
-                                        ui.add(egui::DragValue::new(radius).speed(0.01).max_decimals(3).min_decimals(3));
-                                        ui.add(egui::DragValue::new(height).speed(0.01).max_decimals(3).min_decimals(3));
-                                    },
+                                        ui.add(
+                                            egui::DragValue::new(radius)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                        ui.add(
+                                            egui::DragValue::new(height)
+                                                .speed(0.01)
+                                                .max_decimals(3)
+                                                .min_decimals(3),
+                                        );
+                                    }
                                 }
-                                changed = changed || dimension_data != primitive.dimension_data().into();
+                                changed =
+                                    changed || dimension_data != primitive.dimension_data().into();
                             });
-                            
+
                             // delete button with gray x emoji
                             row.col(|ui| {
                                 if ui.button("✖").clicked() {
                                     to_delete_indices.push(i);
                                 }
                             });
-                            
                         }); // row
                     } // for shape record
                 }); // table builder body
-                
-                // Add button
-                if ui.button("➕").clicked() {
+
+            // Add button
+            if ui.button("➕").clicked() {
+                to_add.push(Shape::sphere(0.5));
+            }
+
+            for i in to_delete_indices.drain(..) {
+                shapes.remove(i);
+                changed = true;
+                if shapes.len() == 0 {
                     to_add.push(Shape::sphere(0.5));
                 }
-                
-                for i in to_delete_indices.drain(..) {
-                    shapes.remove(i);
-                    changed = true;
-                    if shapes.len() == 0 {
-                        to_add.push(Shape::sphere(0.5));
-                    }
-                }
-                
-                for new_child in to_add.drain(..) {
-                    shape = shape.add(
-                        new_child,
-                        Transform::default(),
-                        glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
-                        0.0
-                    );
-                    changed = true;
-                }
-                
-                self.shape = Some(shape);
-                
+            }
+
+            for new_child in to_add.drain(..) {
+                shape = shape.add(
+                    new_child,
+                    Transform::default(),
+                    glam::Vec4::new(1.0, 0.5, 0.2, 1.0),
+                    0.0,
+                );
+                changed = true;
+            }
+
+            self.shape = Some(shape);
         }); // window end
-        
+
         if changed {
             self.update_geometry(scene);
         }
     }
-    
+
     fn gui_section(&mut self, _: &mut Scene, _: &mut egui::Ui) {}
 }
 
@@ -275,7 +407,11 @@ impl GuiModule<Scene> for DynamicTestGeometry {
 /// - `id` is used to uniquely identify the combo box.
 /// - `ui` is the ui to draw the combo box in.
 /// - `p_type` is the primitive type to select and might be changed after the function returns.
-fn primitive_type_sector_ui(id: impl std::hash::Hash, ui: &mut egui::Ui, p_type: &mut PrimitiveType) {
+fn primitive_type_sector_ui(
+    id: impl std::hash::Hash,
+    ui: &mut egui::Ui,
+    p_type: &mut PrimitiveType,
+) {
     egui::ComboBox::from_id_source(id)
         .width(20.0)
         .selected_text(p_type.as_ref())

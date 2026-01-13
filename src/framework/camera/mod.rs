@@ -1,4 +1,3 @@
-
 use winit_input_helper::WinitInputHelper;
 
 use super::math::Transform;
@@ -27,21 +26,21 @@ impl CameraRig {
             CameraRig::Free(rig) => rig.camera(),
         }
     }
-    
+
     pub fn set_camera(&mut self, camera: Camera) {
         match self {
             CameraRig::Orbit(rig) => rig.set_camera(camera),
             CameraRig::Free(rig) => rig.set_camera(camera),
         }
     }
-    
+
     pub fn on_input(&mut self, input: &WinitInputHelper) {
         match self {
             CameraRig::Orbit(rig) => rig.on_input(input),
             CameraRig::Free(rig) => rig.on_input(input),
         }
     }
-    
+
     pub fn update(&mut self, delta_time_seconds: f32, input: &WinitInputHelper) -> Transform {
         match self {
             CameraRig::Orbit(rig) => rig.update(delta_time_seconds, input),

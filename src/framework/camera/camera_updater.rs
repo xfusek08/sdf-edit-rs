@@ -1,30 +1,20 @@
-
 use crate::framework::updater::{
+    AfterRenderContext, InputUpdateResult, ResizeContext, UpdateContext, UpdateResultAction,
     UpdaterModule,
-    InputUpdateResult,
-    UpdateContext,
-    UpdateResultAction,
-    ResizeContext,
-    AfterRenderContext
 };
 
-use super::{
-    SceneWithCamera,
-    Camera
-};
-
+use super::{Camera, SceneWithCamera};
 
 #[derive(Default)]
 pub struct CameraUpdater;
 
 impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
-    
     #[profiler::function]
     fn input(&mut self, context: &mut UpdateContext<S>) -> InputUpdateResult {
         context.scene.get_camera_mut().on_input(context.input);
         InputUpdateResult::default() // do not prevent event propagation
     }
-    
+
     #[profiler::function]
     fn update(&mut self, context: &mut UpdateContext<S>) -> UpdateResultAction {
         let camera_rig = context.scene.get_camera_mut();
@@ -36,7 +26,7 @@ impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
         }
         UpdateResultAction::None
     }
-    
+
     #[profiler::function]
     fn resize(&mut self, context: &mut ResizeContext<S>) -> UpdateResultAction {
         let rig = context.scene.get_camera_mut();
@@ -46,7 +36,6 @@ impl<S: SceneWithCamera> UpdaterModule<S> for CameraUpdater {
         });
         UpdateResultAction::None
     }
-    
+
     fn after_render(&mut self, _: &mut AfterRenderContext<S>) {}
-    
 }

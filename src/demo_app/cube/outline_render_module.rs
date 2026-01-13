@@ -1,21 +1,12 @@
-
 use crate::{
     demo_app::scene::Scene,
     framework::{
         gui::Gui,
-        renderer::{
-            RenderContext,
-            RenderModule,
-            RenderPassContext,
-            RenderPass,
-        },
+        renderer::{RenderContext, RenderModule, RenderPass, RenderPassContext},
     },
 };
 
-use super::{
-    CubeOutlinePipeline,
-    CubeOutlineComponent,
-};
+use super::{CubeOutlineComponent, CubeOutlinePipeline};
 
 #[derive(Debug)]
 pub struct CubeOutlineRenderModule {
@@ -42,13 +33,13 @@ impl RenderModule<Scene> for CubeOutlineRenderModule {
                 .map(|(_, cube)| cube.clone())
                 .collect()
         };
-        
+
         profiler::call!(self
             .pipeline
             .instance_buffer
             .queue_update(&context.gpu, &instances));
     }
-    
+
     #[profiler::function]
     fn render<'pass, 'a: 'pass>(
         &'a self,
@@ -65,6 +56,6 @@ impl RenderModule<Scene> for CubeOutlineRenderModule {
             _ => {}
         }
     }
-    
+
     fn finalize(&mut self) {}
 }

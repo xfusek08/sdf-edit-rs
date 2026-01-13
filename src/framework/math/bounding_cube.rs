@@ -1,4 +1,3 @@
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct BoundingCube {
@@ -14,5 +13,7 @@ impl BoundingCube {
 }
 
 impl Default for BoundingCube {
-    fn default() -> Self { Self::UNIT }
+    fn default() -> Self {
+        Self::UNIT
+    }
 }

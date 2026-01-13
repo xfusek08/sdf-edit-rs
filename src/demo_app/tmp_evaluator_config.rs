@@ -1,6 +1,5 @@
 ///! This is updater module which checks if there is a geometry requesting an SVO evaluation
 ///! And sends the svo of the geometry for evaluation
-
 use std::sync::Arc;
 
 use crate::{
@@ -8,13 +7,9 @@ use crate::{
     framework::{
         gpu,
         updater::{
-            UpdaterModule,
-            UpdateContext,
-            UpdateResultAction,
-            InputUpdateResult,
-            ResizeContext,
-            AfterRenderContext
-        }
+            AfterRenderContext, InputUpdateResult, ResizeContext, UpdateContext,
+            UpdateResultAction, UpdaterModule,
+        },
     },
 };
 
@@ -47,7 +42,8 @@ impl UpdaterModule<Scene> for TmpEvaluatorConfig {
         if let Some(TmpEvaluatorConfigProps {
             render_level,
             min_voxel_size,
-        }) = self.prev_props {
+        }) = self.prev_props
+        {
             if scene_props.min_voxel_size != min_voxel_size {
                 // Update all geometries to new voxel size
                 context
@@ -59,14 +55,19 @@ impl UpdaterModule<Scene> for TmpEvaluatorConfig {
                     });
             }
         }
-        
+
         // Update voxel size outline components to new voxel size
-        for (_, (_, cube_component)) in context.scene.world.query::<(&VoxelSizeOutlineComponent, &mut CubeOutlineComponent)>().iter() {
+        for (_, (_, cube_component)) in context
+            .scene
+            .world
+            .query::<(&VoxelSizeOutlineComponent, &mut CubeOutlineComponent)>()
+            .iter()
+        {
             let half_length = scene_props.min_voxel_size * 0.5;
             cube_component.set_position(glam::Vec3::new(0.6 + half_length, half_length, 0.0));
             cube_component.set_size(scene_props.min_voxel_size);
         }
-        
+
         self.prev_props = Some(scene_props);
         UpdateResultAction::None
     }

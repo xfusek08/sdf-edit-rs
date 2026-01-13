@@ -1,10 +1,9 @@
-
-pub mod gpu;
-pub mod math;
-pub mod camera;
 pub mod application;
+pub mod camera;
+pub mod clock;
+pub mod gpu;
+pub mod gui;
+pub mod log;
+pub mod math;
 pub mod renderer;
 pub mod updater;
-pub mod gui;
-pub mod clock;
-pub mod log;

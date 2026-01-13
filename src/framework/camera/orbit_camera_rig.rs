@@ -1,29 +1,21 @@
-
 use std::marker::PhantomData;
 use winit_input_helper::WinitInputHelper;
 
 use dolly::{
     driver::RigDriver,
+    prelude::{Handedness, Position, RightHanded, Smooth, YawPitch},
     rig::RigUpdateParams,
-    prelude::{
-        YawPitch,
-        Smooth,
-        RightHanded,
-        Handedness,
-        Position
-    },
 };
 
-use crate::framework::math::Transform;
 use super::Camera;
+use crate::framework::math::Transform;
 
 pub struct OrbitCameraRig {
-    rig:    dolly::rig::CameraRig,
+    rig: dolly::rig::CameraRig,
     camera: Camera,
 }
 
 impl OrbitCameraRig {
-    
     pub fn from_camera(camera: Camera, target: glam::Vec3) -> Self {
         let mut yaw_pitch = YawPitch::new();
         let current_distance_to_target = glam::Vec3::distance(camera.position, target);
@@ -34,17 +26,17 @@ impl OrbitCameraRig {
             .with(Position::new(camera.position))
             .with(SmoothZoom::new(current_distance_to_target, 0.8))
             .build();
-        
+
         // rig.driver_mut::<SmoothZoom<RightHanded>>().zoom(distance - current_distance_to_target);
         rig.driver_mut::<Position>().position = target;
-        
+
         Self { rig, camera }
     }
-    
+
     pub fn camera(&self) -> &Camera {
         &self.camera
     }
-    
+
     pub fn set_camera(&mut self, camera: Camera) {
         self.camera.fov = camera.fov;
         self.camera.aspect_ratio = camera.aspect_ratio;
@@ -66,7 +58,7 @@ impl OrbitCameraRig {
                 .zoom(-scroll);
         }
     }
-    
+
     pub fn update(&mut self, delta_time_seconds: f32, _: &WinitInputHelper) -> Transform {
         let res = self.rig.update(delta_time_seconds);
         self.camera.position = res.position;
@@ -95,7 +87,7 @@ impl<H: Handedness> SmoothZoom<H> {
                 .build(),
         }
     }
-    
+
     pub fn zoom(&mut self, zoom: f32) {
         let p = self.rig.driver_mut::<Position>();
         let scale = 1.0 - zoom * -0.3;

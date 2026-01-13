@@ -1,26 +1,24 @@
-
 mod outline_pipeline;
 pub use outline_pipeline::*;
 
 mod outline_render_module;
 pub use outline_render_module::*;
 
-use wgpu::util::DeviceExt;
+use crate::framework::gpu::{utils::PRIMITIVE_RESTART, vertices::SimpleVertex};
 use glam::Vec4Swizzles;
-use crate::framework::gpu::{
-    vertices::SimpleVertex,
-    utils::PRIMITIVE_RESTART
-};
+use wgpu::util::DeviceExt;
 
 /// Component which will be rendered as cube outline
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CubeOutlineComponent {
-    pub data: glam::Vec4
+    pub data: glam::Vec4,
 }
 impl CubeOutlineComponent {
     pub fn new(x: f32, y: f32, z: f32, size: f32) -> Self {
-        Self { data: glam::Vec4::new(x,y,z, size) }
+        Self {
+            data: glam::Vec4::new(x, y, z, size),
+        }
     }
     pub fn position(&self) -> glam::Vec3 {
         self.data.xyz()
@@ -90,28 +88,54 @@ impl CubeSolidMesh {
 
 pub const CUBE_VERTICES: &[SimpleVertex] = &[
     // front face
-    SimpleVertex(glam::Vec3::new(-0.5,  0.5, 0.5)), // 0 TL
+    SimpleVertex(glam::Vec3::new(-0.5, 0.5, 0.5)), // 0 TL
     SimpleVertex(glam::Vec3::new(-0.5, -0.5, 0.5)), // 1 BL
-    SimpleVertex(glam::Vec3::new( 0.5,  0.5, 0.5)), // 2 TR
-    SimpleVertex(glam::Vec3::new( 0.5, -0.5, 0.5)), // 3 BR
-    
+    SimpleVertex(glam::Vec3::new(0.5, 0.5, 0.5)),  // 2 TR
+    SimpleVertex(glam::Vec3::new(0.5, -0.5, 0.5)), // 3 BR
     // back face
-    SimpleVertex(glam::Vec3::new(-0.5,  0.5, -0.5)), // 4 TL
+    SimpleVertex(glam::Vec3::new(-0.5, 0.5, -0.5)), // 4 TL
     SimpleVertex(glam::Vec3::new(-0.5, -0.5, -0.5)), // 5 BL
-    SimpleVertex(glam::Vec3::new( 0.5,  0.5, -0.5)), // 6 TR
-    SimpleVertex(glam::Vec3::new( 0.5, -0.5, -0.5)), // 7 BR
+    SimpleVertex(glam::Vec3::new(0.5, 0.5, -0.5)),  // 6 TR
+    SimpleVertex(glam::Vec3::new(0.5, -0.5, -0.5)), // 7 BR
 ];
 
 pub const CUBE_INDICES_TRIANGLE_STRIP: &[u16] = &[
-    0, 1, 2, 3, 6, 7, 4, 5,
+    0,
+    1,
+    2,
+    3,
+    6,
+    7,
+    4,
+    5,
     PRIMITIVE_RESTART,
-    2, 6, 0, 4, 1, 5, 3, 7,
+    2,
+    6,
+    0,
+    4,
+    1,
+    5,
+    3,
+    7,
 ];
 
 pub const CUBE_INDICES_LINE_STRIP: &[u16] = &[
-    0, 1, 3, 7, 5, 1,
+    0,
+    1,
+    3,
+    7,
+    5,
+    1,
     PRIMITIVE_RESTART,
-    5, 4, 0, 2, 6, 4,
+    5,
+    4,
+    0,
+    2,
+    6,
+    4,
     PRIMITIVE_RESTART,
-    3, 2, 6, 7
+    3,
+    2,
+    6,
+    7,
 ];

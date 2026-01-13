@@ -1,4 +1,3 @@
-
 #[profiler::function]
 pub fn style_gui(mut style: egui::Style) -> egui::Style {
     // adjust intrusive window shadowing
