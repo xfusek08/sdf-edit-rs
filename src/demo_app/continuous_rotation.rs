@@ -50,7 +50,7 @@ impl UpdaterModule<Scene> for ContinuousRotator {
         context: &mut crate::framework::updater::UpdateContext<Scene>,
     ) -> crate::framework::updater::UpdateResultAction {
         let mut cnt = 0;
-        for (_, (transform, continuous_rotation)) in context
+        for (transform, continuous_rotation) in context
             .scene
             .world
             .query_mut::<(&mut Transform, &ContinuousRotation)>()

@@ -113,7 +113,7 @@ impl GuiModule<Scene> for LegacyAppsGui {
             let mut show_axes = scene.display_toggles.show_axes;
             ui.checkbox(&mut show_axes, "Show Axes");
             if show_axes != scene.display_toggles.show_axes {
-                for (_, (_, active)) in scene.world.query::<(&AxisMesh, &mut Active)>().iter() {
+                for (_, active) in scene.world.query::<(&AxisMesh, &mut Active)>().iter() {
                     *active = Active(show_axes);
                 }
                 scene.display_toggles.show_axes = show_axes;

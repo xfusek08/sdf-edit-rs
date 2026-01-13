@@ -30,7 +30,7 @@ impl RenderModule<Scene> for CubeOutlineRenderModule {
                 .world
                 .query::<&CubeOutlineComponent>()
                 .iter()
-                .map(|(_, cube)| cube.clone())
+                .map(|cube| cube.clone())
                 .collect()
         };
 

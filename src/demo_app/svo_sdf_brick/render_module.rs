@@ -76,8 +76,7 @@ impl RenderModule<Scene> for SvoSdfBricksRenderModule {
             #[cfg(feature = "counters")]
             let mut cnt: u32 = 0;
 
-            for (_, (geometry_id, transform)) in
-                scene.world.query::<(&GeometryID, &Transform)>().iter()
+            for (geometry_id, transform) in scene.world.query::<(&GeometryID, &Transform)>().iter()
             {
                 let Some((_, geometry, transforms)) =
                     &mut buckets[geometry_id_to_index(geometry_id)]

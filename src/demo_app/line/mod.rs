@@ -14,10 +14,7 @@ use hecs::Entity;
 use crate::{
     demo_app::{components::Active, scene::Scene},
     framework::{
-        gpu::{
-            self,
-            vertices::{ColorVertex, Vertex},
-        },
+        gpu::{self, vertices::ColorVertex},
         gui::Gui,
         renderer::{RenderContext, RenderModule, RenderPass, RenderPassContext},
     },
@@ -154,8 +151,10 @@ impl RenderModule<Scene> for LineRenderModule {
     #[profiler::function]
     fn prepare(&mut self, _: &Gui, scene: &Scene, context: &RenderContext) {
         // For each proper line entity is scene world, update render resources
-        for (entity, (mesh, Active(is_active))) in
-            scene.world.query::<(&LineMesh, &Active)>().iter()
+        for (entity, mesh, Active(is_active)) in scene
+            .world
+            .query::<(hecs::Entity, &LineMesh, &Active)>()
+            .iter()
         {
             if !is_active {
                 self.render_resources.remove(&entity);

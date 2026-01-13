@@ -56,7 +56,7 @@ glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] }
 slotmap            = "1.0.6"
 
 # A simple minimal ECS for scene object management
-hecs               = { version = "0.10.3", features = [ "macros" ] }
+hecs               = { version = "0.11.0", features = [ "macros" ] }
 
 # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
 bitflags           = { version = "2.2.1", features = [ "bytemuck" ] }

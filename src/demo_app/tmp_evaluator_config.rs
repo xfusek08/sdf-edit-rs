@@ -57,7 +57,7 @@ impl UpdaterModule<Scene> for TmpEvaluatorConfig {
         }
 
         // Update voxel size outline components to new voxel size
-        for (_, (_, cube_component)) in context
+        for (_, cube_component) in context
             .scene
             .world
             .query::<(&VoxelSizeOutlineComponent, &mut CubeOutlineComponent)>()
