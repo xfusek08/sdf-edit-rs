@@ -1,36 +1,46 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, parse_quote, ItemFn, AttributeArgs};
+use syn::{
+    parse::{Parse, ParseStream},
+    parse_macro_input, parse_quote, Ident, ItemFn, Result,
+};
+
+struct MyAttributeArgs {
+    pinned: bool,
+}
+
+impl Parse for MyAttributeArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut pinned = false;
+
+        if input.is_empty() {
+            return Ok(MyAttributeArgs { pinned });
+        }
+
+        // Input is not empty - expect valid flag (only pinned for now)
+
+        let ident: Ident = input.parse()?;
+        if ident == "pinned" {
+            pinned = true;
+        } else {
+            return Err(input.error("Expected `pinned`"));
+        }
+
+        Ok(MyAttributeArgs { pinned })
+    }
+}
 
 #[proc_macro_attribute]
-pub fn function(
-    attr: TokenStream,
-    item: TokenStream,
-) -> TokenStream {
+pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut function = parse_macro_input!(item as ItemFn);
     let instrumented_function_name = function.sig.ident.to_string();
-    
+
     // Parse the attribute TokenStream to get the pinned parameter
-    let args = parse_macro_input!(attr as AttributeArgs);
-    
-    // resolve if call was [function(pinned)] or just [function]
-    let pinned = match args.len() {
-        0 => false,
-        1 => {
-            let arg = &args[0];
-            match arg {
-                syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
-                    path.is_ident("pinned")
-                }
-                _ => panic!("Invalid attribute argument"),
-            }
-        }
-        _ => panic!("Invalid attribute arguments"),
-    };
-    
+    let args = parse_macro_input!(attr as MyAttributeArgs);
+
     let body = &function.block;
-    let new_body = if !pinned {
+    let new_body = if !args.pinned {
         parse_quote! {
             {
                 profiler::scope!(concat!(module_path!(), "::", #instrumented_function_name));

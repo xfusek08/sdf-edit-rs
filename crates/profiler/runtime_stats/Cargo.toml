@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-parking_lot  = "0.12.1"
+parking_lot  = "0.12.5"
 log = "0.4.17"
 env_logger = "0.10.0"
 circular_buffer = { path = "../../circular_buffer" }
