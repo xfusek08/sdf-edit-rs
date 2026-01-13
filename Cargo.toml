@@ -43,13 +43,13 @@ winit_input_helper = "0.14.1"
 # A cross platform GPU API, in this applicationVulcan backend is used.
 wgpu               = "0.15.1"
 
-# A camera rig library with smoothing and inertia.
+# A camera rig library with smoothing and inertia. Unmaintained and needs to be removed and camera reworked eventually.
 dolly              = "0.6.0"
 
 # Static casting between basic types
 bytemuck           = { version = "1.13.1", features = [ "derive" ] }
 
-# Math! Supporting SIMD optimizations
+# Math! Supporting SIMD optimizations. Needs to stay on version 0.23.0 so dolly works until we use that.
 glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] }
 
 # Efficient storage of entities
