@@ -1,24 +1,14 @@
-
 /// This is an implementation of profiling instrumentor
 /// Outputting a Json Trace Event format profile file.
 /// https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.lenwiilchoxp
-
-use log::{warn, trace};
+use log::{trace, warn};
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
-    collections::HashMap,
-    process,
-    sync::Arc,
-    thread::ThreadId,
-    time::Instant,
-    fs::File,
-    io::Write
+    collections::HashMap, fs::File, io::Write, process, sync::Arc, thread::ThreadId, time::Instant,
 };
 
-
 static CURRENT: Mutex<Option<Session>> = Mutex::new(None);
-
 
 #[derive(Serialize, Clone)]
 struct Event {
@@ -37,7 +27,6 @@ struct Event {
     arguments: Option<Arc<dyn erased_serde::Serialize + Send + Sync>>,
 }
 
-
 #[derive(Serialize, Clone)]
 enum EventPhase {
     #[serde(rename = "B")]
@@ -47,7 +36,6 @@ enum EventPhase {
     #[serde(rename = "i")]
     Instant,
 }
-
 
 #[derive(Clone)]
 pub enum EventCategory {
@@ -62,7 +50,6 @@ impl Into<&'static str> for EventCategory {
         }
     }
 }
-
 
 #[derive(Serialize)]
 struct Session {
@@ -93,13 +80,13 @@ impl Session {
             Some((id, old_name)) => {
                 warn!("Profiler: Cannot register new thread under name \"{}\" because this thread is already registered as \"{}\"", name, old_name);
                 (tid, *id)
-            },
+            }
             None => {
                 let id = self.thread_id_map.len() as u32;
                 self.thread_id_map.insert(tid, (id, name));
                 (tid, id)
-            },
-        }
+            }
+        };
     }
     pub fn current_thread_id(&mut self) -> (ThreadId, u32) {
         let tid = std::thread::current().id();
@@ -115,7 +102,6 @@ impl Session {
         self.thread_id_map.remove(&thread_id);
     }
 }
-
 
 pub struct SessionGuard;
 
@@ -144,28 +130,32 @@ impl Drop for SessionGuard {
         if current_guard.is_some() {
             {
                 let session_ref = current_guard.as_ref().unwrap();
-                
+
                 // Save profile to file
                 let file_name = format!("profile/{}.json", session_ref.name);
                 let file_path = std::path::Path::new(file_name.as_str());
-                let prefix =  file_path.parent().unwrap();
+                let prefix = file_path.parent().unwrap();
                 std::fs::create_dir_all(prefix).expect("Filed to create profile file.");
                 let mut file = File::create(file_path).expect("Failed open profile file.");
                 let str = serde_json::to_string(session_ref).unwrap();
-                file.write(str.as_bytes()).expect("Failed to write into a profile file.");
+                file.write(str.as_bytes())
+                    .expect("Failed to write into a profile file.");
             }
             *current_guard = None;
         }
     }
 }
 
-
 pub struct EventGuard {
     event: Event,
 }
 
 impl EventGuard {
-    pub fn new<T>(name: &'static str, category: EventCategory, arguments: Option<T>) -> Option<EventGuard>
+    pub fn new<T>(
+        name: &'static str,
+        category: EventCategory,
+        arguments: Option<T>,
+    ) -> Option<EventGuard>
     where
         T: erased_serde::Serialize + Send + Sync + 'static,
     {
@@ -175,12 +165,12 @@ impl EventGuard {
             Some(session) => {
                 let event = Event {
                     name,
-                    category:   category.clone().into(),
-                    phase:      EventPhase::BeginScope,
-                    timestamp:  session.start.elapsed().as_micros(),
+                    category: category.clone().into(),
+                    phase: EventPhase::BeginScope,
+                    timestamp: session.start.elapsed().as_micros(),
                     process_id: process::id(),
-                    thread_id:  session.current_thread_id().1,
-                    arguments:  if let Some(args) = arguments {
+                    thread_id: session.current_thread_id().1,
+                    arguments: if let Some(args) = arguments {
                         Some(Arc::new(args))
                     } else {
                         None
@@ -206,7 +196,7 @@ impl Drop for EventGuard {
         match current_ref.as_mut() {
             Some(session) => {
                 session.events.push(Event {
-                    phase:     EventPhase::EndScope,
+                    phase: EventPhase::EndScope,
                     timestamp: session.start.elapsed().as_micros(),
                     ..self.event.clone()
                 });
@@ -221,7 +211,6 @@ impl Drop for EventGuard {
     }
 }
 
-
 pub struct ThreadGuard {
     thread_id: ThreadId,
 }
@@ -233,13 +222,13 @@ impl ThreadGuard {
             Some(session) => {
                 let (thread_id, id) = session.register_thread(name);
                 session.events.push(Event {
-                    name:       "Thread Begin",
-                    category:   EventCategory::Performance.into(),
-                    phase:      EventPhase::Instant,
-                    timestamp:  session.start.elapsed().as_micros(),
+                    name: "Thread Begin",
+                    category: EventCategory::Performance.into(),
+                    phase: EventPhase::Instant,
+                    timestamp: session.start.elapsed().as_micros(),
                     process_id: process::id(),
-                    thread_id:  id,
-                    arguments:  None,
+                    thread_id: id,
+                    arguments: None,
                 });
                 Some(ThreadGuard { thread_id })
             }
@@ -258,13 +247,13 @@ impl Drop for ThreadGuard {
             session.unregister_thread(self.thread_id);
             let id = session.current_thread_id().1;
             session.events.push(Event {
-                name:       "Thread Ends",
-                category:   EventCategory::Performance.into(),
-                phase:      EventPhase::Instant,
-                timestamp:  session.start.elapsed().as_micros(),
+                name: "Thread Ends",
+                category: EventCategory::Performance.into(),
+                phase: EventPhase::Instant,
+                timestamp: session.start.elapsed().as_micros(),
                 process_id: process::id(),
-                thread_id:  id,
-                arguments:  None,
+                thread_id: id,
+                arguments: None,
             });
         }
     }

@@ -1,4 +1,3 @@
-
 #[cfg(feature = "enabled")]
 mod counters;
 
@@ -17,7 +16,6 @@ macro_rules! init {
 macro_rules! init {
     () => {};
 }
-
 
 #[cfg(feature = "enabled")]
 #[macro_export]

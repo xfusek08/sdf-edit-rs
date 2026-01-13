@@ -1,4 +1,3 @@
-
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DataEnum, Fields};
@@ -50,7 +49,7 @@ pub fn derive_to_index(input: TokenStream) -> TokenStream {
         Data::Enum(DataEnum { variants, .. }) => variants,
         _ => panic!("Only enums are supported"),
     };
-    
+
     // Generate the trait implementation for the enum
     let mut match_arms = Vec::new();
     for (index, variant) in variants.iter().enumerate() {
@@ -59,13 +58,13 @@ pub fn derive_to_index(input: TokenStream) -> TokenStream {
         let fields = match &variant.fields {
             Fields::Named(_) => quote! { {..} },
             Fields::Unnamed(_) => quote! { (..) },
-            Fields::Unit => quote! { },
+            Fields::Unit => quote! {},
         };
         match_arms.push(quote! {
             #name::#variant_name #fields => #i,
         });
     }
-    
+
     let gen = quote! {
         impl #name {
             pub fn to_index(&self) -> u32 {
@@ -75,7 +74,7 @@ pub fn derive_to_index(input: TokenStream) -> TokenStream {
             }
         }
     };
-    
+
     // Concatenate the trait definition and implementation and return the resulting token stream
     gen.into()
 }

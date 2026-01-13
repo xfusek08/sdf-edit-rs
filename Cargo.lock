@@ -508,7 +508,7 @@ name = "counters"
 version = "0.1.0"
 dependencies = [
  "circular_buffer",
- "env_logger 0.10.0",
+ "env_logger 0.11.8",
  "log",
  "parking_lot",
 ]
@@ -666,7 +666,7 @@ name = "enum_utils"
 version = "0.1.0"
 dependencies = [
  "quote",
- "syn 1.0.109",
+ "syn 2.0.114",
 ]
 
 [[package]]
@@ -1959,7 +1959,7 @@ name = "runtime_stats"
 version = "0.1.0"
 dependencies = [
  "circular_buffer",
- "env_logger 0.10.0",
+ "env_logger 0.11.8",
  "log",
  "parking_lot",
 ]

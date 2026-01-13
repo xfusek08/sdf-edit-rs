@@ -1,11 +1,7 @@
-
 use circular_buffer::CircularBuffer;
 use log::warn;
 use parking_lot::Mutex;
-use std::{
-    collections::HashMap,
-    time::Duration
-};
+use std::{collections::HashMap, time::Duration};
 
 pub static STATISTICS: Mutex<Option<Statistic>> = Mutex::new(None);
 
@@ -31,14 +27,15 @@ impl Statistic {
     pub fn pinned(&self) -> impl Iterator<Item = (&'static str, &StatisticRecord)> {
         self.filtered().filter(|(_, record)| record.pinned)
     }
-    
+
     pub fn unpinned(&self) -> impl Iterator<Item = (&'static str, &StatisticRecord)> {
         self.filtered().filter(|(_, record)| !record.pinned)
     }
-    
+
     pub fn filtered(&self) -> impl Iterator<Item = (&'static str, &StatisticRecord)> {
         let filter = self.filter.to_lowercase();
-        self.map.iter()
+        self.map
+            .iter()
             .filter(move |(name, _)| {
                 if filter.is_empty() {
                     true
@@ -48,13 +45,13 @@ impl Statistic {
             })
             .map(|(name, record)| (*name, record))
     }
-    
+
     pub fn pin(&mut self, name: &'static str) {
         if let Some(record) = self.map.get_mut(name) {
             record.pinned = true;
         }
     }
-    
+
     pub fn unpin(&mut self, name: &'static str) {
         if let Some(record) = self.map.get_mut(name) {
             record.pinned = false;
@@ -101,7 +98,7 @@ impl StatisticRecord {
     pub fn history(&self) -> impl Iterator<Item = &Duration> {
         self.history.iter()
     }
-    
+
     pub fn latest(&self) -> Duration {
         let latest = self.history.first();
         if let Some(latest) = latest {
@@ -133,7 +130,9 @@ impl Drop for TimedScope {
         let duration = self.start.elapsed();
         let mut statistics = STATISTICS.lock();
         if let Some(current) = statistics.as_mut() {
-            let record = current.map.entry(self.name)
+            let record = current
+                .map
+                .entry(self.name)
                 .or_insert_with(|| StatisticRecord::new(self.pinned));
             record.add(duration);
         }

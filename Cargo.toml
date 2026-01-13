@@ -27,12 +27,12 @@ counters   = { path = "crates/counters" }
 log                = { version = "0.4.17", optional = true }                    # Generic logging API without backend (env_logger)
 env_logger         = { version = "0.10.0", optional = true }                    # Logging into console based on environment variable.
 pollster           = "0.3.0"                                                    # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-winit              = "0.28.5"                                                   # Windowing library (event loop namaing, window creation, etc.)
-winit_input_helper = "0.14.1"                                                   # Helper for winit input handling, storing imput state based on processed events ...
+winit              = "0.28.5"                                                   # Windowing library (event loop naming, window creation, etc.)
+winit_input_helper = "0.14.1"                                                   # Helper for winit input handling, storing input state based on processed events ...
 wgpu               = "0.15.1"                                                   # A cross platform GPU API, in this applicationVulcan backend is used.
-dolly              = "0.4.1"                                                    # A camera rig library with smooting and inertia.
+dolly              = "0.4.1"                                                    # A camera rig library with smoothing and inertia.
 bytemuck           = { version = "1.13.1", features = [ "derive" ] }            # Static casting between basic types
-glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporing SIMD optimizations
+glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporting SIMD optimizations
 slotmap            = "1.0.6"                                                    # Efficient storage of entities
 hecs               = { version = "0.10.3", features = [ "macros" ] }            # A simple minimal ECS for scene object management
 bitflags           = { version = "2.2.1", features = [ "bytemuck" ] }           # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
@@ -48,7 +48,7 @@ strum        = "0.24.1"
 strum_macros = "0.24.3"
 
 # GUI
-egui        = "0.21.0" # Immidiate mode gui library
+egui        = "0.21.0" # Immediate mode gui library
 egui_extras = "0.21.0" # For drawing tables
 egui-wgpu   = "0.21.0" # Wgpu backend integration with egui
 egui-winit  = "0.21.1" # Egui integration with winit
@@ -65,5 +65,5 @@ lod_test = [] # Demo scene to test LOD with large number of objects
 white_bg = [] # Sets white background
 dip_demo = [] # Demo scene to generate image for diploma thesis
 no_vsync = [] # Disables vsync
-rotation = [] # gives each model a random roation velocity
+rotation = [] # gives each model a random rotation velocity
 all_fps  = [] # updates as fast as possible
