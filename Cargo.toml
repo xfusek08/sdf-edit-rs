@@ -23,51 +23,56 @@ profiler   = { path = "crates/profiler" }
 enum_utils = { path = "crates/enum_utils" }
 counters   = { path = "crates/counters" }
 
+
 # --- Core ---
 
+
 # Generic logging API without backend (env_logger)
-log                = { version = "0.4.29", optional = true }
+log = { version = "0.4.29", optional = true }
 
 # Logging into console based on environment variable.
-env_logger         = { version = "0.11.8", optional = true }
+env_logger = { version = "0.11.8", optional = true }
 
 # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-pollster           = "0.4.0"
+pollster = "0.4.0"
 
 # Windowing library (event loop naming, window creation, etc.)
-winit              = "0.28.5"
+winit = "0.28.5"
 
 # Helper for winit input handling, storing input state based on processed events ...
 winit_input_helper = "0.14.1"
 
 # A cross platform GPU API, in this applicationVulcan backend is used.
-wgpu               = "0.15.1"
+wgpu = "0.15.1"
 
 # A camera rig library with smoothing and inertia. Unmaintained and needs to be removed and camera reworked eventually.
-dolly              = "0.6.0"
+dolly = "0.6.0"
 
 # Static casting between basic types
-bytemuck           = { version = "1.13.1", features = [ "derive" ] }
+bytemuck = { version = "1.13.1", features = [ "derive" ] }
 
 # Math! Supporting SIMD optimizations. Needs to stay on version 0.23.0 so dolly works until we use that.
-glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] }
+glam = { version = "0.23.0", features = [ "bytemuck", "serde" ] }
 
 # Efficient storage of entities
-slotmap            = "1.1.1"
+slotmap = "1.1.1"
 
 # A simple minimal ECS for scene object management
-hecs               = { version = "0.11.0", features = [ "macros" ] }
+hecs = { version = "0.11.0", features = [ "macros" ] }
 
 # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
-bitflags           = { version = "2.10.0", features = [ "bytemuck" ] }
+bitflags = { version = "2.10.0", features = [ "bytemuck" ] }
 
 # Random number generator
-rand               = "0.9.2"
+rand = "0.9.2"
 
 # File dialog
-rfd                = "0.17.2"
+rfd = "0.17.2"
 
-# Serialization
+
+# --- Serialization ---
+
+
 serde      = { version = "1.0.228", features = ["derive", "rc"] }
 serde_json = "1.0.149"
 
