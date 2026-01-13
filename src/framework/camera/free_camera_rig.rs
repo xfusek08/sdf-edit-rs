@@ -63,11 +63,11 @@ impl FreeCameraRig {
         let mut move_vector = glam::Vec3::ZERO;
 
         if forward != backward {
-            let dir = self.rig.final_transform.forward();
+            let dir: glam::Vec3 = self.rig.final_transform.forward();
             move_vector += if forward { dir } else { -dir };
         }
         if left != right {
-            let dir = self.rig.final_transform.right();
+            let dir: glam::Vec3 = self.rig.final_transform.right();
             move_vector += if left { -dir } else { dir };
         }
         if up != down {
@@ -76,15 +76,17 @@ impl FreeCameraRig {
         }
 
         if move_vector != glam::Vec3::ZERO {
-            self.rig.driver_mut::<Position>().position += move_vector * self.move_speed;
+            self.rig
+                .driver_mut::<Position>()
+                .translate(move_vector * self.move_speed);
         }
 
         let res = self.rig.update(delta_time_seconds);
-        self.camera.position = res.position;
-        self.camera.rotation = res.rotation;
+        self.camera.position = res.position.into();
+        self.camera.rotation = res.rotation.into();
         Transform {
-            position: res.position,
-            rotation: res.rotation,
+            position: res.position.into(),
+            rotation: res.rotation.into(),
             ..Default::default()
         }
     }

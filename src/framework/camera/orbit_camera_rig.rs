@@ -28,7 +28,7 @@ impl OrbitCameraRig {
             .build();
 
         // rig.driver_mut::<SmoothZoom<RightHanded>>().zoom(distance - current_distance_to_target);
-        rig.driver_mut::<Position>().position = target;
+        rig.driver_mut::<Position>().position = target.into();
 
         Self { rig, camera }
     }
@@ -61,11 +61,11 @@ impl OrbitCameraRig {
 
     pub fn update(&mut self, delta_time_seconds: f32, _: &WinitInputHelper) -> Transform {
         let res = self.rig.update(delta_time_seconds);
-        self.camera.position = res.position;
-        self.camera.rotation = res.rotation;
+        self.camera.position = res.position.into();
+        self.camera.rotation = res.rotation.into();
         Transform {
-            position: res.position,
-            rotation: res.rotation,
+            position: res.position.into(),
+            rotation: res.rotation.into(),
             ..Default::default()
         }
     }
@@ -82,7 +82,7 @@ impl<H: Handedness> SmoothZoom<H> {
     pub fn new(distance: f32, smoothness: f32) -> Self {
         Self {
             rig: dolly::rig::CameraRig::builder()
-                .with(Position::new((0.0, 0.0, distance).into()))
+                .with(Position::new(glam::vec3(0.0, 0.0, distance)))
                 .with(Smooth::new_position(smoothness))
                 .build(),
         }
@@ -98,9 +98,15 @@ impl<H: Handedness> SmoothZoom<H> {
 impl<H: Handedness> RigDriver<H> for SmoothZoom<H> {
     fn update(&mut self, params: RigUpdateParams<H>) -> dolly::transform::Transform<H> {
         let t = self.rig.update(params.delta_time_seconds);
+
+        let parent_position: glam::Vec3 = params.parent.position.into();
+        let parent_rotation: glam::Quat = params.parent.rotation.into();
+        let position: glam::Vec3 = t.position.into();
+
+        let final_position = parent_position + parent_rotation * position;
         dolly::transform::Transform {
             rotation: params.parent.rotation,
-            position: params.parent.position + params.parent.rotation * t.position,
+            position: final_position.into(),
             phantom: PhantomData,
         }
     }
