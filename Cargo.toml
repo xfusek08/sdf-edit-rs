@@ -23,21 +23,49 @@ profiler   = { path = "crates/profiler" }
 enum_utils = { path = "crates/enum_utils" }
 counters   = { path = "crates/counters" }
 
-# Core
-log                = { version = "0.4.29", optional = true }                    # Generic logging API without backend (env_logger)
-env_logger         = { version = "0.11.8", optional = true }                    # Logging into console based on environment variable.
-pollster           = "0.4.0"                                                    # Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
-winit              = "0.28.5"                                                   # Windowing library (event loop naming, window creation, etc.)
-winit_input_helper = "0.14.1"                                                   # Helper for winit input handling, storing input state based on processed events ...
-wgpu               = "0.15.1"                                                   # A cross platform GPU API, in this applicationVulcan backend is used.
-dolly              = "0.6.0"                                                    # A camera rig library with smoothing and inertia.
-bytemuck           = { version = "1.13.1", features = [ "derive" ] }            # Static casting between basic types
-glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] } # Math! Supporting SIMD optimizations
-slotmap            = "1.0.6"                                                    # Efficient storage of entities
-hecs               = { version = "0.10.3", features = [ "macros" ] }            # A simple minimal ECS for scene object management
-bitflags           = { version = "2.2.1", features = [ "bytemuck" ] }           # Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
-rand               = "0.8.5"                                                    # Random number generator
-rfd                = "0.11.3"                                                   # File dialog
+# --- Core ---
+
+# Generic logging API without backend (env_logger)
+log                = { version = "0.4.29", optional = true }
+
+# Logging into console based on environment variable.
+env_logger         = { version = "0.11.8", optional = true }
+
+# Minimalist async execution engine - required by wgpu because GPU operations are asynchronous
+pollster           = "0.4.0"
+
+# Windowing library (event loop naming, window creation, etc.)
+winit              = "0.28.5"
+
+# Helper for winit input handling, storing input state based on processed events ...
+winit_input_helper = "0.14.1"
+
+# A cross platform GPU API, in this applicationVulcan backend is used.
+wgpu               = "0.15.1"
+
+# A camera rig library with smoothing and inertia.
+dolly              = "0.6.0"
+
+# Static casting between basic types
+bytemuck           = { version = "1.13.1", features = [ "derive" ] }
+
+# Math! Supporting SIMD optimizations
+glam               = { version = "0.23.0", features = [ "bytemuck", "serde" ] }
+
+# Efficient storage of entities
+slotmap            = "1.0.6"
+
+# A simple minimal ECS for scene object management
+hecs               = { version = "0.10.3", features = [ "macros" ] }
+
+# Bitflags to easily handle bitflags, 2.0.2 does not support bytemuck yet: https://github.com/bitflags/bitflags/issues/310
+bitflags           = { version = "2.2.1", features = [ "bytemuck" ] }
+
+# Random number generator
+rand               = "0.8.5"
+
+# File dialog
+rfd                = "0.11.3"
 
 # Serialization
 serde      = { version = "1.0.228", features = ["derive", "rc"] }
